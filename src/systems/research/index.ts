@@ -31,11 +31,24 @@ export const research: GameSystem = {
 
   panel: (() => {
     const rows = new Map<string, { wrap: HTMLElement; btn: ActionButton; note: HTMLElement }>();
-    let doneList: HTMLElement, empty: HTMLElement;
+    const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
+    let doneList: HTMLElement, empty: HTMLElement, ageEl: HTMLElement;
     return {
       title: 'Research',
       mount(root, ctx) {
-        const list = el('div.build');
+        ageEl = el('p.age');
+        root.append(
+          el('p.flavor', {}, 'Elders remember. What one ant learns, the colony keeps.'),
+          ageEl,
+          el('p.muted', {}, 'Put workers on the Elder job to gather knowledge.'),
+        );
+        // one group per age, in order
+        for (const age of RESEARCH.ages) {
+          const head = el('h3', { hidden: true }, age.name);
+          const list = el('div.build');
+          groups.set(age.id, { head, list });
+          root.append(head, list);
+        }
         for (const id of IDS) {
           const t = TECHS[id];
           const note = el('span.muted');
@@ -49,33 +62,42 @@ export const research: GameSystem = {
             },
           });
           const wrap = el('div.buildrow', { hidden: true }, btn.root, note, el('span'));
-          list.append(wrap);
+          (groups.get(t.age) ?? groups.get('dirt')!).list.append(wrap);
           rows.set(id, { wrap, btn, note });
         }
         empty = el('p.muted', {}, 'Nothing to research right now. New ideas come as the colony grows.');
         doneList = el('p.muted');
-        root.append(
-          el('p.flavor', {}, 'Elders remember. What one ant learns, the colony keeps.'),
-          el('p.muted', {}, 'Put workers on the Elder job to gather knowledge.'),
-          list, empty, el('h3', {}, 'Known'), doneList,
-        );
+        root.append(empty, el('h3', {}, 'Known'), doneList);
       },
       update(_root, ctx) {
         let any = false;
+        const shown = new Set<string>();
         for (const id of IDS) {
           const r = rows.get(id)!;
           const show = available(ctx, id);
           r.wrap.hidden = !show;
           if (!show) continue;
           any = true;
+          shown.add(TECHS[id].age);
           r.btn.update(ctx);
           const k = TECHS[id].cost.knowledge ?? 0;
           r.note.textContent = TECHS[id].desc + (k > ctx.res.cap('knowledge') ? ` Needs ${k} knowledge storage: build a Hall of elders.` : '');
         }
+        for (const [age, g] of groups) g.head.hidden = !shown.has(age);
         empty.hidden = any;
+        const age = currentAge(ctx);
+        ageEl.textContent = `${age.name}. ${age.note}`;
         const known = IDS.filter((id) => done(ctx, id)).map((id) => TECHS[id].name);
         doneList.textContent = known.length ? known.join(', ') : 'Nothing yet.';
       },
     };
   })(),
 };
+
+/** The latest age the colony has reached: the newest age of any tech you know or can research. */
+export function currentAge(ctx: Context) {
+  let best = 0;
+  for (const id of IDS) if (done(ctx, id) || available(ctx, id)) best = Math.max(best, RESEARCH.ages.findIndex((a) => a.id === TECHS[id].age));
+  if (ctx.flags.has('legacy:migrated')) best = Math.max(best, 2);
+  return RESEARCH.ages[best];
+}
