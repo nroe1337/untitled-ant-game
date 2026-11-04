@@ -127,7 +127,8 @@ export const map: GameSystem = {
     const mine = owned(ctx);
     const outposts = mine.filter((t) => t.outpost).length;
     ctx.busy.outposts = outposts * MAP.claimWorkers;
-    for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * dt);
+    // territory pays only once the colony has mapped it; the start is fully manual
+    if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * dt);
     ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence);
     ctx.mods.set('tiles', 'map', mine.length);
   },
