@@ -61,7 +61,7 @@ export const garden: GameSystem = {
     // larvae that get fungus grow faster
     const larvae = ctx.res.amt('larva');
     const eat = larvae * GARDEN.larvaFungus * dt;
-    const fed = larvae >= 1 && ctx.res.amt('fungus') >= eat;
+    const fed = larvae >= 1 && ctx.res.amt('fungus') - eat >= ctx.res.cap('fungus') * GARDEN.larvaReserve;
     if (fed) ctx.res.add('fungus', -eat);
     ctx.mods.set('larvaGrowth', 'garden', fed ? GARDEN.larvaBoost : 0);
 
@@ -103,7 +103,7 @@ export const garden: GameSystem = {
           ['Leaves eaten', `${fmt(healthy(ctx) * GARDEN.leafPerBed)}/s`],
           ['Fungus grown', `${fmt(healthy(ctx) * bedRate(ctx))}/s`],
           ['Beds kept clean by gardeners', ctx.flags.has('caste:minim') ? `${tended(ctx)} of ${n}` : 'Needs the Minim caste'],
-          ['Larvae', fed ? `eating fungus, growing ${Math.round(GARDEN.larvaBoost * 100)}% faster` : 'no fungus to eat'],
+          ['Larvae', fed ? `eating fungus, growing ${Math.round(GARDEN.larvaBoost * 100)}% faster` : `fed fungus only once stores are over ${Math.round(GARDEN.larvaReserve * 100)}% full`],
         ];
         ledger.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         ups.update(ctx);

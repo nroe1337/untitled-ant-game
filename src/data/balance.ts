@@ -135,7 +135,7 @@ export const WAR = {
     raider:   { hp: 3, atk: 0.8, speed: 10, chitin: 1 },
     brute:    { hp: 12, atk: 2, speed: 6, chitin: 4 },  // a big rival soldier, from wave 3
     // wave n brings raiders = base + n * perWave, and one brute every bruteEvery waves
-    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 2, toughness: 0.1 }, // toughness: raider hp and bite +10% per wave past the first, so waves keep getting harder after the raider cap // clearBonus: chitin per wave number on a clean win
+    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 2, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
@@ -192,7 +192,7 @@ export const RESEARCH = {
     husks:      { name: 'Husk masonry',      cost: { knowledge: 160, chitin: 5 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
     fungus:     { name: 'Leaf culture',      cost: { knowledge: 80, seed: 4 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
     castes:     { name: 'Caste lore',        cost: { knowledge: 150, fungus: 20 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
-    rafts:      { name: 'Leaf rafts',        cost: { knowledge: 120, leaf: 30, twig: 8 }, needs: ['fungus', 'surface'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
+    rafts:      { name: 'Leaf rafts',        cost: { knowledge: 120, leaf: 20, twig: 8 }, needs: ['fungus', 'surface'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     cost: { knowledge: 250, jelly: 5 },         needs: ['castes'],              desc: 'Young queens grow wings. Opens the Lineage tab and the nuptial flight.' },
     campaigns:  { name: 'Campaigning',       cost: { knowledge: 220, chitin: 10 },       needs: ['martial', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, { name: string; cost: Record<string, number>; needs: string[]; flag?: string; desc: string }>,
@@ -209,6 +209,7 @@ export const GARDEN = {
   bedsPerGardener: 2,        // each gardener keeps this many beds clean
   weedCooldown: 6,
   larvaFungus: 0.01,         // fungus each larva eats per second when there is fungus
+  larvaReserve: 0.5,         // larvae only eat fungus above this share of fungus storage, so jelly can be saved for
   larvaBoost: 0.5,           // larvae fed fungus grow this much faster
   upgrades: {
     compost: { name: 'Leaf mulch',   desc: 'Beds make {p} more fungus per level',  per: 0.03, base: { leaf: 30, fungus: 10 }, growth: 1.18, max: 30 },
@@ -251,7 +252,7 @@ export const LINEAGE = {
 export const WATERS = {
   maxBoats: 3,
   boats: {
-    raft:   { name: 'Leaf raft',  cost: { leaf: 25, twig: 6 },              crew: 3, hull: 3, speed: 1 },
+    raft:   { name: 'Leaf raft',  cost: { leaf: 20, twig: 6 },              crew: 3, hull: 3, speed: 1 },
     barque: { name: 'Bark boat',  cost: { twig: 25, resin: 8, silk: 10 },   crew: 5, hull: 6, speed: 1.5, needs: 'caste:weaver' },
   } as Record<string, { name: string; cost: Record<string, number>; crew: number; hull: number; speed: number; needs?: string }>,
   /** tile: where the voyage reveals the map, as an offset from the nest. */

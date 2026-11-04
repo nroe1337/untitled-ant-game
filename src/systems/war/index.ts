@@ -47,7 +47,8 @@ const waveComp = (w: number) => ({
   raiders: Math.min(WAR.maxRaiders, Math.round(B.wave.base + w * B.wave.perWave)),
   brutes: Math.floor(w / B.wave.bruteEvery),
 });
-const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round(B.wave.toughness * (w - 1) * 100)}% tougher` : ''); };
+const toughness = (w: number) => Math.pow(B.wave.toughness, w - 1);
+const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round((toughness(w) - 1) * 100)}% tougher` : ''); };
 
 function freeWorkers(ctx: Context) {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
@@ -61,7 +62,7 @@ function startBattle(ctx: Context) {
   const comp = waveComp(waveOf(ctx));
   const n = comp.raiders + comp.brutes;
   const units: Unit[] = [];
-  const tough = 1 + B.wave.toughness * (waveOf(ctx) - 1);
+  const tough = toughness(waveOf(ctx));
   for (let i = 0; i < comp.raiders; i++) units.push({ kind: 'raider', x: B.laneLength + i * 2.5, hp: B.raider.hp * tough, max: B.raider.hp * tough, atk: B.raider.atk * tough, speed: B.raider.speed });
   for (let i = 0; i < comp.brutes; i++) units.push({ kind: 'raider', big: true, x: B.laneLength + comp.raiders * 2.5 + 6 + i * 4, hp: B.brute.hp * tough, max: B.brute.hp * tough, atk: B.brute.atk * tough, speed: B.brute.speed });
   const hp = B.soldier.hp * (1 + F.carapace.per * fl(ctx, 'carapace'));
