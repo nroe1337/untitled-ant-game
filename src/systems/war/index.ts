@@ -89,10 +89,11 @@ function stepBattle(ctx: Context, dt: number) {
   // towers (nest defence) shoot the front raider in range
   if (front && front.x < B.guardRange) front.hp -= defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters')) * dt;
 
+  // raiders can't walk through a living defender: they pile up against the front one and bite it
   for (const r of raiders) {
-    const blocker = wall && Math.abs(r.x - wall.x) < 6 ? wall : null;
-    if (blocker) blocker.hp -= (r.atk ?? B.raider.atk) * dt;
+    if (wall && r.x - wall.x < 6) wall.hp -= (r.atk ?? B.raider.atk) * dt;
     else r.x -= ((r.speed ?? B.raider.speed) / slow) * dt;
+    if (wall) r.x = Math.max(r.x, wall.x + 4);
   }
   // defenders in reach hit the front raider
   if (front) for (const d of defenders) {

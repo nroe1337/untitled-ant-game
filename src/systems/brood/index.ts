@@ -83,6 +83,8 @@ export const brood: GameSystem = {
 
     // larvae eat and grow into workers, if there is food and room
     const larvae = res.amt('larva');
+    ctx.alert('noroom', larvae >= 1 && res.amt('ant') >= res.cap('ant')
+      ? 'No living space. Larvae wait until you dig more tunnels.' : null);
     if (larvae >= 1) {
       const room = res.amt('ant') < res.cap('ant');
       const need = larvae * larvaFood(ctx) * dt;
@@ -98,7 +100,7 @@ export const brood: GameSystem = {
         }
         s.starvingWarned = false;
       } else if (!room) {
-        if (!s.starvingWarned) { ctx.log('No room. The larvae wait for more tunnels.', 'warn'); s.starvingWarned = true; }
+        // shown as a standing banner instead of a log line, so it doesn't repeat every time a worker dies and is replaced
       } else if (!s.starvingWarned) {
         ctx.log('The larvae are starving. They will not grow without food.', 'warn'); s.starvingWarned = true;
       }
