@@ -103,7 +103,9 @@ export function fmt(n: number, integer = false) {
   if (a >= 1e4) return (n / 1e3).toFixed(1) + 'k';
   if (integer) return Math.floor(n).toString();
   if (a >= 100) return n.toFixed(0);
-  return n.toFixed(1);
+  if (a >= 10) return n.toFixed(1);
+  if (a > 0 && a < 0.01) return n.toFixed(3); // tiny rates, e.g. one slow worker
+  return n.toFixed(2);
 }
 
 export function fmtCosts(costs: Costs, res: Resources) {
