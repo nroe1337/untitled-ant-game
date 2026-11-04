@@ -108,6 +108,7 @@ export const husbandry: GameSystem = {
     let frame = 0;
     return {
       title: 'Herds',
+      group: 'Home',
       mount(root, ctx) {
         milk = actionButton({
           ctx, label: 'Stroke the herd', cooldown: H.milk.cooldown,

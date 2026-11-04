@@ -82,6 +82,7 @@ export const nest: GameSystem = {
     let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
     return {
       title: 'Nest',
+      group: 'Home',
       mount(root, ctx) {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
         progress = el('p.muted');

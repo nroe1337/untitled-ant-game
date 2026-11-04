@@ -116,6 +116,7 @@ export const lineage: GameSystem = {
     const moundBar = progressBar();
     return {
       title: 'Lineage',
+      group: 'Lineage',
       mount(root, ctx) {
         ledger = el('div.ledger');
         note = el('p.muted');

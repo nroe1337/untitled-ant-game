@@ -136,6 +136,7 @@ export const waters: GameSystem = {
     let sig = '';
     return {
       title: 'Waters',
+      group: 'World',
       mount(root, ctx) {
         const s = S(ctx);
         destSel = el('select', { id: 'voyage-dest' }) as HTMLSelectElement;

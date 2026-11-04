@@ -134,6 +134,7 @@ export const expeditions: GameSystem = {
     const bars: ReturnType<typeof progressBar>[] = [];
     return {
       title: 'Surface',
+      group: 'World',
       mount(root, ctx) {
         const s = S(ctx);
         partyEl = el('span.count');

@@ -138,6 +138,7 @@ export const map: GameSystem = {
     let hoverI: number | null = null;
     return {
       title: 'Map',
+      group: 'World',
       mount(root, ctx) {
         cv = el('canvas.map', { width: MAP.cols * 8, height: MAP.rows * 8, 'aria-label': 'Map of the garden' }) as HTMLCanvasElement;
         const pick = (e: MouseEvent) => {

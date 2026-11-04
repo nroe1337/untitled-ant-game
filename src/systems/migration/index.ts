@@ -68,6 +68,7 @@ export const migration: GameSystem = {
     let list: HTMLElement, go: HTMLButtonElement, note: HTMLElement, ledger: HTMLElement, perks: ReturnType<typeof upgradeList>;
     return {
       title: 'Migration',
+      group: 'Lineage',
       mount(root, ctx) {
         list = el('div.ledger');
         ledger = el('div.ledger');

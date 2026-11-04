@@ -122,6 +122,7 @@ export const supercolony: GameSystem = {
     let sigSel = '', sigFront = '';
     return {
       title: 'Continent',
+      group: 'World',
       mount(root, ctx) {
         list = el('div.ledger');
         go = el('button.action', { type: 'button' }, 'Become a supercolony') as HTMLButtonElement;

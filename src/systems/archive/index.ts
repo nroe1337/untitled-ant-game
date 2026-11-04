@@ -92,6 +92,7 @@ export const archive: GameSystem = {
     let summary: HTMLElement, accords: HTMLElement;
     return {
       title: 'Archive',
+      group: 'Knowledge',
       mount(root) {
         const list = el('div.ledger');
         for (const id of IDS) {

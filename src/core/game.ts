@@ -10,6 +10,7 @@ interface Tab {
   btn: HTMLButtonElement;
   body: HTMLElement;
   mounted: boolean;
+  group: string;
   /** Things the player has already seen in this panel (see unlockKeys). */
   known: Set<string> | null;
 }
@@ -57,6 +58,9 @@ export class Game {
   private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement }>();
   private logEl!: HTMLElement;
   private tabBar!: HTMLElement;
+  private groupBar!: HTMLElement;
+  /** Top-level tabs. Each remembers the sub-tab that was open in it last. */
+  private groups = new Map<string, { btn: HTMLButtonElement; last: string }>();
   private panelHost!: HTMLElement;
   private resList!: HTMLElement;
 
@@ -122,6 +126,7 @@ export class Game {
   private buildLayout(root: HTMLElement) {
     this.resList = el('div.res-list');
     this.tabBar = el('nav.tabs');
+    this.groupBar = el('nav.groups', { hidden: true });
     this.panelHost = el('div.panels');
     this.logEl = el('div.log');
     this.alertEl = el('div.alerts', { role: 'status' });
@@ -144,7 +149,7 @@ export class Game {
         el('div.tools', {}, this.pauseBtn, saveBtn, exportBtn, resetBtn, speedBtn)),
       el('div.layout', {},
         el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList),
-        el('main.main', {}, this.alertEl, this.fanfareEl, this.tabBar, this.panelHost),
+        el('main.main', {}, this.alertEl, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
         el('aside.story', {}, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
   }
@@ -249,11 +254,22 @@ export class Game {
         btn.addEventListener('click', () => this.show(s.id));
         this.tabBar.append(btn);
         this.panelHost.append(body);
-        tab = { btn, body, mounted: false, known: null };
+        const group = s.panel.group ?? s.panel.title;
+        tab = { btn, body, mounted: false, known: null, group };
         this.tabs.set(s.id, tab);
+        if (!this.groups.has(group)) {
+          const gbtn = el('button.gtab', { type: 'button' }, group) as HTMLButtonElement;
+          gbtn.addEventListener('click', () => {
+            const g = this.groups.get(group)!;
+            // open the sub-tab with something new in it, else the one used last
+            const ids = [...this.tabs].filter(([, t]) => t.group === group).map(([id]) => id);
+            this.show(ids.find((id) => this.tabs.get(id)!.btn.classList.contains('new')) ?? (ids.includes(g.last) ? g.last : ids[0]));
+          });
+          this.groupBar.append(gbtn);
+          this.groups.set(group, { btn: gbtn, last: s.id });
+        }
         // tabs already open when the save loads stay quiet; ones that open during play get a dot
         if (!this.active) this.show(s.id); else if (!this.firstRender) btn.classList.add('new');
-        this.tabBar.hidden = this.tabs.size < 2;
       }
       if (tab && !tab.mounted) { s.panel.mount(tab.body, ctx); tab.mounted = true; }
       if (tab && this.active === s.id) {
@@ -276,6 +292,23 @@ export class Game {
       }
     }
     this.firstRender = false;
+    this.refreshBars();
+  }
+
+  /** Show the sub-tabs of the open group; light a group when any of its sub-tabs has something new. */
+  private refreshBars() {
+    const activeGroup = this.tabs.get(this.active)?.group;
+    let inGroup = 0;
+    for (const t of this.tabs.values()) {
+      t.btn.hidden = t.group !== activeGroup;
+      if (!t.btn.hidden) inGroup++;
+    }
+    for (const [name, g] of this.groups) {
+      g.btn.classList.toggle('on', name === activeGroup);
+      g.btn.classList.toggle('new', name !== activeGroup && [...this.tabs.values()].some((t) => t.group === name && t.btn.classList.contains('new')));
+    }
+    this.groupBar.hidden = this.groups.size < 2;
+    this.tabBar.hidden = inGroup < 2;
   }
 
   private togglePause() {
@@ -298,11 +331,14 @@ export class Game {
 
   private show(id: string) {
     this.active = id;
+    const g = this.groups.get(this.tabs.get(id)?.group ?? '');
+    if (g) g.last = id;
     for (const [tid, t] of this.tabs) {
       const on = tid === id;
       t.body.hidden = !on;
       t.btn.classList.toggle('on', on);
       if (on) t.btn.classList.remove('new');
     }
+    this.refreshBars();
   }
 }

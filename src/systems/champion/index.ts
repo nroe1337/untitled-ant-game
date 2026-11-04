@@ -302,6 +302,7 @@ export const champion: GameSystem = {
     let sigGround = '', sigGear = '';
     return {
       title: 'Hunts',
+      group: 'War',
       mount(root, ctx) {
         raise = actionButton({
           ctx, label: 'Raise a champion', costs: () => C.raiseCost,

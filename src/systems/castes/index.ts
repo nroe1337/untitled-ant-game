@@ -41,6 +41,7 @@ export const castes: GameSystem = {
     const rows = new Map<string, { wrap: HTMLElement; btn: ActionButton; state: HTMLElement }>();
     return {
       title: 'Castes',
+      group: 'Home',
       mount(root, ctx) {
         chew = actionButton({
           ctx, label: 'Chew royal jelly', costs: () => CASTES.chew.cost, cooldown: CASTES.chew.cooldown,

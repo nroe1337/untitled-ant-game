@@ -222,6 +222,7 @@ export const war: GameSystem = {
     const campBar = progressBar();
     return {
       title: 'War',
+      group: 'War',
       mount(root, ctx) {
         cv = el('canvas.viewer', { width: 320, height: 40, 'aria-label': 'The nest entrance' }) as HTMLCanvasElement;
         status = el('p');

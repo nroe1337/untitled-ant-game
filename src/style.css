@@ -163,3 +163,12 @@ input[type=checkbox] { accent-color: var(--accent); }
 .known { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-block; padding: 3px 8px; background: var(--panel); border: 2px solid var(--line); font-size: 13px; font-weight: 600; color: var(--muted); cursor: help; }
 .chip:hover, .chip:focus-visible { color: var(--fg); border-color: #5c4a39; }
+
+/* Top-level tabs (groups); the sub-tab row below shows only the open group's panels */
+.groups { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.gtab { position: relative; background: var(--panel); border: 2px solid var(--line); color: var(--muted); font: 400 18px/1 var(--display);
+  padding: 7px 14px 6px; cursor: pointer; animation: appear .6s ease-out; }
+.gtab:hover { color: var(--fg); }
+.gtab.on { color: var(--fg); border-color: var(--accent); background: var(--raise); }
+.gtab.new { color: var(--fg); }
+.gtab.new::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; background: var(--accent); animation: newdot 1.2s ease-in-out 2; }

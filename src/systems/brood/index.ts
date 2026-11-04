@@ -116,6 +116,7 @@ export const brood: GameSystem = {
     let royal: ReturnType<typeof upgradeList>;
     return {
       title: 'The Queen',
+      group: 'Home',
       mount(root, ctx) {
         lay = actionButton({
           ctx, label: () => (clutch(ctx) > 1 ? `Lay ${clutch(ctx)} eggs` : 'Lay an egg'),

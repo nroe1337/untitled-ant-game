@@ -38,6 +38,8 @@ export interface Context {
 
 export interface Panel {
   title: string;
+  /** Top-level tab this panel sits under (e.g. "Home", "World"). Panels in a group share a sub-tab row. */
+  group?: string;
   /** Called once when the panel first appears. Build DOM here. */
   mount(el: HTMLElement, ctx: Context): void;
   /** Called every UI frame (~10/s). Update numbers and button states. */

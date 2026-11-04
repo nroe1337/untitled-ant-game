@@ -118,6 +118,7 @@ export const town: GameSystem = {
     let sig = '';
     return {
       title: 'Town',
+      group: 'World',
       mount(root, ctx) {
         cv = el('canvas.viewer', { width: 320, height: 56, 'aria-label': 'The town' }) as HTMLCanvasElement;
         clockEl = el('p');

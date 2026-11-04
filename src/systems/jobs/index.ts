@@ -129,6 +129,7 @@ export const jobs: GameSystem = {
     };
     return {
       title: 'Colony',
+      group: 'Home',
       mount(root, ctx) {
         idleEl = el('strong');
         upkeepEl = el('p.muted');
