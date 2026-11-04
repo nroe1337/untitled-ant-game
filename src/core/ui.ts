@@ -1,0 +1,82 @@
+import type { Context } from './types';
+import { fmtCosts, type Costs } from './resources';
+
+/** Small DOM helper: el('div.card', {title:'x'}, child1, 'text') */
+export function el<K extends keyof HTMLElementTagNameMap>(
+  spec: K | `${K}.${string}`,
+  attrs: Record<string, any> = {},
+  ...children: (Node | string | null | undefined)[]
+): HTMLElementTagNameMap[K] {
+  const [tag, ...classes] = spec.split('.') as [K, ...string[]];
+  const node = document.createElement(tag);
+  if (classes.length) node.className = classes.join(' ');
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
+    else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+    else if (v !== undefined && v !== null && v !== false) node.setAttribute(k, String(v));
+  }
+  for (const c of children) if (c != null) node.append(c);
+  return node;
+}
+
+export interface ActionButton {
+  root: HTMLButtonElement;
+  /** Refresh enabled state and cost text. */
+  update(ctx: Context): void;
+}
+
+/**
+ * A button that spends `costs()` and runs `onBuy`. Optional cooldown in seconds
+ * shows a draining bar, A Dark Room style.
+ */
+export function actionButton(opts: {
+  label: string | (() => string);
+  costs?: () => Costs;
+  desc?: string;
+  cooldown?: number;
+  enabled?: (ctx: Context) => boolean;
+  onBuy: (ctx: Context) => void;
+  ctx: Context;
+}): ActionButton {
+  const labelEl = el('span.label');
+  const costEl = el('span.cost');
+  const bar = el('span.cd');
+  const root = el('button.action', { type: 'button', title: opts.desc ?? '' }, labelEl, costEl, bar);
+  let cdLeft = 0;
+  let cdStart = 0;
+
+  root.addEventListener('click', () => {
+    const ctx = opts.ctx;
+    if (cdLeft > 0) return;
+    if (opts.enabled && !opts.enabled(ctx)) return;
+    const c = opts.costs?.() ?? {};
+    if (!ctx.res.spend(c)) return;
+    opts.onBuy(ctx);
+    if (opts.cooldown) { cdLeft = opts.cooldown; cdStart = performance.now(); }
+    api.update(ctx);
+  });
+
+  const api: ActionButton = {
+    root,
+    update(ctx) {
+      labelEl.textContent = typeof opts.label === 'function' ? opts.label() : opts.label;
+      const c = opts.costs?.() ?? {};
+      costEl.textContent = Object.keys(c).length ? fmtCosts(c, ctx.res) : '';
+      if (opts.cooldown && cdLeft > 0) {
+        const elapsed = ((performance.now() - cdStart) / 1000) * ctx.speed;
+        cdLeft = Math.max(0, opts.cooldown - elapsed);
+        bar.style.width = `${(cdLeft / opts.cooldown) * 100}%`;
+      } else bar.style.width = '0';
+      const ok = cdLeft <= 0 && ctx.res.canAfford(c) && (!opts.enabled || opts.enabled(ctx));
+      root.disabled = !ok;
+    },
+  };
+  return api;
+}
+
+/** A thin progress bar. */
+export function progressBar() {
+  const fill = el('span.fill');
+  const root = el('span.bar', {}, fill);
+  return { root, set(p: number) { fill.style.width = `${Math.max(0, Math.min(1, p)) * 100}%`; } };
+}

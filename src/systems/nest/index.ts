@@ -1,0 +1,235 @@
+// Nest building: spend resources on chambers that raise caps and add bonuses.
+// Ten chambers break the surface. Each chamber type draws differently in the nest view.
+import type { GameSystem, Context } from '../../core/types';
+import { actionButton, el, type ActionButton } from '../../core/ui';
+import type { Costs } from '../../core/resources';
+import { NEST } from '../../data/balance';
+import { PAL, blob, rect, setup } from '../../core/pixel';
+
+type ChamberId = keyof typeof NEST.chambers;
+type ChamberDef = {
+  name: string; base: Costs; desc: string; needs?: string; max?: number;
+  antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
+  foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number;
+};
+const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
+const IDS = Object.keys(DEFS) as ChamberId[];
+
+interface NestState { built: Record<string, number>; order: ChamberId[] }
+const S = (ctx: Context) => ctx.state.nest as NestState;
+
+const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
+const costOf = (ctx: Context, id: ChamberId): Costs => {
+  const cheaper = Math.max(0.5, 1 + ctx.mods.get('chamberCost'));
+  return Object.fromEntries(Object.entries(DEFS[id].base).map(([r, v]) => [r, Math.ceil(v * Math.pow(NEST.costGrowth, count(ctx, id)) * cheaper)]));
+};
+const totalChambers = (ctx: Context) => Object.values(S(ctx).built).reduce((a, b) => a + b, 0);
+
+/** needs: a flag, "res:<id>" (resource seen) or "chambers:<n>". */
+function visible(ctx: Context, id: ChamberId) {
+  const n = DEFS[id].needs;
+  if (!n) return true;
+  if (n.startsWith('res:')) { const r = n.slice(4); return ctx.res.has(r) && ctx.res.get(r).seen; }
+  if (n.startsWith('chambers:')) return totalChambers(ctx) >= Number(n.slice(9));
+  return ctx.flags.has(n);
+}
+
+function applyEffects(ctx: Context) {
+  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id), 0);
+  ctx.res.setCapBonus('ant', 'nest', sum('antCap'));
+  ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
+  ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
+  ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * 10);
+  if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
+  ctx.mods.set('defence', 'nest', sum('defence'));
+  ctx.mods.set('upkeep', 'nest', -sum('upkeep'));
+  ctx.mods.set('job:scout', 'nest', sum('scout'));
+  ctx.mods.set('job:elder', 'nest', sum('elder'));
+  if (ctx.res.has('knowledge')) ctx.res.setCapBonus('knowledge', 'nest', sum('knowCap'));
+}
+
+export const nest: GameSystem = {
+  id: 'nest',
+
+  init(ctx) {
+    ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
+    ctx.state.nest = { built: Object.fromEntries(IDS.map((i) => [i, 0])), order: [] } satisfies NestState;
+    ctx.bus.on('loaded', () => applyEffects(ctx));
+  },
+
+  isUnlocked: (ctx) => ctx.flags.has('tech:digging'),
+
+  tick(ctx, dt) {
+    applyEffects(ctx);
+    const g = count(ctx, 'granary');
+    if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * dt);
+    if (!ctx.flags.has('surface') && ctx.flags.has('tech:surface') && totalChambers(ctx) >= NEST.surfaceAtChambers) {
+      ctx.flags.add('surface');
+      ctx.log('A digger pushes upward and the soil gives way. Light. Wind. The surface.');
+      ctx.log('A new tab has opened: Surface.', 'info');
+    }
+  },
+
+  panel: (() => {
+    const buttons = new Map<ChamberId, { btn: ActionButton; wrap: HTMLElement; count: HTMLElement }>();
+    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
+    return {
+      title: 'Nest',
+      mount(root, ctx) {
+        canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
+        progress = el('p.muted');
+        extra = el('p.muted');
+        const grid = el('div.build');
+        for (const id of IDS) {
+          const def = DEFS[id];
+          const cnt = el('span.count');
+          const btn = actionButton({
+            ctx, label: def.name, desc: def.desc,
+            costs: () => costOf(ctx, id),
+            enabled: (c) => !def.max || count(c, id) < def.max,
+            onBuy: (c) => {
+              S(c).built[id] = count(c, id) + 1;
+              S(c).order.push(id);
+              if (id === 'brood' && !c.flags.has('chamber:brood')) {
+                c.flags.add('chamber:brood');
+                c.log('A warm brood chamber is finished. Some workers could become nurses.');
+              }
+              if (count(c, id) === 1 && id !== 'tunnel' && id !== 'brood') c.log(`The first ${def.name.toLowerCase()} is dug.`, 'info');
+              applyEffects(c);
+            },
+          });
+          const wrap = el('div.buildrow', { hidden: true }, btn.root, el('span.muted', {}, def.desc), cnt);
+          grid.append(wrap);
+          buttons.set(id, { btn, wrap, count: cnt });
+        }
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), canvas, progress, extra, grid);
+      },
+      update(_root, ctx) {
+        for (const id of IDS) {
+          const b = buttons.get(id)!;
+          b.wrap.hidden = !visible(ctx, id);
+          b.btn.update(ctx);
+          b.count.textContent = `×${count(ctx, id)}`;
+        }
+        const n = totalChambers(ctx);
+        progress.textContent = ctx.flags.has('surface')
+          ? `${n} chambers. The nest is open to the surface.`
+          : ctx.flags.has('tech:surface') ? `${n} of ${NEST.surfaceAtChambers} chambers. Something waits above.` : `${n} chambers. Research Upward tunnels to dig toward the surface.`;
+        const def = ctx.mods.get('defence'), up = -ctx.mods.get('upkeep');
+        const bits = [];
+        if (def) bits.push(`Nest defence ${def}`);
+        if (up) bits.push(`upkeep reduced ${Math.round(up * 100)}%`);
+        if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0)).toFixed(2)} food/s`);
+        extra.textContent = bits.join(', ');
+        drawNest(canvas, ctx);
+      },
+    };
+  })(),
+};
+
+// ---- the cross-section view: flat placeholder art drawn in code ----
+const LANES = [-1, 1, -2, 2];        // left near, right near, left far, right far
+const ROW_H = 22;
+
+function drawNest(cv: HTMLCanvasElement, ctx: Context) {
+  const order = S(ctx).order;
+  const rows = Math.ceil(order.length / LANES.length);
+  const H = Math.min(720, 70 + rows * ROW_H);
+  if (cv.height !== H) cv.height = H;
+  const c = setup(cv);
+  const W = cv.width;
+  const t = performance.now() / 1000;
+  const surface = ctx.flags.has('surface');
+  const top = surface ? 14 : 0;
+
+  rect(c, 0, 0, W, H, PAL.soil);
+  if (surface) {
+    rect(c, 0, 0, W, 10, PAL.grass);
+    rect(c, W / 2 - 10, 6, 20, 4, PAL.dirt); // entrance mound
+  }
+
+  const shaftX = W / 2;
+  const bottom = 30 + rows * ROW_H + 8;
+  rect(c, shaftX - 3, surface ? 0 : 16, 6, bottom - (surface ? 0 : 16), PAL.hole);
+  blob(c, shaftX, bottom + 6, 18, 6, PAL.hole);         // the queen's cell
+  rect(c, shaftX - 3, bottom + 4, 6, 4, PAL.you);       // the queen
+
+  const fillFood = ctx.res.amt('food') / Math.max(1, ctx.res.cap('food'));
+  const broodCount = ctx.res.amt('egg') + ctx.res.amt('larva');
+  const soldiers = ctx.state.jobs?.assigned?.soldier ?? 0;
+  const counts: Record<string, number> = {};
+  const spots: { x: number; y: number }[] = []; // where each chamber is, for the walking ants
+
+  order.slice(0, rows * LANES.length).forEach((id, i) => {
+    const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
+    const lane = LANES[i % LANES.length];
+    const y = top + 24 + Math.floor(i / LANES.length) * ROW_H + (i % 3);
+    const cx = shaftX + lane * 62 + (lane > 0 ? 6 : -6);
+    rect(c, Math.min(shaftX, cx), y - 1, Math.abs(cx - shaftX), 3, PAL.hole); // connecting tunnel
+    spots.push({ x: cx, y });
+
+    switch (id) {
+      case 'tunnel': // a side passage that keeps going
+        rect(c, cx - 16, y - 1, 32, 3, PAL.hole);
+        rect(c, cx + (lane > 0 ? 14 : -18), y - 4, 4, 7, PAL.hole);
+        break;
+      case 'brood': { // eggs in rows, more as the brood grows
+        blob(c, cx, y, 16, 5, PAL.hole);
+        const n = Math.min(10, Math.ceil(broodCount / Math.max(1, counts.brood)) || 1);
+        for (let e = 0; e < n; e++) rect(c, cx - 12 + (e % 5) * 5, y - 2 + Math.floor(e / 5) * 3, 2, 2, PAL.bone);
+        break;
+      }
+      case 'store': { // a pile of food that rises and falls with your stores
+        blob(c, cx, y, 16, 5, PAL.hole);
+        const h = Math.max(1, Math.round(fillFood * 5));
+        rect(c, cx - 10, y + 4 - h, 20, h, PAL.food);
+        break;
+      }
+      case 'granary': { // seeds with sprouts that sway
+        blob(c, cx, y, 15, 5, PAL.hole);
+        for (let e = 0; e < 6; e++) rect(c, cx - 10 + e * 4, y + 2, 2, 2, PAL.seed);
+        for (let e = 0; e < 3; e++) rect(c, cx - 8 + e * 8 + (Math.sin(t * 2 + e + k) > 0 ? 1 : 0), y - 3, 1, 5, PAL.food);
+        break;
+      }
+      case 'gallery': // a big chamber sealed with an amber resin rim
+        blob(c, cx, y, 22, 7, PAL.amber);
+        blob(c, cx, y, 19, 5, PAL.hole);
+        break;
+      case 'gland': { // a scent chamber that blinks purple
+        blob(c, cx, y, 14, 5, PAL.hole);
+        const on = Math.floor(t * 2 + k) % 2 === 0;
+        rect(c, cx - 1, y - 1, 2, 2, PAL.scent);
+        if (on) { rect(c, cx - 7, y - 3, 2, 2, PAL.scent); rect(c, cx + 5, y + 1, 2, 2, PAL.scent); }
+        break;
+      }
+      case 'barracks': { // a guard post with soldiers standing in line
+        rect(c, cx - 16, y - 5, 32, 10, PAL.hole);
+        rect(c, cx - 16, y - 6, 32, 1, PAL.dirt);
+        const n = Math.min(6, Math.ceil(soldiers / Math.max(1, counts.barracks)));
+        for (let e = 0; e < n; e++) rect(c, cx - 13 + e * 5, y - 2, 2, 4, PAL.you);
+        break;
+      }
+      case 'midden': // a growing heap of waste
+        blob(c, cx, y, 15, 5, PAL.hole);
+        for (let r = 0; r < 5; r++) rect(c, cx - 2 - r * 2, y - 2 + r, 4 + r * 4, 1, PAL.waste);
+        break;
+      default:
+        blob(c, cx, y, 12, 5, PAL.hole);
+    }
+  });
+
+  // workers walk real paths: down the shaft, along a side tunnel to a chamber, and back
+  const ants = Math.min(48, Math.floor(ctx.res.amt('ant')));
+  const y0 = surface ? 2 : 18;
+  for (let i = 0; i < ants; i++) {
+    const speed = 6 + (i % 5);
+    const spot = spots.length ? spots[(i * 7) % spots.length] : { x: shaftX, y: bottom };
+    const down = spot.y - y0, side = Math.abs(spot.x - shaftX);
+    const len = down + side;
+    let d = (i * 37 + t * speed) % (2 * len);
+    if (d > len) d = 2 * len - d;                       // walking back
+    const x = d <= down ? shaftX - 1 : shaftX - 1 + Math.sign(spot.x - shaftX) * (d - down);
+    const y = d <= down ? y0 + d : spot.y - 1;
+    rect(c, x, y, 2, 2, PAL.bone);
+  }
+}
