@@ -24,6 +24,8 @@ export type Costs = Record<string, number>;
 export class Resources {
   private map = new Map<string, Resource>();
   private last = new Map<string, number>();
+  /** One-off changes (purchases, loot) since the last rate measurement; left out of the shown rate. */
+  private lumps = new Map<string, number>();
   private capBonus = new Map<string, Record<string, number>>();
 
   define(def: ResourceDef) {
@@ -70,17 +72,31 @@ export class Resources {
   }
   spend(costs: Costs) {
     if (!this.canAfford(costs)) return false;
-    for (const [id, n] of Object.entries(costs)) this.add(id, -n);
+    for (const [id, n] of Object.entries(costs)) this.lump(id, -n);
     return true;
+  }
+  /**
+   * A one-off gain or loss, such as a purchase or a party's loot. It changes the amount like add(),
+   * but the per-second rate in the sidebar leaves it out, so buying something doesn't flash a
+   * negative trickle (or set off food warnings) for a moment.
+   */
+  lump(id: string, n: number) {
+    const before = this.amt(id);
+    const after = this.add(id, n);
+    this.lumps.set(id, (this.lumps.get(id) ?? 0) + (after - before));
+    return after;
   }
 
   /** Called once per second by the loop to measure rates for display. */
   measureRates(seconds: number) {
     for (const r of this.map.values()) {
       const prev = this.last.get(r.id) ?? r.amount;
-      r.rate = (r.amount - prev) / seconds;
+      const trickle = (r.amount - prev - (this.lumps.get(r.id) ?? 0)) / seconds;
+      // a full store shows its flat 0, not the income it is wasting
+      r.rate = r.amount >= this.cap(r.id) && trickle > 0 ? 0 : trickle;
       this.last.set(r.id, r.amount);
     }
+    this.lumps.clear();
   }
 
   serialize() {

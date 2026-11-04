@@ -10,6 +10,7 @@ type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
   name: string; base: Costs; desc: string; needs?: string; max?: number;
   antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
+  soilCap?: number; matCap?: Record<string, number>;
   foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
@@ -39,7 +40,10 @@ function applyEffects(ctx: Context) {
   ctx.res.setCapBonus('ant', 'nest', sum('antCap'));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
-  ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * 10);
+  ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
+  for (const r of Object.keys(NEST.baseMaterialCap)) {
+    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * count(ctx, id), 0));
+  }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
   ctx.mods.set('defence', 'nest', sum('defence'));
   ctx.mods.set('upkeep', 'nest', -sum('upkeep'));
@@ -132,8 +136,14 @@ export const nest: GameSystem = {
 
 // ---- the cross-section view: flat placeholder art drawn in code ----
 const LANES = [-1, 1, -2, 2];        // left near, right near, left far, right far
+/** When each chamber (by build order) first appeared on screen, so new ones can fade in. */
+const bornAt: number[] = [];
+const FADE_MS = 1400;
+/** 4x4 ordered-dither thresholds: a new chamber appears pixel by pixel out of the soil (no transparency). */
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const ROW_H = 22;
 
+let seenOnce = false;
 function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const order = S(ctx).order;
   const rows = Math.ceil(order.length / LANES.length);
@@ -223,10 +233,49 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         blob(c, cx, y, 15, 5, PAL.hole);
         for (let r = 0; r < 5; r++) rect(c, cx - 2 - r * 2, y - 2 + r, 4 + r * 4, 1, PAL.waste);
         break;
+      case 'storeroom': { // stacked stores: twig bundles, a seed heap and a bead of resin
+        rect(c, cx - 17, y - 5, 34, 10, PAL.hole);
+        for (let e = 0; e < 3; e++) rect(c, cx - 15, y + 2 - e * 2, 12, 1, PAL.dirt);
+        for (let e = 0; e < 4; e++) rect(c, cx - 1 + (e % 2) * 3, y + 1 - Math.floor(e / 2) * 2, 2, 2, PAL.seed);
+        rect(c, cx + 9, y, 4, 3, PAL.amber);
+        break;
+      }
+      case 'library': // the hall of elders: rows of pale scent marks on the walls
+        blob(c, cx, y, 17, 6, PAL.hole);
+        for (let r = 0; r < 2; r++) for (let e = 0; e < 6; e++) if ((e + r + k) % 3) rect(c, cx - 12 + e * 5, y - 3 + r * 4, 3, 1, PAL.bone);
+        break;
+      case 'husks': // walls shored with raider shells
+        blob(c, cx, y, 17, 6, PAL.hole);
+        for (let e = 0; e < 4; e++) { rect(c, cx - 15 + e * 9, y - 5, 6, 2, PAL.rival); rect(c, cx - 14 + e * 9, y + 4, 5, 2, PAL.rival); }
+        break;
+      case 'harbour': { // a little pool with a leaf raft that rocks
+        blob(c, cx, y, 18, 6, PAL.hole);
+        rect(c, cx - 14, y + 1, 28, 4, PAL.water);
+        const rock = Math.sin(t * 1.5 + k) > 0 ? 1 : 0;
+        rect(c, cx - 5, y - rock, 10, 2, PAL.grass);
+        break;
+      }
+      case 'waxworks': // a wax store: a honeycomb of yellow cells
+        blob(c, cx, y, 15, 5, PAL.hole);
+        for (let r = 0; r < 2; r++) for (let e = 0; e < 4; e++) rect(c, cx - 10 + e * 6 + r * 3, y - 3 + r * 4, 4, 3, PAL.seed);
+        break;
       default:
         blob(c, cx, y, 12, 5, PAL.hole);
     }
+
+    // a chamber dug in the last moment fades in out of the soil
+    const now = performance.now();
+    if (bornAt[i] === undefined) bornAt[i] = seenOnce ? now : 0;
+    const age = (now - bornAt[i]) / FADE_MS;
+    if (age < 1) {
+      const lit = Math.floor(age * 16);
+      c.fillStyle = PAL.soil;
+      for (let py = y - 8; py <= y + 7; py++) for (let px = cx - 24; px <= cx + 23; px++) {
+        if (BAYER[(py & 3) * 4 + (px & 3)] >= lit) c.fillRect(px, py, 1, 1);
+      }
+    }
   });
+  seenOnce = true;
 
   // workers walk real paths: down the shaft, along a side tunnel to a chamber, and back
   const ants = Math.min(48, Math.floor(ctx.res.amt('ant')));

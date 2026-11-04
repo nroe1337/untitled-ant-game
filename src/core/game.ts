@@ -6,8 +6,37 @@ import { el } from './ui';
 import { icon } from './sprites';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
+interface Tab {
+  btn: HTMLButtonElement;
+  body: HTMLElement;
+  mounted: boolean;
+  /** Things the player has already seen in this panel (see unlockKeys). */
+  known: Set<string> | null;
+}
+
+/**
+ * Names of the things a panel shows right now, used to light up a tab when something new
+ * appears in it: rows in build lists, jobs, and destinations. Hidden rows are left out.
+ */
+function unlockKeys(body: HTMLElement) {
+  const keys = new Set<string>();
+  const shown = (n: Element) => { const h = n.closest('[hidden]'); return !h || h === body; };
+  body.querySelectorAll('.buildrow .label, .job .jname, option[value], [data-unlock]').forEach((n) => {
+    if (!shown(n)) return;
+    const k = (n as HTMLElement).dataset.unlock ?? (n instanceof HTMLOptionElement ? 'opt:' + n.value : n.textContent ?? '');
+    if (k) keys.add(k);
+  });
+  return keys;
+}
+
 const TICK_MS = 100;
 const AUTOSAVE_S = 15;
+/** Longest stretch of hidden-tab time the loop will catch up on. */
+const MAX_CATCHUP_S = 8 * 3600;
+/** Simulation steps per frame while catching up (each step is at most 1s of real time). */
+const STEPS_PER_FRAME = 200;
+/** Seconds each banner shows before the strip moves to the next one. */
+const ALERT_ROTATE_S = 5;
 
 export class Game {
   ctx: Context;
@@ -16,8 +45,14 @@ export class Game {
   private noSave = false;
   private alerts = new Map<string, string>();
   private alertEl!: HTMLElement;
+  private alertIdx = 0;
+  private alertSince = 0;
+  private pauseBtn!: HTMLButtonElement;
+  private fanfareEl!: HTMLElement;
+  private lastScan = 0;
+  private firstRender = true;
   private systems: GameSystem[];
-  private tabs = new Map<string, { btn: HTMLButtonElement; body: HTMLElement; mounted: boolean; seen: boolean }>();
+  private tabs = new Map<string, Tab>();
   private active = '';
   private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement }>();
   private logEl!: HTMLElement;
@@ -35,6 +70,8 @@ export class Game {
       mods: new Mods(),
       state: {},
       speed: 1,
+      paused: false,
+      announce: (title, text) => this.announce(title, text),
       log: (m, k) => this.log(m, k),
       alert: (id, m) => { if (m) this.alerts.set(id, m); else this.alerts.delete(id); },
       rebirth: () => this.rebirth(),
@@ -53,20 +90,31 @@ export class Game {
     this.ctx.bus.emit('loaded');
     if (!save) this.ctx.bus.emit('newgame');
 
-    let acc = 0, rateAcc = 0, saveAcc = 0;
+    // Game time owed. A hidden browser tab runs this timer only about once a second (or once a
+    // minute after a while), so the loop pays the time back in steps of at most 1s instead of dropping it.
+    let owed = 0, rateAcc = 0, saveAcc = 0;
     let last = performance.now();
     setInterval(() => {
       const now = performance.now();
-      const real = Math.min(1, (now - last) / 1000);
+      const real = (now - last) / 1000;
       last = now;
-      const dt = real * this.ctx.speed;
-      this.time += dt;
-      for (const s of this.systems) s.tick?.(this.ctx, dt);
-      acc += real; rateAcc += real; saveAcc += real;
-      if (rateAcc >= 1) { this.ctx.res.measureRates(rateAcc * this.ctx.speed); rateAcc = 0; } // rates in game time
+      if (!this.ctx.paused) owed = Math.min(owed + real, MAX_CATCHUP_S);
+      for (let n = 0; owed > 0 && n < STEPS_PER_FRAME; n++) {
+        const step = Math.min(1, owed);
+        owed -= step;
+        const dt = step * this.ctx.speed;
+        this.time += dt;
+        for (const s of this.systems) s.tick?.(this.ctx, dt);
+        rateAcc += step;
+        if (rateAcc >= 1) { this.ctx.res.measureRates(rateAcc * this.ctx.speed); rateAcc = 0; } // rates in game time
+      }
+      saveAcc += real;
       if (saveAcc >= AUTOSAVE_S && !this.noSave) { saveLocal(this.ctx, this.time); saveAcc = 0; }
       this.render();
     }, TICK_MS);
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement)) this.togglePause();
+    });
     window.addEventListener('beforeunload', () => { if (!this.noSave) saveLocal(this.ctx, this.time); });
   }
 
@@ -84,6 +132,8 @@ export class Game {
       this.ctx.speed = steps[(steps.indexOf(this.ctx.speed) + 1) % steps.length];
       speedBtn.textContent = 'x' + this.ctx.speed;
     });
+    this.pauseBtn = el('button.ghost', { type: 'button', title: 'Pause or resume the colony (P)', onclick: () => this.togglePause() }, 'Pause') as HTMLButtonElement;
+    this.fanfareEl = el('div.fanfare', { hidden: true, role: 'status', onclick: () => { this.fanfareEl.hidden = true; } });
     const saveBtn = el('button.ghost', { type: 'button', onclick: () => { saveLocal(this.ctx, this.time); this.log('Saved.', 'info'); } }, 'Save');
     const exportBtn = el('button.ghost', { type: 'button', onclick: () => this.openSaveBox() }, 'Export / import');
     const resetBtn = el('button.ghost', { type: 'button', onclick: () => this.confirmReset(resetBtn) }, 'Reset');
@@ -91,10 +141,10 @@ export class Game {
     root.append(
       el('header.top', {},
         el('div.brand', {}, el('span.mark'), el('h1', {}, 'Formicarium')),
-        el('div.tools', {}, saveBtn, exportBtn, resetBtn, speedBtn)),
+        el('div.tools', {}, this.pauseBtn, saveBtn, exportBtn, resetBtn, speedBtn)),
       el('div.layout', {},
         el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList),
-        el('main.main', {}, this.alertEl, this.tabBar, this.panelHost),
+        el('main.main', {}, this.alertEl, this.fanfareEl, this.tabBar, this.panelHost),
         el('aside.story', {}, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
   }
@@ -151,11 +201,19 @@ export class Game {
   // ---------- render ----------
   private render() {
     const { ctx } = this;
-    // alerts
-    const txt = [...this.alerts.values()];
-    if (this.alertEl.dataset.v !== txt.join('|')) {
-      this.alertEl.dataset.v = txt.join('|');
-      this.alertEl.replaceChildren(...txt.map((m) => el('p.alert', {}, m)));
+    // alerts: a strip of fixed height that shows one banner at a time and cycles through them,
+    // so warnings coming and going never push the rest of the screen up and down
+    const txt = [...(ctx.paused ? ['Paused. Nothing in the colony moves until you resume (P).'] : []), ...this.alerts.values()];
+    const now = performance.now() / 1000;
+    if (now - this.alertSince > ALERT_ROTATE_S) { this.alertIdx++; this.alertSince = now; }
+    const i = txt.length ? this.alertIdx % txt.length : 0;
+    const key = txt.length ? `${i}/${txt.length}|${txt[i]}` : 'quiet';
+    if (this.alertEl.dataset.v !== key) {
+      this.alertEl.dataset.v = key;
+      this.alertEl.classList.toggle('on', txt.length > 0);
+      this.alertEl.replaceChildren(txt.length
+        ? el('p.alert', { title: txt.join('\n') }, el('span.msg', {}, txt[i]), txt.length > 1 ? el('span.more', {}, `${i + 1} of ${txt.length}`) : null)
+        : el('p.quiet', {}, 'All is quiet in the nest.'));
     }
     // resources
     for (const r of ctx.res.all()) {
@@ -191,15 +249,52 @@ export class Game {
         btn.addEventListener('click', () => this.show(s.id));
         this.tabBar.append(btn);
         this.panelHost.append(body);
-        tab = { btn, body, mounted: false, seen: false };
+        tab = { btn, body, mounted: false, known: null };
         this.tabs.set(s.id, tab);
-        if (!this.active) this.show(s.id); else btn.classList.add('new');
+        // tabs already open when the save loads stay quiet; ones that open during play get a dot
+        if (!this.active) this.show(s.id); else if (!this.firstRender) btn.classList.add('new');
         this.tabBar.hidden = this.tabs.size < 2;
       }
       if (tab && !tab.mounted) { s.panel.mount(tab.body, ctx); tab.mounted = true; }
-      if (tab && this.active === s.id) s.panel.update?.(tab.body, ctx);
+      if (tab && this.active === s.id) {
+        s.panel.update?.(tab.body, ctx);
+        tab.known = unlockKeys(tab.body);
+      }
     }
+    // Once a second, refresh the panels in the background and light up any tab that has
+    // something the player hasn't seen there yet (a new chamber, job, upgrade or place to go).
+    const now2 = performance.now();
+    if (now2 - this.lastScan > 1000) {
+      this.lastScan = now2;
+      for (const s of this.systems) {
+        const tab = this.tabs.get(s.id);
+        if (!tab || !tab.mounted || this.active === s.id) continue;
+        if (!tab.known && tab.btn.classList.contains('new')) continue; // already lit; learns its contents when opened
+        s.panel!.update?.(tab.body, ctx);
+        if (!tab.known) { tab.known = unlockKeys(tab.body); continue; }
+        for (const k of unlockKeys(tab.body)) if (!tab.known.has(k)) { tab.btn.classList.add('new'); break; }
+      }
+    }
+    this.firstRender = false;
   }
+
+  private togglePause() {
+    this.ctx.paused = !this.ctx.paused;
+    this.pauseBtn.textContent = this.ctx.paused ? 'Resume' : 'Pause';
+    this.pauseBtn.classList.toggle('on', this.ctx.paused);
+  }
+
+  /** A short, calm fanfare across the top of the main column, for milestones like a new age. */
+  private announce(title: string, text: string) {
+    this.fanfareEl.replaceChildren(el('span.rule'), el('p.kicker', {}, 'A new age'), el('p.title', {}, title), el('p.muted', {}, text));
+    this.fanfareEl.hidden = false;
+    this.fanfareEl.classList.remove('play');
+    void this.fanfareEl.offsetWidth; // restart the animation
+    this.fanfareEl.classList.add('play');
+    clearTimeout(this.fanfareTimer);
+    this.fanfareTimer = window.setTimeout(() => { this.fanfareEl.hidden = true; }, 9000);
+  }
+  private fanfareTimer = 0;
 
   private show(id: string) {
     this.active = id;

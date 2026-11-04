@@ -23,6 +23,15 @@ export const research: GameSystem = {
   isUnlocked: (ctx) => ctx.flags.has('research') || Math.floor(ctx.res.amt('ant')) >= RESEARCH.appearAtWorkers,
 
   tick(ctx) {
+    // a calm fanfare when the colony enters a new age (not on load, and not for the first age)
+    const st = ctx.state.research as { age?: string };
+    const age = currentAge(ctx);
+    if (st.age === undefined) st.age = age.id;
+    else if (st.age !== age.id && RESEARCH.ages.findIndex((a) => a.id === age.id) > RESEARCH.ages.findIndex((a) => a.id === st.age)) {
+      st.age = age.id;
+      ctx.log(`The colony enters the ${age.name}. ${age.note}`, 'story');
+      ctx.announce(age.name, age.note);
+    }
     if (!ctx.flags.has('research') && Math.floor(ctx.res.amt('ant')) >= RESEARCH.appearAtWorkers) {
       ctx.flags.add('research');
       ctx.log('An old worker stops and taps the wall, thinking. The colony can learn. (Elders and Research unlocked)', 'info');
@@ -66,7 +75,7 @@ export const research: GameSystem = {
           rows.set(id, { wrap, btn, note });
         }
         empty = el('p.muted', {}, 'Nothing to research right now. New ideas come as the colony grows.');
-        doneList = el('p.muted');
+        doneList = el('div.known');
         root.append(empty, el('h3', {}, 'Known'), doneList);
       },
       update(_root, ctx) {
@@ -87,8 +96,14 @@ export const research: GameSystem = {
         empty.hidden = any;
         const age = currentAge(ctx);
         ageEl.textContent = `${age.name}. ${age.note}`;
-        const known = IDS.filter((id) => done(ctx, id)).map((id) => TECHS[id].name);
-        doneList.textContent = known.length ? known.join(', ') : 'Nothing yet.';
+        // known techs: the same tiles as research buttons, but compact and without costs; hover for what they do
+        const known = IDS.filter((id) => done(ctx, id));
+        if (doneList.dataset.n !== String(known.length)) {
+          doneList.dataset.n = String(known.length);
+          doneList.replaceChildren(...(known.length
+            ? known.map((id) => el('span.chip', { title: TECHS[id].desc, tabindex: 0 }, TECHS[id].name))
+            : [el('p.muted', {}, 'Nothing yet.')]));
+        }
       },
     };
   })(),

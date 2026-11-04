@@ -5,7 +5,7 @@
 export const BROOD = {
   startFood: 10,
   layEggCooldown: 3,        // seconds between manual lays
-  eggHatchTime: 15,         // seconds for an egg to become a larva
+  eggHatchTime: 30,         // seconds for an egg to become a larva
   larvaGrowTime: 40,        // seconds for a larva to become a worker
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
   baseBroodCap: 4,          // max eggs + larvae before chambers
@@ -13,9 +13,10 @@ export const BROOD = {
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
-    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster per level',               per: 0.03, base: { food: 20 },           growth: 1.18, max: 25 },
-    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster per level',              per: 0.03, base: { food: 30 },           growth: 1.18, max: 25 },
-    devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay {p} faster per level',               per: 0.03, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
+    // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
+    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster per level',               per: 0.01, base: { food: 20 },           growth: 1.18, max: 25 },
+    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster per level',              per: 0.01, base: { food: 30 },           growth: 1.18, max: 25 },
+    devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay {p} faster per level',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
     clutch:    { name: 'Larger clutch',   desc: 'The queen lays {p} more egg per lay, per level', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
     longevity: { name: 'Royal rhythm',    desc: 'The queen lays {p} eggs/s on her own, per level', per: 0.005, base: { seed: 6, resin: 1 }, growth: 1.3, max: 20, unit: 'flat' as const, needs: 'surface' },
   },
@@ -27,15 +28,16 @@ export const COLONY = {
   starvingPenalty: 0.75,    // job output multiplier while food is 0
   starveFoodPerDeath: 4,    // unpaid food that costs one worker's life (very gradual)
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
+  // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
   techniques: {
-    trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.02,  base: { pheromone: 4 },          growth: 1.16, max: 40, needs: 'surface' },
-    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.02,  base: { twig: 4 },               growth: 1.16, max: 40, needs: 'surface' },
-    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.01, base: { seed: 4, food: 30 },     growth: 1.18, max: 30, needs: 'surface' },
-    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.03,  base: { pheromone: 8, twig: 3 }, growth: 1.18, max: 30, needs: 'surface' },
-    lore:     { name: 'Oral tradition',      desc: 'Elders +{p} per level',          per: 0.03,  base: { knowledge: 15, food: 10 }, growth: 1.18, max: 30 },
-    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less per level', per: -0.01, base: { knowledge: 20, soil: 20 }, growth: 1.2, max: 25 },
-    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.02,  base: { knowledge: 25, twig: 4 }, growth: 1.18, max: 30, needs: 'surface' },
-    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder per level', per: 0.02, base: { chitin: 2, food: 50 }, growth: 1.18, max: 40, needs: 'rival' },
+    trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.01,  base: { pheromone: 4 },          growth: 1.16, max: 40, needs: 'surface' },
+    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 4 },               growth: 1.16, max: 40, needs: 'surface' },
+    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.005, base: { seed: 4, food: 30 },     growth: 1.18, max: 30, needs: 'surface' },
+    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.01,  base: { pheromone: 8, twig: 3 }, growth: 1.18, max: 30, needs: 'surface' },
+    lore:     { name: 'Oral tradition',      desc: 'Elders +{p} per level',          per: 0.01,  base: { knowledge: 15, food: 10 }, growth: 1.18, max: 30 },
+    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less per level', per: -0.005, base: { knowledge: 20, soil: 20 }, growth: 1.2, max: 25 },
+    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.01,  base: { knowledge: 25, twig: 4 }, growth: 1.18, max: 30, needs: 'surface' },
+    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder per level', per: 0.01, base: { chitin: 2, food: 50 }, growth: 1.18, max: 40, needs: 'rival' },
   },
 };
 
@@ -53,10 +55,14 @@ export const NEST = {
   surfaceAtChambers: 10,
   baseFoodCap: 40,
   baseSoilCap: 50,
+  soilPerChamber: 4,        // every chamber stores a little soil; Storerooms hold far more
+  /** Surface materials have small stores until you dig Storerooms (Evolve-style warehouses). */
+  baseMaterialCap: { twig: 40, seed: 25, resin: 15 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Tunnel',          base: { soil: 10 },                     desc: '+3 living space',                         antCap: 3 },
     brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 },           desc: '+4 brood space. Unlocks nurses.',         broodCap: 4, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 },                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
+    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 },           desc: '+40 soil, +25 twig, +15 seed and +10 resin storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10 }, needs: 'tech:storage' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 },            desc: 'Sprouting seeds give +0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 },  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, needs: 'tech:resin' },
     gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 },       desc: 'Scouts +5% each, +15 pheromone storage',  pheroCap: 15, scout: 0.05, needs: 'tech:scouting' },
@@ -89,12 +95,12 @@ export const EXPEDITIONS = {
   markTrailCut: 0.3,
   revealRadius: 2,
   upgrades: {
-    mandibles: { name: 'Stronger mandibles', desc: 'Expedition loot +{p} per level',     per: 0.03,  base: { trailmark: 2 },  growth: 1.15, max: 40 },
-    feet:      { name: 'Sure feet',          desc: 'Expedition time −{p} per level',     per: -0.02, base: { trailmark: 3 },  growth: 1.18, max: 25 },
-    instinct:  { name: 'Homing instinct',    desc: 'Chance of losing a worker −{p} per level', per: -0.03, base: { trailmark: 3 }, growth: 1.18, max: 20 },
-    eyes:      { name: 'Keen antennae',      desc: 'Rare finds +{p} more likely per level', per: 0.05, base: { trailmark: 5 }, growth: 1.2, max: 20 },
-    memory:    { name: 'Trail memory',       desc: 'Parties set out again by themselves', per: 1,     base: { trailmark: 25 }, growth: 1,    max: 1, unit: 'flat' as const },
-    columns:   { name: 'Second column',      desc: '{p} more expedition at a time',      per: 1,     base: { trailmark: 40 }, growth: 3,    max: 2, unit: 'flat' as const },
+    mandibles: { name: 'Stronger mandibles', desc: 'Expedition loot +{p} per level',     per: 0.03,  base: { trailmark: 2 },  growth: 1.15, max: 40, needs: 'runs:1' },
+    feet:      { name: 'Sure feet',          desc: 'Expedition time −{p} per level',     per: -0.02, base: { trailmark: 3 },  growth: 1.18, max: 25, needs: 'runs:3' },
+    instinct:  { name: 'Homing instinct',    desc: 'Chance of losing a worker −{p} per level', per: -0.03, base: { trailmark: 3 }, growth: 1.18, max: 20, needs: 'runs:6' },
+    eyes:      { name: 'Keen antennae',      desc: 'Rare finds +{p} more likely per level', per: 0.05, base: { trailmark: 5 }, growth: 1.2, max: 20, needs: 'runs:10' },
+    memory:    { name: 'Trail memory',       desc: 'Parties set out again by themselves', per: 1,     base: { trailmark: 25 }, growth: 1,    max: 1, unit: 'flat' as const, needs: 'runs:15' },
+    columns:   { name: 'Second column',      desc: '{p} more expedition at a time',      per: 1,     base: { trailmark: 40 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'runs:25' },
   },
   rivalAfterRuns: 6,
 };
@@ -111,9 +117,9 @@ export const MAP = {
   claimWorkers: 2,          // workers who stay at each outpost
   /** Per-second output of each owned tile by terrain. */
   yield: {
-    grass: { food: 0.03 },
+    grass: { food: 0.03, twig: 0.0015 },   // fallen grass stems: a slow, steady trickle of twigs
     soil: { soil: 0.02 },
-    stone: {},
+    stone: { resin: 0.0006 },             // sap from the roots that run under the stones
     water: { pheromone: 0.008 },
     paved: { food: 0.08 },
   } as Record<string, Record<string, number>>,
@@ -178,7 +184,7 @@ export const RESEARCH = {
    */
   techs: {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
-    storage:    { name: 'Food caching',      age: 'dirt', cost: { knowledge: 12, soil: 10 },          needs: ['digging'],             desc: 'Unlocks the Food store.' },
+    storage:    { name: 'Food caching',      age: 'dirt', cost: { knowledge: 12, soil: 10 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Storeroom.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 15 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
     royal:      { name: 'Royal court',       age: 'dirt', cost: { knowledge: 25, food: 30 },          needs: ['brood'],               desc: 'Unlocks Royal care upgrades for the queen.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 20 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores and speeds up knowledge.' },
@@ -268,10 +274,10 @@ export const LINEAGE = {
     foodFloor: 0.4,          // builders never take food below this share of storage
     stages: [
       { id: 'footing',    name: 'Foundation',        cost: { soil: 500 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
-      { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 50, resin: 15 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 30, resin: 8 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
       { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 60, resin: 15, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 40, resin: 8, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2

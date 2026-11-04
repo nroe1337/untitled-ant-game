@@ -5,7 +5,7 @@ import { actionButton, el, progressBar, type ActionButton } from '../../core/ui'
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, rect, setup } from '../../core/pixel';
-import { EXPEDITIONS as X } from '../../data/balance';
+import { EXPEDITIONS as X, NEST } from '../../data/balance';
 
 interface Party { dest: string; ants: number; elapsed: number; duration: number; told: number; event?: string }
 interface ExpState {
@@ -23,7 +23,11 @@ interface ExpState {
 const S = (ctx: Context) => ctx.state.expeditions as ExpState;
 const U = X.upgrades;
 const lvl = (ctx: Context, id: keyof typeof U) => S(ctx).ups[id] ?? 0;
-const UPGRADES = fromBalance(U, (ctx, needs) => !needs || ctx.flags.has(needs));
+// Trail upgrades unfold one by one as parties come home ("runs:N" = after N expeditions).
+const UPGRADES = fromBalance(U, (ctx, needs) =>
+  !needs || (needs.startsWith('runs:') ? S(ctx).runs >= Number(needs.slice(5)) : ctx.flags.has(needs)));
+/** Loot multiplier from party size: each worker past the minimum adds lootPerAnt. */
+const partyMult = (n: number) => 1 + (n - X.minParty) * X.lootPerAnt;
 
 const EVENTS = [
   'The party skirts a beetle the size of a house.',
@@ -62,13 +66,13 @@ function send(ctx: Context) {
 function finish(ctx: Context, p: Party) {
   const s = S(ctx);
   const d = X.destinations.find((x) => x.id === p.dest)!;
-  const mult = (1 + (p.ants - X.minParty) * X.lootPerAnt) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
     const n = Math.round((lo + Math.random() * (hi - lo)) * mult);
-    if (n > 0) { ctx.res.add(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
+    if (n > 0) { ctx.res.lump(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
   }
-  ctx.res.add('trailmark', X.trailMarksPerRun);
+  ctx.res.lump('trailmark', X.trailMarksPerRun);
   got.push(`${X.trailMarksPerRun} trail mark`);
   if (Math.random() < X.rareChance * (1 + U.eyes.per * lvl(ctx, 'eyes'))) {
     ctx.res.add('amber', 1); s.rare += 1;
@@ -91,9 +95,9 @@ export const expeditions: GameSystem = {
   id: 'expeditions',
 
   init(ctx) {
-    ctx.res.define({ id: 'twig', name: 'Twigs', order: 20, integer: true, group: 'Surface' });
-    ctx.res.define({ id: 'seed', name: 'Seeds', order: 21, integer: true, group: 'Surface' });
-    ctx.res.define({ id: 'resin', name: 'Resin', order: 22, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'twig', name: 'Twigs', cap: NEST.baseMaterialCap.twig, order: 20, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'amber', name: 'Amber', order: 23, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 30, integer: true, group: 'Surface' });
     ctx.state.expeditions = { runs: 0, party: X.minParty, dest: 'grass', parties: [], ups: {}, marked: false, auto: true, rare: 0 } satisfies ExpState;
@@ -125,6 +129,7 @@ export const expeditions: GameSystem = {
   panel: (() => {
     let sendBtn: ActionButton, markBtn: ActionButton, partyEl: HTMLElement, destSel: HTMLSelectElement, statusEl: HTMLElement;
     let viewer: HTMLCanvasElement, captions: HTMLElement, autoBox: HTMLInputElement, autoWrap: HTMLElement, ledger: HTMLElement;
+    let lootEl: HTMLElement, partyHint: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
     const bars: ReturnType<typeof progressBar>[] = [];
     return {
@@ -156,15 +161,20 @@ export const expeditions: GameSystem = {
         autoWrap = el('label.row', { for: 'exp-auto' }, autoBox, 'Send parties again when they return');
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES);
+        lootEl = el('p.muted');
+        partyHint = el('p.muted');
+        upsHead = el('h3', {}, 'Trail upgrades');
         root.append(
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
+          lootEl,
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), sendBtn.root, markBtn.root),
+          partyHint,
           autoWrap,
           el('div.viewerwrap', {}, viewer, captions),
           statusEl,
           ledger,
-          el('h3', {}, 'Trail upgrades'),
+          upsHead,
           ups.root,
         );
       },
@@ -177,6 +187,13 @@ export const expeditions: GameSystem = {
           destSel.value = s.dest;
         }
         partyEl.textContent = String(s.party);
+        const dest = X.destinations.find((x) => x.id === s.dest) ?? X.destinations[0];
+        const m = partyMult(s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+        lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
+          .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
+          ', and a trail mark. Trips can be repeated as often as you like.';
+        partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
+          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5.`;
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
@@ -198,10 +215,11 @@ export const expeditions: GameSystem = {
         ledger.replaceChildren(...[
           ['Expeditions so far', String(s.runs)],
           ['Columns', `${s.parties.length} of ${maxParties(ctx)} out`],
-          ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles')) * (1 + (s.party - X.minParty) * X.lootPerAnt) - 1) * 100)}%`],
+          ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * partyMult(s.party) - 1) * 100)}%`],
+          ['Next new place', (() => { const n = X.destinations.find((d) => d.unlockRuns > s.runs); return n ? `after ${n.unlockRuns} expeditions` : 'all found'; })()],
           ['Rare finds', String(s.rare)],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
-        ups.update(ctx);
+        upsHead.hidden = !ups.update(ctx);
         drawTrail(viewer, s.parties);
       },
     };
@@ -227,8 +245,11 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[]) {
   const lanes = parties.length ? parties : [null];
   lanes.forEach((p, li) => {
     const y0 = li * LANE;
-    const prog = p ? p.elapsed / p.duration : 0;
-    const scroll = Math.floor(prog * 600);
+    const prog = p ? Math.min(1, p.elapsed / p.duration) : 0;
+    // the ground slides past the ants: away from home on the way out, back toward home on the way back
+    // (distance from home, so it turns smoothly at the halfway point and keeps moving on long trips)
+    const fromHome = p ? Math.min(p.elapsed, p.duration - p.elapsed) : 0;
+    const scroll = Math.floor(fromHome * 4 + (fromHome / (p?.duration || 1)) * 1200);
     rect(c, 0, y0 + LANE - 8, W, 8, PAL.grass);
     for (let i = 0; i < 40; i++) {
       const x = ((i * 53 + li * 17 - scroll) % (W + 40) + W + 40) % (W + 40) - 20;

@@ -25,6 +25,10 @@ export interface Context {
   mods: Mods;
   /** Simulation speed multiplier (dev tool). */
   speed: number;
+  /** True while the player has paused the game. Systems don't tick; buttons still work. */
+  paused: boolean;
+  /** A short fanfare at the top of the screen for a big milestone, such as reaching a new age. */
+  announce(title: string, text: string): void;
   /**
    * Prestige: start a new colony. Every system's state is wiped except what its keep() returns,
    * and only flags starting with "legacy:" survive. The page reloads into the new colony.

@@ -47,8 +47,8 @@ export const brood: GameSystem = {
     ctx.res.define({ id: 'egg', name: 'Eggs', cap: BROOD.baseBroodCap, order: 10, integer: true, group: 'Brood' });
     ctx.res.define({ id: 'larva', name: 'Larvae', cap: BROOD.baseBroodCap, order: 11, integer: true, group: 'Brood' });
     // used by royal upgrades; other systems fill them
-    ctx.res.define({ id: 'seed', name: 'Seeds', order: 21, integer: true, group: 'Surface' });
-    ctx.res.define({ id: 'resin', name: 'Resin', order: 22, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
     ctx.state.brood = {
       eggProgress: 0, larvaProgress: 0, nurseProgress: 0, queenProgress: 0,

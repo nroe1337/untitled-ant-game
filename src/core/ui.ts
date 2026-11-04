@@ -44,6 +44,7 @@ export function actionButton(opts: {
   const root = el('button.action', { type: 'button', title: opts.desc ?? '' }, labelEl, costEl, bar);
   let cdLeft = 0;
   let cdStart = 0;
+  let lastSeen = 0;
 
   root.addEventListener('click', () => {
     const ctx = opts.ctx;
@@ -62,6 +63,9 @@ export function actionButton(opts: {
       labelEl.textContent = typeof opts.label === 'function' ? opts.label() : opts.label;
       const c = opts.costs?.() ?? {};
       costEl.textContent = Object.keys(c).length ? fmtCosts(c, ctx.res) : '';
+      const now = performance.now();
+      if (ctx.paused && lastSeen) cdStart += now - lastSeen; // cooldowns wait while the game is paused
+      lastSeen = now;
       if (opts.cooldown && cdLeft > 0) {
         const elapsed = ((performance.now() - cdStart) / 1000) * ctx.speed;
         cdLeft = Math.max(0, opts.cooldown - elapsed);
@@ -69,6 +73,8 @@ export function actionButton(opts: {
       } else bar.style.width = '0';
       const ok = cdLeft <= 0 && ctx.res.canAfford(c) && (!opts.enabled || opts.enabled(ctx));
       root.disabled = !ok;
+      // can't afford (but otherwise could buy): drawn dimmer than a button that is ready
+      root.classList.toggle('short', cdLeft <= 0 && (!opts.enabled || opts.enabled(ctx)) && !ctx.res.canAfford(c));
     },
   };
   return api;

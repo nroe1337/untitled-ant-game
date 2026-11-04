@@ -12,7 +12,6 @@
   --good: #8fa35a;
   --warn: #c9a03a;
   --display: "IM Fell English", Georgia, serif;
-  --pixel: "Silkscreen", "Courier New", monospace;
   --body: "IBM Plex Sans", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -33,7 +32,7 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
   max-width: 1280px; margin: 0 auto; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .story { order: 3; } }
 
-.kicker { font: 12px var(--pixel); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.kicker { font: 400 20px/1.2 var(--display); color: var(--muted); margin: 0 0 10px; }
 
 .res-list { display: grid; gap: 2px; }
 .res { display: grid; grid-template-columns: minmax(0, 1fr) auto 7ch; column-gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--line);
@@ -49,7 +48,10 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
 .tab { background: none; border: 0; color: var(--muted); font: 600 14px var(--body); padding: 8px 12px; cursor: pointer;
   border-bottom: 2px solid transparent; margin-bottom: -1px; position: relative; animation: appear .6s ease-out; }
 .tab.on { color: var(--fg); border-bottom-color: var(--accent); }
-.tab.new::after { content: ""; position: absolute; top: 6px; right: 2px; width: 6px; height: 6px; background: var(--accent); }
+/* something new in a tab: a small dot that pulses twice, then stays until the tab is opened */
+.tab.new { color: var(--fg); }
+.tab.new::after { content: ""; position: absolute; top: 6px; right: 2px; width: 6px; height: 6px; background: var(--accent); animation: newdot 1.2s ease-in-out 2; }
+@keyframes newdot { 0%, 100% { opacity: 1; transform: none; } 50% { opacity: .25; transform: scale(.6); } }
 .tab:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .panel { display: grid; gap: 14px; animation: appear .5s ease-out; }
@@ -60,9 +62,12 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
 
 button { font: inherit; color: inherit; }
 .action { position: relative; overflow: hidden; display: inline-grid; text-align: left; min-width: 180px; padding: 8px 12px;
-  background: var(--raise); border: 1px solid var(--line); cursor: pointer; animation: appear .5s ease-out; }
-.action:hover:not(:disabled) { border-color: var(--muted); }
-.action:disabled { color: var(--muted); cursor: default; }
+  background: #2d2721; border: 2px solid #5c4a39; cursor: pointer; animation: appear .5s ease-out;
+  transition: background-color .12s, border-color .12s; }
+.action:hover:not(:disabled) { border-color: #8a6f55; background: #342d26; }
+.action:active:not(:disabled) { background: #3e2f25; border-color: var(--accent); transform: translateY(1px); }
+.action:disabled { color: var(--muted); cursor: default; background: var(--panel); border-color: var(--line); }
+.action.short .label { color: #8c8274; }
 .action .label { font-weight: 600; }
 .action .cost { font-size: 12px; color: var(--muted); }
 .action .cost:empty { display: none; }
@@ -119,9 +124,25 @@ canvas.map { cursor: crosshair; max-width: 720px; }
 input[type=checkbox] { accent-color: var(--accent); }
 .buildrow .count { white-space: nowrap; color: var(--muted); font-size: 13px; }
 
-.alerts { display: grid; gap: 6px; margin-bottom: 12px; }
-.alerts:empty { display: none; }
-.alert { margin: 0; padding: 8px 12px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); font-weight: 600; }
+/* The alert strip keeps one fixed line of height so warnings never move the screen. */
+.alerts { height: 40px; margin-bottom: 12px; }
+.alerts p { margin: 0; height: 100%; display: flex; align-items: center; gap: 10px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
+.alerts .msg { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.alerts .more { font-size: 12px; color: var(--muted); font-weight: 400; flex: none; }
+.alert { border: 1px solid var(--warn); color: var(--warn); background: var(--panel); font-weight: 600; animation: appear .4s ease-out; }
+.quiet { border: 1px dashed var(--line); color: var(--line); font-size: 13px; }
+
+/* A new age: a calm band over the top of the panel that draws a line, then fades away. */
+.main { position: relative; }
+.fanfare { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: var(--panel); border: 1px solid var(--warn);
+  padding: 16px 20px 18px; text-align: center; cursor: pointer; display: grid; gap: 2px; justify-items: center; }
+.fanfare.play { animation: fanfare 9s ease-in-out both; }
+.fanfare .rule { display: block; height: 2px; background: var(--warn); width: 0; margin-bottom: 8px; }
+.fanfare.play .rule { animation: rule 1.4s .2s ease-out forwards; }
+.fanfare .kicker { margin: 0; font-size: 15px; }
+.fanfare .title { font: 400 30px/1.15 var(--display); color: var(--warn); margin: 0; }
+@keyframes fanfare { 0% { opacity: 0; transform: translateY(-6px); } 6%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes rule { to { width: 60%; } }
 
 .section { display: grid; gap: 14px; }
 
@@ -137,3 +158,8 @@ input[type=checkbox] { accent-color: var(--accent); }
 .abilities .action { min-width: 130px; flex: 1; }
 .track { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 .track .bar { margin-top: 4px; }
+
+/* Known research: compact tiles, hover (or focus) for what each one does */
+.known { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-block; padding: 3px 8px; background: var(--panel); border: 2px solid var(--line); font-size: 13px; font-weight: 600; color: var(--muted); cursor: help; }
+.chip:hover, .chip:focus-visible { color: var(--fg); border-color: #5c4a39; }
