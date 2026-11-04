@@ -61,7 +61,7 @@ aside h3 { font: 11px var(--pixel); letter-spacing: .08em; color: var(--accent);
   <header>
     <div class="eyebrow">Formicarium · how it fits together</div>
     <h1>The colony's moving parts</h1>
-    <p class="lead">Solid boxes are in the prototype today. Dashed boxes are proposed; the top row is the long game of deeper prestige layers and technology ages. Each arrow is something one system hands to another, coloured by what flows. Click any box to trace its connections.</p>
+    <p class="lead">Every box is in the prototype now. The top row is the long game: prestige layers, the archive, genes and ages. Each arrow is something one system hands to another, coloured by what flows. Click any box to trace its connections.</p>
     <div class="legend" aria-label="Arrow colours">
       <span><i style="background:var(--ants)"></i>Workers</span>
       <span><i style="background:var(--food)"></i>Food</span>
@@ -70,7 +70,6 @@ aside h3 { font: 11px var(--pixel); letter-spacing: .08em; color: var(--accent);
       <span><i style="background:var(--scent)"></i>Pheromone</span>
       <span><i style="background:var(--loot)"></i>Loot</span>
       <span><i style="background:var(--chitin)"></i>Chitin and defence</span>
-      <span><i class="dash"></i>Proposed link</span>
     </div>
   </header>
 
@@ -97,7 +96,7 @@ const N = {
     d: 'Workers take jobs: forager, digger, elder, nurse, scout, soldier. Each worker on a job makes the same amount. Every worker eats.',
     in: ['Workers from the queen', 'Jobs and techniques from research', 'Storage from the nest', 'Territory yields from the map'], out: ['Food, soil, knowledge, pheromone', 'Soldiers for war', 'Parties for expeditions'] },
   research:{ x: 1010, y: 290, t: 'Research', s: 'TECH TREE', core: 1,
-    d: 'Elders make knowledge. Sixteen techs gate jobs, chambers, royal care, techniques, and the Nest, Map and War tabs.',
+    d: 'Elders make knowledge. Over thirty techs, grouped into ages, gate jobs, chambers, royal care, techniques, and the Nest, Map and War tabs.',
     in: ['Knowledge from elders', 'Seeds and resin from expeditions', 'Chitin from war'], out: ['Unlocks for every other screen'] },
   nest:   { x: 380, y: 780, t: 'Nest', s: 'CHAMBERS', core: 1,
     d: 'Diggers move soil to build chambers. Chambers raise caps, house brood, store food and knowledge, and defend the entrance.',
@@ -111,41 +110,41 @@ const N = {
   war:    { x: 660, y: 910, t: 'War', s: 'RAIDS + CAMPAIGNS', core: 1,
     d: 'Provoke a raid when ready. Soldiers, rallied workers and defences fight at the gate. Each clean win makes the next wave harder.',
     in: ['Soldiers', 'Defence from chambers, fortifications and stone', 'Pheromone to provoke'], out: ['Chitin', 'Captured tiles'] },
-  // deeper layers and technology (proposed)
-  archive: { x: 130, y: 60, t: 'Scent archive', s: 'BLENDS', plan: 1,
-    d: 'Notes come from how you played (survived a famine, won a raid with no soldiers, flew early). Blend 2 or 3 notes into accords: permanent rule tweaks. Recipes are hidden and shelf space is limited, so you choose a build.',
-    in: ['Notes from feats in every system'], out: ['Accords: permanent rule tweaks'] },
-  genome: { x: 370, y: 60, t: 'Genome', s: 'MUTATIONS', plan: 1,
-    d: 'At each flight, pick the genes the new queen carries (two queens, winged workers, acid spray, night eyes). Every run with a gene raises its expression for good; at max it becomes fixed: always on, slot freed.',
-    in: ['Lineage', 'Gene slots from perks'], out: ['Per-run rule changes', 'Permanently fixed genes'] },
-  migrate: { x: 610, y: 60, t: 'Migration', s: 'PRESTIGE 2', plan: 1,
-    d: 'The line moves into a block of houses. Wall cavities, kitchens and drains each have warmth, damp and danger. Day and night schedules, bait stations and taster ants, rival city ants, satellite nests, and new materials. Earns Heritage.',
-    in: ['Flights and lineage'], out: ['Heritage', 'A town map', 'The Settlement age'] },
-  super:  { x: 850, y: 60, t: 'Supercolony', s: 'PRESTIGE 3', plan: 1,
-    d: 'The map zooms out to a continent. Colonies of your line link by pheromone highways and take roles (granary, nursery, war front). Borders with rival supercolonies are fronts you give orders to in advance. Other species are nations to trade with, rule or fight. Unity buys colony-wide laws.',
-    in: ['Heritage from many towns'], out: ['Unity and laws', 'Fronts and nations', 'A continent map'] },
-  ages:   { x: 1090, y: 60, t: 'Ages', s: 'TECH ERAS', plan: 1,
-    d: 'Research and screens are grouped into ages: Dirt, Forage, Settlement, Industry, Network, Orbital. Each age opens 2 to 4 screens and can carry over into the next prestige layer.',
-    in: ['Knowledge plus each age\'s new resource'], out: ['New tech tiers, screens and jobs'] },
-  // proposed
+  // the long game
+  archive: { x: 130, y: 60, t: 'Scent archive', s: 'LIFETIME RECORDS', core: 1,
+    d: 'Every colony of your line adds to nine records: workers born, chambers, techs, expeditions, waves won, voyages, champion kills, flights and honeydew. Each record earns tiers on its own, and each tier is a small permanent bonus. Total tiers open ten accords, in order, that automate chores: the queen lays by herself, colonies start with early techs, boats relaunch, the champion challenges bosses. No choices to agonise over.',
+    in: ['Counts from every system, in every colony'], out: ['Small permanent bonuses', 'Accords that automate'] },
+  genome: { x: 370, y: 60, t: 'Genome', s: 'GENES', core: 1,
+    d: 'From the second flight, the queen carries chosen genes for the whole colony (one slot, more at 3, 6 and 10 flights). Each flight with a gene adds expression; at 4 it is fixed in your line, always on, and frees its slot. Each level of expression keeps a tenth of the effect forever.',
+    in: ['Flights'], out: ['Per-colony bonuses', 'Fixed genes'] },
+  migrate: { x: 610, y: 60, t: 'Migration', s: 'PRESTIGE 2 · THE TOWN', core: 1,
+    d: 'Once a galleon reaches the far shore, after 3 flights and 3 settlements, the line moves into the human town. Lineage resets; Heritage buys permanent perks. Town foragers work the kitchen, walls, drain, study and shed. Daylight work draws attention: bait stations (poison that tasters catch), sprays, a sealed kitchen. Work at night, clear pavement ants, dig satellite nests.',
+    in: ['The far shore', 'Flights and settlements'], out: ['Heritage perks', 'Crumbs, sugar, grease, paper, filings', 'The Settlement age'] },
+  super:  { x: 850, y: 60, t: 'Supercolony', s: 'PRESTIGE 3', core: 1,
+    d: 'When the town is yours, the line becomes one people across a continent of regions. Give regions roles (farm, forge, nursery, garrison). Each neighbouring nation (army, fire, leafcutter, weaver, honeypot ants) is a front with a standing order: hold, push or raid. Unity from your regions buys laws.',
+    in: ['Heritage', 'A conquered town'], out: ['Unity and laws', 'Bonuses for every colony'] },
+  ages:   { x: 1090, y: 60, t: 'Ages', s: 'TECH ERAS', core: 1,
+    d: 'Research is grouped into ages: Dirt, Forage, Settlement, Industry, Network, Orbital. The Settlement age opens after the first migration.',
+    in: ['Knowledge', 'Prestige layers'], out: ['New tech tiers'] },
+  // later systems
   flight: { x: 600, y: 180, t: 'Nuptial flight', s: 'LINEAGE · PRESTIGE 1', core: 1,
-    d: 'Research Winged queens, then send a flight once you have 50 workers. The colony starts over; you earn Lineage from workers born, techs, chambers and raid waves won, and spend it on permanent perks. Territory on the map stays yours.',
-    in: ['The whole colony'], out: ['Lineage and permanent perks', 'A fresh colony that grows faster each time'] },
+    d: 'Research Winged queens, then build the Swarm Spire: five stages (foundation, galleries, royal nursery, winged princesses, launch crown) carried by hand or by Builders. Then the flight. Aimed at 6 to 8 hours for the first one. Lineage buys permanent perks; the map, champion, archive and genome stay.',
+    in: ['The whole colony', 'Soil, twig, resin, fungus, jelly, silk'], out: ['Lineage and perks', 'A fresh colony'] },
   castes: { x: 130, y: 510, t: 'Castes', s: 'ROYAL JELLY', core: 1,
     d: 'Chew fungus and food into royal jelly, by hand or with Jelly glands on your nurses. Spend jelly to breed minims (gardeners), repletes (living food jars), majors (fight like 3 soldiers) and weavers (silk).',
     in: ['Fungus and food for jelly', 'Chitin for majors, leaves for weavers'], out: ['Gardener, Replete, Major and Weaver jobs', 'Silk for bark boats'] },
   fungus: { x: 130, y: 710, t: 'Fungus garden', s: 'GARDEN TAB', core: 1,
     d: 'Leafcutters bring leaves; each Fungus garden chamber is a bed that turns leaves into fungus. Untended beds catch mould, and mould spreads: weed by hand, or breed gardeners.',
     in: ['Leaves from leafcutters', 'Beds from the nest', 'Gardeners from castes'], out: ['Fungus: larvae fed on it grow 50% faster', 'Fungus for royal jelly'] },
-  champ:  { x: 1080, y: 560, t: 'Champion', s: 'HUNTS + GEAR', plan: 1,
-    d: 'One named ant hunts through grounds on the map. It fights slowly on its own; play its ability buttons (Bite, Sting, Acid, Brace) and it goes about 5 times faster. Gear is made from what it beats; each ground drops its own set, duplicates level up worn items, and full sets give bonuses.',
-    in: ['Map hunting grounds', 'Your attention (optional)'], out: ['Gear sets', 'Expedition and raid bonuses', 'New hunting grounds'] },
-  ships:  { x: 1090, y: 690, t: 'Waters', s: 'BOATS + VOYAGES', core: 1,
-    d: 'Build leaf rafts, then bark boats with silk sails. Crew them with idle workers and send them to the puddle, the gutter, the stream and the pond island. Most voyages stop at one event and wait, safely, for your choice.',
-    in: ['Leaves and twigs for rafts', 'Silk and resin for bark boats', 'Idle workers as crew'], out: ['Food, leaves, seeds, resin, amber', 'Map fog cleared across water'] },
-  aphids: { x: 140, y: 920, t: 'Husbandry', s: 'RANCHING', plan: 1,
-    d: 'Ranch aphids, root aphids, scale insects, mealybugs, treehoppers and rare blue butterfly caterpillars. Breed herds for yield and hardiness; guard them from ladybirds and parasite wasps.',
-    in: ['Plant tiles and chambers', 'Guards from war'], out: ['Honeydew for royal jelly', 'Wax for building', 'Protein for majors'] },
+  champ:  { x: 1080, y: 560, t: 'Champion', s: 'HUNTS + GEAR', core: 1,
+    d: 'After the first flight, one named ant hunts five grounds: leaf litter, woodpile, flowerbed, drain, the rival border. Idle it fights at a fifth of the speed; use Bite, Sting, Brace, Groom and Acid and it fights at full speed. Every foe can drop a piece of its ground set; duplicates level the piece, rare drops roll a trait, 3 and 6 worn give set bonuses. Bosses give trophies: colony bonuses forever.',
+    in: ['Your attention (optional)', 'Food and chitin for training'], out: ['Soldier and expedition bonuses', 'Trophies', 'Meat'] },
+  ships:  { x: 1090, y: 690, t: 'Waters', s: 'BOATS + SETTLEMENTS', core: 1,
+    d: 'Leaf rafts, bark boats and wax galleons, crewed by idle workers. Voyages stop at one event and wait for your choice. Harbours add boat slots. Found settlements on the far reeds, the pond island and the lily raft; a galleon to the far shore opens Migration.',
+    in: ['Leaves, twigs, silk, wax', 'Idle workers as crew'], out: ['Loot and fog cleared', 'Settlements', 'The far shore'] },
+  aphids: { x: 140, y: 920, t: 'Husbandry', s: 'HERDS', core: 1,
+    d: 'After the first flight: green aphids, root aphids, scale insects, mealybugs, treehoppers and blue caterpillars. Herds breed into the room you have (pasture from owned grass tiles, cellar from chambers). Herders tend them and drive off ladybirds, lacewings and wasps, which only ever take a small share.',
+    in: ['Owned map tiles', 'Herders'], out: ['Honeydew (food when stores run low)', 'Wax for galleons', 'Royal jelly from caterpillars'] },
 };
 // [from, to, label, colour token, proposed?]
 const E = [
@@ -178,16 +177,16 @@ const E = [
   ['fungus','colony','rich food','food'],
   ['exped','ships','twig, resin','loot'],
   ['ships','map','fog cleared','scent'],
-  // proposed
-  ['exped','champ','gear','loot',1],
-  ['champ','exped','leads parties','ants',1],
-  ['aphids','colony','honeydew, wax','food',1],
-  ['aphids','castes','honeydew → jelly','food',1],
-  ['colony','archive','milestones','know',1],
-  ['flight','genome','lineage','know',1],
-  ['flight','migrate','many flights','ants',1],
-  ['migrate','super','heritage','know',1],
-  ['research','ages','eras','know',1],
+  ['champ','war','soldier bonus, trophies','chitin'],
+  ['colony','champ','food, chitin','food'],
+  ['aphids','colony','honeydew','food'],
+  ['colony','archive','records','know'],
+  ['archive','queen','accords','know'],
+  ['flight','genome','flights','know'],
+  ['ships','migrate','far shore','scent'],
+  ['flight','migrate','flights','ants'],
+  ['migrate','super','heritage','know'],
+  ['research','ages','eras','know'],
 ];
 
 const svg = document.getElementById('map');
@@ -244,7 +243,7 @@ for (const [id, n] of Object.entries(N)) {
 
 const info = document.getElementById('info');
 function intro() {
-  info.innerHTML = `<span class="tag">Start anywhere</span><h2>Eleven systems, one colony</h2>
+  info.innerHTML = `<span class="tag">Start anywhere</span><h2>Eighteen systems, one colony</h2>
     <p>Workers are the one currency every system wants. Food keeps them alive, knowledge decides what they can do, and the surface decides how far they reach.</p>
     <p>Click a box to see what it takes and what it gives. Click it again to clear.</p>`;
 }
