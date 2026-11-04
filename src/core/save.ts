@@ -25,6 +25,12 @@ export function readLocal(): ReturnType<typeof snapshot> | null {
   } catch { return null; }
 }
 
+/** Write a save that holds only what survives a rebirth. */
+export function writeRebirth(flags: string[], state: Record<string, unknown>) {
+  const data = { v: 1, time: 0, savedAt: Date.now(), res: {}, flags, state };
+  try { localStorage.setItem(KEY, JSON.stringify(data)); return true; } catch { return false; }
+}
+
 export function clearLocal() {
   try { localStorage.removeItem(KEY); } catch { /* storage blocked */ }
 }

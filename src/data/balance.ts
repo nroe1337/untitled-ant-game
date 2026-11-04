@@ -44,6 +44,8 @@ export const JOBS = {
   digger: { soil: 0.06 },
   scout: { pheromone: 0.02 },
   elder: { knowledge: 0.03 },
+  leafcutter: { leaf: 0.08 },
+  weaver: { silk: 0.015 },
 };
 
 export const NEST = {
@@ -61,6 +63,7 @@ export const NEST = {
     barracks: { name: 'Guard post',      base: { soil: 60, twig: 10 },           desc: '+2 nest defence, +3 living space',        defence: 2, antCap: 3, needs: 'tech:martial' },
     husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 },          desc: 'Raider shells shore up the walls: +6 living space, +2 defence', antCap: 6, defence: 2, needs: 'tech:husks' },
     library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 },           desc: '+25 knowledge storage, elders +5% each', knowCap: 25, elder: 0.05, needs: 'tech:elders' },
+    fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 },           desc: 'One fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 },           desc: 'Waste heap. Upkeep −2% each (max 15)',    upkeep: 0.02, max: 15, needs: 'tech:sanitation' },
   },
 };
@@ -187,6 +190,76 @@ export const RESEARCH = {
     martial:    { name: 'Mandible drill',    cost: { knowledge: 100, food: 60 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
     fortify:    { name: 'Fortification',     cost: { knowledge: 140, twig: 10 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      cost: { knowledge: 160, chitin: 5 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
+    fungus:     { name: 'Leaf culture',      cost: { knowledge: 80, seed: 4 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
+    castes:     { name: 'Caste lore',        cost: { knowledge: 150, fungus: 20 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
+    rafts:      { name: 'Leaf rafts',        cost: { knowledge: 120, leaf: 30, twig: 8 }, needs: ['fungus', 'surface'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
+    flight:     { name: 'Winged queens',     cost: { knowledge: 250, jelly: 5 },         needs: ['castes'],              desc: 'Young queens grow wings. Opens the Lineage tab and the nuptial flight.' },
     campaigns:  { name: 'Campaigning',       cost: { knowledge: 220, chitin: 10 },       needs: ['martial', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, { name: string; cost: Record<string, number>; needs: string[]; flag?: string; desc: string }>,
+};
+
+/** Fungus farming. Beds come from the Fungus garden chamber. */
+export const GARDEN = {
+  leafCap: 60,
+  fungusCap: 20,             // before chambers
+  leafPerBed: 0.05,          // leaves each healthy bed eats per second
+  fungusPerBed: 0.04,        // fungus each healthy bed makes per second
+  mouldEvery: 1200,          // an untended bed catches mould about once per this many seconds
+  spreadEvery: 400,          // a mouldy bed infects a neighbour about once per this many seconds
+  bedsPerGardener: 2,        // each gardener keeps this many beds clean
+  weedCooldown: 6,
+  larvaFungus: 0.01,         // fungus each larva eats per second when there is fungus
+  larvaBoost: 0.5,           // larvae fed fungus grow this much faster
+  upgrades: {
+    compost: { name: 'Leaf mulch',   desc: 'Beds make {p} more fungus per level',  per: 0.03, base: { leaf: 30, fungus: 10 }, growth: 1.18, max: 30 },
+    spores:  { name: 'Clean spores', desc: 'Mould strikes {p} less often per level', per: 0.03, base: { fungus: 25, knowledge: 20 }, growth: 1.2, max: 25 },
+  },
+};
+
+/** Castes: royal jelly turns larvae into new kinds of ant, each a new job. */
+export const CASTES = {
+  jellyCap: 20,
+  chew: { cost: { fungus: 8, food: 10 }, cooldown: 4 },  // manual: make 1 royal jelly
+  replete: 12,               // food storage per replete
+  major: { hp: 3, atk: 3 },  // a major has this many times a soldier's hp and bite
+  types: {
+    minim:   { name: 'Minims',   cost: { jelly: 3, fungus: 10 },  desc: 'Tiny gardeners. Unlocks the Gardener job, which keeps fungus beds free of mould.' },
+    replete: { name: 'Repletes', cost: { jelly: 5, food: 40 },    desc: 'Living food jars. Unlocks the Replete job: each holds +12 food.' },
+    major:   { name: 'Majors',   cost: { jelly: 8, chitin: 10 },  desc: 'Huge-headed fighters. Unlocks the Major job: each fights like 3 soldiers at the gate.' },
+    weaver:  { name: 'Weavers',  cost: { jelly: 6, leaf: 30 },    desc: 'Larvae spin silk while weavers hold them. Unlocks the Weaver job and Silk.' },
+  } as Record<string, { name: string; cost: Record<string, number>; desc: string }>,
+  upgrades: {
+    glands: { name: 'Jelly glands', desc: 'Each nurse chews {p} royal jelly/s per level, using fungus', per: 0.001, base: { jelly: 4, fungus: 30 }, growth: 1.25, max: 20, unit: 'flat' as const },
+  },
+};
+
+/** The nuptial flight: the first prestige. */
+export const LINEAGE = {
+  minWorkers: 50,            // workers needed before a flight can leave
+  // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
+  perks: {
+    blood:   { name: 'Royal blood',    desc: 'Eggs hatch and larvae grow {p} faster per level', per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
+    trails:  { name: 'Old trails',     desc: 'Foragers +{p} per level',     per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
+    memory:  { name: 'Deep memory',    desc: 'Elders +{p} per level',       per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
+    digging: { name: 'Strong backs',   desc: 'Diggers +{p} per level',      per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
+    line:    { name: 'Warrior line',   desc: 'Soldiers fight {p} harder per level', per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
+    swarm:   { name: 'Founding swarm', desc: 'Start each colony with {p} more workers per level', per: 2, base: { lineage: 5 }, growth: 1.5, max: 10, unit: 'flat' as const },
+  },
+};
+
+/** Boats and voyages. */
+export const WATERS = {
+  maxBoats: 3,
+  boats: {
+    raft:   { name: 'Leaf raft',  cost: { leaf: 25, twig: 6 },              crew: 3, hull: 3, speed: 1 },
+    barque: { name: 'Bark boat',  cost: { twig: 25, resin: 8, silk: 10 },   crew: 5, hull: 6, speed: 1.5, needs: 'caste:weaver' },
+  } as Record<string, { name: string; cost: Record<string, number>; crew: number; hull: number; speed: number; needs?: string }>,
+  /** tile: where the voyage reveals the map, as an offset from the nest. */
+  voyages: [
+    { id: 'puddle', name: 'The puddle',      time: 90,  loot: { food: [10, 25], leaf: [5, 15] },               tile: [-3, 4] },
+    { id: 'gutter', name: 'The gutter',      time: 240, loot: { twig: [3, 8], resin: [1, 3], food: [15, 30] }, tile: [-5, 7] },
+    { id: 'stream', name: 'The stream',      time: 480, loot: { food: [30, 60], seed: [2, 5], amber: [0, 2] }, tile: [-6, 10], boat: 'barque' },
+    { id: 'island', name: 'The pond island', time: 900, loot: { amber: [2, 5], resin: [4, 8], seed: [4, 8] },  tile: [10, 9], boat: 'barque' },
+  ] as { id: string; name: string; time: number; loot: Record<string, [number, number]>; tile: [number, number]; boat?: string }[],
+  eventChance: 0.7,          // chance a voyage meets one event on the way
 };

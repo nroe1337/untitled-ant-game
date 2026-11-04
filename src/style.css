@@ -124,3 +124,9 @@ input[type=checkbox] { accent-color: var(--accent); }
 .alert { margin: 0; padding: 8px 12px; border: 1px solid var(--warn); color: var(--warn); background: var(--panel); font-weight: 600; }
 
 .section { display: grid; gap: 14px; }
+
+/* Waters: one card per boat */
+.fleet { display: grid; gap: 10px; }
+.boat { border: 1px solid var(--line); background: var(--raise); padding: 10px 12px; display: grid; gap: 8px; }
+.boat p { margin: 0; }
+.boat .bar { flex: 1; min-width: 120px; }

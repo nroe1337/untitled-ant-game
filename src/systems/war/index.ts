@@ -7,7 +7,7 @@ import { actionButton, el, progressBar, type ActionButton } from '../../core/ui'
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, rect, setup } from '../../core/pixel';
-import { WAR, MAP } from '../../data/balance';
+import { WAR, MAP, CASTES } from '../../data/balance';
 
 const B = WAR.battle;
 const F = WAR.fortifications;
@@ -34,7 +34,9 @@ interface WarState {
 const S = (ctx: Context) => ctx.state.war as WarState;
 const fl = (ctx: Context, id: keyof typeof F) => S(ctx).forts[id] ?? 0;
 const FORTS = fromBalance(F);
-const soldiers = (ctx: Context) => ctx.state.jobs?.assigned?.soldier ?? 0;
+const majors = (ctx: Context) => ctx.state.jobs?.assigned?.major ?? 0;
+/** Fighting strength in soldier-equivalents: a major counts as several soldiers. */
+const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + majors(ctx) * CASTES.major.atk;
 const power = (ctx: Context) => 1 + ctx.mods.get('soldierPower');
 const defence = (ctx: Context) => ctx.mods.get('defence');
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -63,7 +65,9 @@ function startBattle(ctx: Context) {
   for (let i = 0; i < comp.raiders; i++) units.push({ kind: 'raider', x: B.laneLength + i * 2.5, hp: B.raider.hp * tough, max: B.raider.hp * tough, atk: B.raider.atk * tough, speed: B.raider.speed });
   for (let i = 0; i < comp.brutes; i++) units.push({ kind: 'raider', big: true, x: B.laneLength + comp.raiders * 2.5 + 6 + i * 4, hp: B.brute.hp * tough, max: B.brute.hp * tough, atk: B.brute.atk * tough, speed: B.brute.speed });
   const hp = B.soldier.hp * (1 + F.carapace.per * fl(ctx, 'carapace'));
-  for (let i = 0; i < Math.min(40, soldiers(ctx)); i++) units.push({ kind: 'soldier', x: 40 + (i % 8) * 4, hp, max: hp });
+  const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
+  for (let i = 0; i < Math.min(40, plain); i++) units.push({ kind: 'soldier', x: 40 + (i % 8) * 4, hp, max: hp });
+  for (let i = 0; i < Math.min(20, majors(ctx)); i++) units.push({ kind: 'soldier', big: true, x: 44 + (i % 6) * 5, hp: hp * CASTES.major.hp, max: hp * CASTES.major.hp, atk: B.soldier.atk * CASTES.major.atk });
   s.battle = { units, kills: 0, breaches: 0, soldiersLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: soldiers(ctx) };
   ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${n} of them pour toward the entrance.`, 'warn');
   if (fl(ctx, 'alarm')) rally(ctx);
@@ -98,7 +102,7 @@ function stepBattle(ctx: Context, dt: number) {
   }
   // defenders in reach hit the front raider
   if (front) for (const d of defenders) {
-    if (Math.abs(front.x - d.x) < 7) front.hp -= (d.kind === 'soldier' ? B.soldier.atk * power(ctx) : B.worker.atk) * dt;
+    if (Math.abs(front.x - d.x) < 7) front.hp -= (d.kind === 'soldier' ? (d.atk ?? B.soldier.atk) * power(ctx) : B.worker.atk) * dt;
     else if (d.x < front.x - 7) d.x = Math.min(d.x + 6 * dt, front.x - 5); // step forward to meet them
   }
   // remove the dead and the raiders that got in

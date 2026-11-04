@@ -4,7 +4,7 @@ import { EventBus } from './events';
 import { Mods } from './mods';
 import { el } from './ui';
 import { icon } from './sprites';
-import { saveLocal, readLocal, applySave, clearLocal, exportText, importText } from './save';
+import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
 const TICK_MS = 100;
 const AUTOSAVE_S = 15;
@@ -37,6 +37,7 @@ export class Game {
       speed: 1,
       log: (m, k) => this.log(m, k),
       alert: (id, m) => { if (m) this.alerts.set(id, m); else this.alerts.delete(id); },
+      rebirth: () => this.rebirth(),
     };
   }
 
@@ -96,6 +97,14 @@ export class Game {
         el('main.main', {}, this.alertEl, this.tabBar, this.panelHost),
         el('aside.story', {}, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
+  }
+
+  private rebirth() {
+    const kept: Record<string, unknown> = {};
+    for (const s of this.systems) { const k = s.keep?.(this.ctx); if (k !== undefined) kept[s.id] = k; }
+    writeRebirth([...this.ctx.flags].filter((f) => f.startsWith('legacy:')), kept);
+    this.noSave = true;
+    location.reload();
   }
 
   private confirmReset(btn: HTMLButtonElement) {

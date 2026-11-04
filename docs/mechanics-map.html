@@ -1,0 +1,268 @@
+<title>Formicarium mechanics map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English&family=IBM+Plex+Sans:wght@400;600&family=Silkscreen&display=swap">
+<style>
+/* Layout: one wide flat diagram of the colony's systems, with a reading panel beside it (below on phones). Matches the game's own dark, flat look. */
+:root {
+  --bg: #141210; --panel: #1d1a17; --raise: #26221e; --line: #3a332c;
+  --fg: #e6dfd3; --muted: #a39886; --accent: #c4532f;
+  --food: #8fa35a; --soil: #a07a52; --know: #8fb4c9; --scent: #9a8fe6; --chitin: #d0654a; --ants: #e6dfd3; --loot: #d08a2e;
+  --display: "IM Fell English", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --pixel: "Silkscreen", "Courier New", monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+h1 { font: 400 clamp(28px, 4vw, 40px)/1.1 var(--display); margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); max-width: 68ch; margin: 0; }
+.eyebrow { font: 11px var(--pixel); letter-spacing: .08em; color: var(--accent); text-transform: uppercase; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 3px; display: inline-block; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--muted); }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.stage { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); }
+svg { display: block; min-width: 860px; width: 100%; height: auto; }
+.node rect { fill: var(--raise); stroke: var(--line); stroke-width: 2; }
+.node.core rect { stroke: #6b5d4e; }
+.node.plan rect { fill: var(--panel); stroke: var(--muted); stroke-dasharray: 6 5; }
+.node text.t { font: 400 20px var(--display); fill: var(--fg); }
+.node text.s { font: 10px var(--pixel); fill: var(--muted); letter-spacing: .06em; }
+.node { cursor: pointer; }
+.node:hover rect, .node:focus-visible rect { stroke: var(--accent); }
+.node:focus { outline: none; }
+.node.on rect { stroke: var(--accent); stroke-width: 3; }
+.edge path { fill: none; stroke-width: 2.2; }
+.edge.plan path { stroke-dasharray: 5 5; opacity: .7; }
+.edge text { font: 600 11px var(--body); }
+.edge rect { fill: var(--panel); }
+svg.focus .edge { opacity: .08; }
+svg.focus .edge.hot { opacity: 1; }
+svg.focus .node { opacity: .35; }
+svg.focus .node.on, svg.focus .node.near { opacity: 1; }
+aside { background: var(--panel); border: 1px solid var(--line); padding: 18px; display: grid; gap: 10px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+aside h2 { font: 400 26px/1.1 var(--display); margin: 0; }
+aside p { margin: 0; }
+aside .tag { font: 10px var(--pixel); letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+aside ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+aside h3 { font: 11px var(--pixel); letter-spacing: .08em; color: var(--accent); margin: 6px 0 0; text-transform: uppercase; }
+.loops { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.loop { border-top: 2px solid var(--line); padding-top: 10px; display: grid; gap: 4px; }
+.loop b { font: 400 20px var(--display); }
+.loop p { margin: 0; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) { .edge, .node { transition: opacity .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Formicarium · how it fits together</div>
+    <h1>The colony's moving parts</h1>
+    <p class="lead">Solid boxes are in the prototype today. Dashed boxes are proposed; the top row is the long game of deeper prestige layers and technology ages. Each arrow is something one system hands to another, coloured by what flows. Click any box to trace its connections.</p>
+    <div class="legend" aria-label="Arrow colours">
+      <span><i style="background:var(--ants)"></i>Workers</span>
+      <span><i style="background:var(--food)"></i>Food</span>
+      <span><i style="background:var(--soil)"></i>Soil and space</span>
+      <span><i style="background:var(--know)"></i>Knowledge and unlocks</span>
+      <span><i style="background:var(--scent)"></i>Pheromone</span>
+      <span><i style="background:var(--loot)"></i>Loot</span>
+      <span><i style="background:var(--chitin)"></i>Chitin and defence</span>
+      <span><i class="dash"></i>Proposed link</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="stage"><svg id="map" viewBox="0 0 1200 980" role="img" aria-label="Diagram of how the colony systems feed each other"></svg></div>
+    <aside id="info" aria-live="polite"></aside>
+  </div>
+
+  <section class="loops" aria-label="Core loops">
+    <div class="loop"><b>The hunger loop</b><p>Queen lays eggs, larvae eat food, workers hatch, foragers bring food back. Every worker also eats, so growth always pulls on food. If food runs out, workers starve one by one, leaving only the queen to rebuild from.</p></div>
+    <div class="loop"><b>The learning loop</b><p>Elders turn workers into knowledge. Research spends it to unlock jobs, chambers, techniques and whole screens. The Hall of elders raises how much knowledge you can hold, which gates the bigger techs.</p></div>
+    <div class="loop"><b>The surface loop</b><p>Ten chambers and Upward tunnels open the surface. Expeditions bring loot that pays for research and fortifications, reveal the map, and eventually find the rival colony.</p></div>
+    <div class="loop"><b>The lineage loop</b><p>Fungus feeds larvae and becomes royal jelly. Jelly breeds castes that farm, store, fight and weave. A big colony earns Lineage when its flight leaves, and Lineage perks make every new colony grow faster.</p></div>
+    <div class="loop"><b>The war loop</b><p>You provoke raids when you are ready. Clean wins pay chitin, which builds husk halls and unlocks campaigns. Campaigns take map tiles, and tiles pay territory yields back to the colony.</p></div>
+  </section>
+</div>
+
+<script>
+const N = {
+  queen:  { x: 190, y: 290, t: 'Queen & brood', s: 'BROOD TAB', core: 1,
+    d: 'The queen lays eggs, eggs become larvae, larvae become workers. Everything starts here.',
+    in: ['Food for larvae', 'Nurses lay eggs for you', 'Brood space from chambers'], out: ['New workers'] },
+  colony: { x: 540, y: 460, t: 'Colony', s: 'JOBS + TECHNIQUES', core: 1,
+    d: 'Workers take jobs: forager, digger, elder, nurse, scout, soldier. Each worker on a job makes the same amount. Every worker eats.',
+    in: ['Workers from the queen', 'Jobs and techniques from research', 'Storage from the nest', 'Territory yields from the map'], out: ['Food, soil, knowledge, pheromone', 'Soldiers for war', 'Parties for expeditions'] },
+  research:{ x: 1010, y: 290, t: 'Research', s: 'TECH TREE', core: 1,
+    d: 'Elders make knowledge. Sixteen techs gate jobs, chambers, royal care, techniques, and the Nest, Map and War tabs.',
+    in: ['Knowledge from elders', 'Seeds and resin from expeditions', 'Chitin from war'], out: ['Unlocks for every other screen'] },
+  nest:   { x: 380, y: 780, t: 'Nest', s: 'CHAMBERS', core: 1,
+    d: 'Diggers move soil to build chambers. Chambers raise caps, house brood, store food and knowledge, and defend the entrance.',
+    in: ['Soil from diggers', 'Blueprints from research', 'Chitin for husk halls'], out: ['Storage and brood space', 'Defence', 'The way to the surface at 10 chambers'] },
+  exped:  { x: 870, y: 620, t: 'Expeditions', s: 'SURFACE TRAILS', core: 1,
+    d: 'Send parties of workers to six destinations. They come back with food, twigs, seeds, resin and rare amber.',
+    in: ['Workers away from jobs', 'Pheromone to mark trails'], out: ['Loot', 'Map fog revealed', 'The rival colony, after 6 runs'] },
+  map:    { x: 1040, y: 910, t: 'Map', s: 'TERRITORY', core: 1,
+    d: 'A tile map of the garden. Claim tiles as outposts (each holds 2 workers) for steady yields. Stone tiles add defence.',
+    in: ['Fog revealed by expeditions', 'Pheromone and workers to claim', 'Tiles taken by campaigns'], out: ['Territory yields', 'Stone defence', 'Campaign targets'] },
+  war:    { x: 660, y: 910, t: 'War', s: 'RAIDS + CAMPAIGNS', core: 1,
+    d: 'Provoke a raid when ready. Soldiers, rallied workers and defences fight at the gate. Each clean win makes the next wave harder.',
+    in: ['Soldiers', 'Defence from chambers, fortifications and stone', 'Pheromone to provoke'], out: ['Chitin', 'Captured tiles'] },
+  // deeper layers and technology (proposed)
+  archive: { x: 130, y: 60, t: 'Scent archive', s: 'ACHIEVEMENTS', plan: 1,
+    d: 'Every milestone (100 workers, wave 10, a first voyage) leaves a scent mark that never fades, through every prestige. Each mark is a tiny permanent bonus, and some unlock automation toggles.',
+    in: ['Milestones from every system'], out: ['Permanent small bonuses', 'Automation unlocks'] },
+  genome: { x: 370, y: 60, t: 'Genome', s: 'MUTATIONS', plan: 1,
+    d: 'Spend lineage on mutations that change the rules, Evolve-style: two queens, winged workers, acid spray, night eyes. You pick a few for each new colony.',
+    in: ['Lineage'], out: ['Rule changes for brood, castes and war'] },
+  migrate: { x: 610, y: 60, t: 'Migration', s: 'PRESTIGE 2', plan: 1,
+    d: 'After several flights, the whole line moves into a human town. Lineage and its perks reset; you earn Heritage, keep the map, and open the Scavenger age: kitchen raids, sugar, metal scraps, boots and poison.',
+    in: ['Flights and lineage'], out: ['Heritage', 'A town map', 'The Scavenger age'] },
+  super:  { x: 850, y: 60, t: 'Supercolony', s: 'PRESTIGE 3', plan: 1,
+    d: 'Colonies from many towns link into one supercolony across a continent. Other ant nations appear as factions you trade with, rule, or fight.',
+    in: ['Heritage from many towns'], out: ['Unity', 'Factions and diplomacy', 'A continent map'] },
+  ages:   { x: 1090, y: 60, t: 'Ages', s: 'TECH ERAS', plan: 1,
+    d: 'Research comes in ages: Dirt, Scavenger, Steam (water wheels, beetle rail), Spark (tapping wires in the walls), Signal, and Orbital. Each prestige layer opens the next age\'s tech tree and screens.',
+    in: ['Knowledge plus each age\'s new resource'], out: ['New tech tiers, screens and jobs'] },
+  // proposed
+  flight: { x: 600, y: 180, t: 'Nuptial flight', s: 'LINEAGE · PRESTIGE 1', core: 1,
+    d: 'Research Winged queens, then send a flight once you have 50 workers. The colony starts over; you earn Lineage from workers born, techs, chambers and raid waves won, and spend it on permanent perks. Territory on the map stays yours.',
+    in: ['The whole colony'], out: ['Lineage and permanent perks', 'A fresh colony that grows faster each time'] },
+  castes: { x: 130, y: 510, t: 'Castes', s: 'ROYAL JELLY', core: 1,
+    d: 'Chew fungus and food into royal jelly, by hand or with Jelly glands on your nurses. Spend jelly to breed minims (gardeners), repletes (living food jars), majors (fight like 3 soldiers) and weavers (silk).',
+    in: ['Fungus and food for jelly', 'Chitin for majors, leaves for weavers'], out: ['Gardener, Replete, Major and Weaver jobs', 'Silk for bark boats'] },
+  fungus: { x: 130, y: 710, t: 'Fungus garden', s: 'GARDEN TAB', core: 1,
+    d: 'Leafcutters bring leaves; each Fungus garden chamber is a bed that turns leaves into fungus. Untended beds catch mould, and mould spreads: weed by hand, or breed gardeners.',
+    in: ['Leaves from leafcutters', 'Beds from the nest', 'Gardeners from castes'], out: ['Fungus: larvae fed on it grow 50% faster', 'Fungus for royal jelly'] },
+  champ:  { x: 1080, y: 560, t: 'Champion', s: 'HERO + GEAR', plan: 1,
+    d: 'One named ant with crafted gear who levels up and leads expeditions and fights.',
+    in: ['Loot', 'Chitin'], out: ['Expedition and war bonuses'] },
+  ships:  { x: 1090, y: 690, t: 'Waters', s: 'BOATS + VOYAGES', core: 1,
+    d: 'Build leaf rafts, then bark boats with silk sails. Crew them with idle workers and send them to the puddle, the gutter, the stream and the pond island. Most voyages stop at one event and wait, safely, for your choice.',
+    in: ['Leaves and twigs for rafts', 'Silk and resin for bark boats', 'Idle workers as crew'], out: ['Food, leaves, seeds, resin, amber', 'Map fog cleared across water'] },
+  aphids: { x: 140, y: 920, t: 'Aphid ranch', s: 'HONEYDEW', plan: 1,
+    d: 'Herd aphids on claimed plants for honeydew, the sugar behind royal jelly. Ladybirds raid the herds.',
+    in: ['Claimed plant tiles on the map', 'Soldiers to guard'], out: ['Honeydew'] },
+};
+// [from, to, label, colour token, proposed?]
+const E = [
+  ['queen','colony','workers','ants'],
+  ['colony','queen','food, nurses','food'],
+  ['colony','research','knowledge','know'],
+  ['colony','nest','soil','soil'],
+  ['research','colony','jobs, techniques','know'],
+  ['research','nest','blueprints','know'],
+  ['nest','queen','brood space','soil'],
+  ['nest','colony','storage','soil'],
+  ['nest','exped','surface','soil'],
+  ['nest','war','defence','chitin'],
+  ['colony','exped','parties','ants'],
+  ['exped','colony','food, twig, amber','loot'],
+  ['exped','research','seeds, resin','loot'],
+  ['exped','map','fog revealed','scent'],
+  ['exped','war','rival found','chitin'],
+  ['colony','war','soldiers','ants'],
+  ['map','colony','territory yields','food'],
+  ['map','war','stone, targets','chitin'],
+  ['war','nest','chitin','chitin'],
+  ['war','map','captured tiles','chitin'],
+  ['colony','map','pheromone','scent'],
+  ['colony','flight','whole colony','ants'],
+  ['flight','queen','lineage perks','know'],
+  ['fungus','castes','fungus → jelly','food'],
+  ['castes','colony','new castes','ants'],
+  ['colony','fungus','leaves','food'],
+  ['fungus','colony','rich food','food'],
+  ['exped','ships','twig, resin','loot'],
+  ['ships','map','fog cleared','scent'],
+  // proposed
+  ['exped','champ','gear','loot',1],
+  ['champ','exped','leads parties','ants',1],
+  ['aphids','colony','honeydew','food',1],
+  ['colony','archive','milestones','know',1],
+  ['flight','genome','lineage','know',1],
+  ['flight','migrate','many flights','ants',1],
+  ['migrate','super','heritage','know',1],
+  ['research','ages','eras','know',1],
+];
+
+const svg = document.getElementById('map');
+const NS = 'http://www.w3.org/2000/svg';
+const mk = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+const W = 190, H = 58;
+const css = getComputedStyle(document.documentElement);
+const col = (k) => css.getPropertyValue('--' + k).trim();
+
+// arrowheads, one per colour
+const defs = mk('defs', {}, svg);
+for (const k of ['ants','food','soil','know','scent','loot','chitin']) {
+  const m = mk('marker', { id: 'a-' + k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, defs);
+  mk('path', { d: 'M0,0 L10,5 L0,10 z', fill: col(k) }, m);
+}
+
+// where a line from the centre of a box toward (tx,ty) leaves the box
+function exitPoint(n, tx, ty) {
+  const dx = tx - n.x, dy = ty - n.y;
+  const sx = (W / 2 + 6) / Math.abs(dx || 1e-6), sy = (H / 2 + 6) / Math.abs(dy || 1e-6);
+  const s = Math.min(sx, sy);
+  return [n.x + dx * s, n.y + dy * s];
+}
+const edgeLayer = mk('g', {}, svg), labelLayer = mk('g', {}, svg), nodeLayer = mk('g', {}, svg);
+const edgeEls = [];
+for (const [a, b, label, k, plan] of E) {
+  const A = N[a], B = N[b];
+  const pair = E.some(([x, y]) => x === b && y === a);
+  const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy);
+  const px = -dy / len, py = dx / len, off = pair ? 26 : 0;
+  const cx = (A.x + B.x) / 2 + px * off * 2, cy = (A.y + B.y) / 2 + py * off * 2;
+  const [x1, y1] = exitPoint(A, cx, cy), [x2, y2] = exitPoint(B, cx, cy);
+  const g = mk('g', { class: 'edge' + (plan ? ' plan' : '') }, edgeLayer);
+  mk('path', { d: `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`, stroke: col(k), 'marker-end': `url(#a-${k})` }, g);
+  // label at the curve's midpoint
+  const mx = 0.25 * x1 + 0.5 * cx + 0.25 * x2, my = 0.25 * y1 + 0.5 * cy + 0.25 * y2;
+  const lg = mk('g', { class: 'edge' + (plan ? ' plan' : '') }, labelLayer);
+  const tw = label.length * 6.2 + 10;
+  mk('rect', { x: mx - tw / 2, y: my - 9, width: tw, height: 18 }, lg);
+  const t = mk('text', { x: mx, y: my + 4, 'text-anchor': 'middle', fill: col(k) }, lg);
+  t.textContent = label;
+  edgeEls.push({ a, b, els: [g, lg] });
+}
+const nodeEls = {};
+for (const [id, n] of Object.entries(N)) {
+  const g = mk('g', { class: 'node ' + (n.plan ? 'plan' : 'core'), tabindex: 0, role: 'button', 'aria-label': n.t }, nodeLayer);
+  mk('rect', { x: n.x - W / 2, y: n.y - H / 2, width: W, height: H }, g);
+  const t = mk('text', { class: 't', x: n.x, y: n.y + 2, 'text-anchor': 'middle' }, g); t.textContent = n.t;
+  const s = mk('text', { class: 's', x: n.x, y: n.y + 19, 'text-anchor': 'middle' }, g); s.textContent = n.plan ? 'PROPOSED · ' + n.s : n.s;
+  g.addEventListener('click', () => select(id));
+  g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(id); } });
+  nodeEls[id] = g;
+}
+
+const info = document.getElementById('info');
+function intro() {
+  info.innerHTML = `<span class="tag">Start anywhere</span><h2>Eleven systems, one colony</h2>
+    <p>Workers are the one currency every system wants. Food keeps them alive, knowledge decides what they can do, and the surface decides how far they reach.</p>
+    <p>Click a box to see what it takes and what it gives. Click it again to clear.</p>`;
+}
+let current = null;
+function select(id) {
+  if (current === id) { current = null; svg.classList.remove('focus'); Object.values(nodeEls).forEach((g) => g.classList.remove('on', 'near')); edgeEls.forEach((e) => e.els.forEach((x) => x.classList.remove('hot'))); intro(); return; }
+  current = id;
+  svg.classList.add('focus');
+  Object.values(nodeEls).forEach((g) => g.classList.remove('on', 'near'));
+  nodeEls[id].classList.add('on');
+  for (const e of edgeEls) {
+    const hot = e.a === id || e.b === id;
+    e.els.forEach((x) => x.classList.toggle('hot', hot));
+    if (hot) nodeEls[e.a === id ? e.b : e.a].classList.add('near');
+  }
+  const n = N[id];
+  const li = (xs) => xs.map((x) => `<li>${x}</li>`).join('');
+  info.innerHTML = `<span class="tag">${n.plan ? 'Proposed' : 'In the prototype'} · ${n.s.toLowerCase()}</span><h2>${n.t}</h2><p>${n.d}</p>
+    <h3>Takes</h3><ul>${li(n.in)}</ul><h3>Gives</h3><ul>${li(n.out)}</ul>`;
+}
+intro();
+</script>

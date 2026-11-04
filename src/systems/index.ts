@@ -8,6 +8,10 @@ import { nest } from './nest';
 import { expeditions } from './expeditions';
 import { map } from './map';
 import { war } from './war';
+import { garden } from './garden';
+import { castes } from './castes';
+import { waters } from './waters';
+import { lineage } from './lineage';
 
 export const SYSTEMS: GameSystem[] = [
   brood,
@@ -17,4 +21,8 @@ export const SYSTEMS: GameSystem[] = [
   expeditions,
   map,
   war,
+  garden,
+  castes,
+  waters,
+  lineage,
 ];

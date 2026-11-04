@@ -33,11 +33,27 @@ src/
     expeditions/   surface trips, trail viewer, trail upgrades
     map/           the garden map: fog, outposts, territory income
     war/           rival colony, raids (entrance auto-battle), fortifications, campaigns
+    research/      the tech tree; techs set "tech:<id>" flags that gate everything else
+    garden/        fungus beds, mould, fungus-fed larvae
+    castes/        royal jelly and new kinds of ant (each caste unlocks a job)
+    waters/        boats, crews and Oregon Trail style voyages
+    lineage/       the nuptial flight (first prestige) and permanent perks
     index.ts       the list of active systems
   core/upgrades.ts leveled upgrades built from balance tables
   core/mods.ts     shared bonuses ("job:forager", "defence", "upkeep"...) any system can publish or read
   core/pixel.ts    flat pixel drawing helpers and the palette (no shading, no canvas text)
 ```
+
+## Prestige (rebirth)
+
+`ctx.rebirth()` starts a new colony. Every system's state is wiped except what its optional
+`keep(ctx)` returns, and only flags that start with `legacy:` survive. Lineage keeps its perks;
+the map keeps its territory.
+
+## The mechanics map
+
+`docs/mechanics-map.html` is an interactive diagram of how every system feeds the others,
+with proposed systems drawn dashed. Open it in a browser. Keep it in step with the code.
 
 ## Adding or removing a system
 

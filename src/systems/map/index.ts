@@ -116,6 +116,13 @@ export const map: GameSystem = {
 
   isUnlocked: (ctx) => ctx.flags.has('tech:cartography'),
 
+  // the map is never lost: a new colony keeps every tile you owned and everything you saw,
+  // but outposts stand empty until you claim workers for them again
+  keep(ctx) {
+    const s = S(ctx);
+    return { ...s, selected: null, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
+  },
+
   tick(ctx, dt) {
     const mine = owned(ctx);
     const outposts = mine.filter((t) => t.outpost).length;

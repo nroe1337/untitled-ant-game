@@ -25,6 +25,11 @@ export interface Context {
   mods: Mods;
   /** Simulation speed multiplier (dev tool). */
   speed: number;
+  /**
+   * Prestige: start a new colony. Every system's state is wiped except what its keep() returns,
+   * and only flags starting with "legacy:" survive. The page reloads into the new colony.
+   */
+  rebirth(): void;
 }
 
 export interface Panel {
@@ -44,4 +49,6 @@ export interface GameSystem {
   /** When does this system's panel appear? Default: always. */
   isUnlocked?(ctx: Context): boolean;
   panel?: Panel;
+  /** On rebirth (prestige), return the part of ctx.state[id] to carry into the next colony. */
+  keep?(ctx: Context): unknown;
 }

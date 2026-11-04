@@ -25,6 +25,11 @@ const JOB_DEFS: JobDef[] = [
   { id: 'nurse', name: 'Nurse', desc: 'Tends the queen. Lays eggs without your help.', produces: {}, requires: 'chamber:brood' },
   { id: 'scout', name: 'Scout', desc: 'Marks trails on the surface. Makes pheromone.', produces: JOBS.scout, requires: 'tech:scouting' },
   { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns.', produces: {}, requires: 'tech:martial' },
+  { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
+  { id: 'gardener', name: 'Gardener', desc: 'A minim. Keeps fungus beds free of mould (2 beds each).', produces: {}, requires: 'caste:minim' },
+  { id: 'replete', name: 'Replete', desc: 'A living food jar. Each holds +12 food.', produces: {}, requires: 'caste:replete' },
+  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate.', produces: {}, requires: 'caste:major' },
+  { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 
 const T = COLONY.techniques;
@@ -36,7 +41,7 @@ const TECH_MODS: Record<string, [string, number]> = {
   lore: ['job:elder', T.lore.per], craft: ['chamberCost', T.craft.per], carrying: ['expLoot', T.carrying.per],
 };
 
-interface JobsState { assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; warned?: boolean }
+interface JobsState { assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; warned?: boolean; lowest?: number }
 const S = (ctx: Context) => ctx.state.jobs as JobsState;
 
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
@@ -78,13 +83,15 @@ export const jobs: GameSystem = {
     ctx.res.add('food', -need);
     const unpaid = Math.max(0, need - have);
     s.hunger = unpaid ? (s.hunger ?? 0) + unpaid : 0; // fed again: hunger is forgiven
+    if (!unpaid) s.lowest = undefined; // a new famine reports from the start
     while (s.hunger >= COLONY.starveFoodPerDeath && totalAnts(ctx) > 0) {
       s.hunger -= COLONY.starveFoodPerDeath;
       ctx.res.add('ant', -1);
       s.starved = (s.starved ?? 0) + 1;
       const left = totalAnts(ctx);
       if (left === 0) ctx.log('The last worker dies of hunger. Only the queen remains, alone in the dark again.', 'warn');
-      else if (s.starved === 1 || left % 5 === 0) ctx.log(`A worker starves. ${left} remain.`, 'warn');
+      else if (s.starved === 1 || (s.lowest ?? Infinity) > left && left % 5 === 0) ctx.log(`A worker starves. ${left} remain.`, 'warn');
+      s.lowest = Math.min(s.lowest ?? Infinity, left);
     }
     const starving = unpaid > 0 && totalAnts(ctx) > 0;
     const foodRate = ctx.res.get('food').rate;

@@ -10,7 +10,7 @@ type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
   name: string; base: Costs; desc: string; needs?: string; max?: number;
   antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
-  foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number;
+  foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 const IDS = Object.keys(DEFS) as ChamberId[];
@@ -46,6 +46,7 @@ function applyEffects(ctx: Context) {
   ctx.mods.set('job:scout', 'nest', sum('scout'));
   ctx.mods.set('job:elder', 'nest', sum('elder'));
   if (ctx.res.has('knowledge')) ctx.res.setCapBonus('knowledge', 'nest', sum('knowCap'));
+  if (ctx.res.has('fungus')) ctx.res.setCapBonus('fungus', 'nest', sum('fungusCap'));
 }
 
 export const nest: GameSystem = {
@@ -207,6 +208,13 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         rect(c, cx - 16, y - 6, 32, 1, PAL.dirt);
         const n = Math.min(6, Math.ceil(soldiers / Math.max(1, counts.barracks)));
         for (let e = 0; e < n; e++) rect(c, cx - 13 + e * 5, y - 2, 2, 4, PAL.you);
+        break;
+      }
+      case 'fungus': { // a fungus bed: green tufts on a mat of cut leaves, grey if mould has it
+        blob(c, cx, y, 16, 5, PAL.hole);
+        rect(c, cx - 12, y + 1, 24, 2, PAL.grass);
+        const mouldy = k < (ctx.state.garden?.mould ?? 0);
+        for (let e = 0; e < 5; e++) rect(c, cx - 10 + e * 5, y - 3 + (Math.sin(t + e + k) > 0.6 ? 1 : 0), 3, 4, mouldy ? '#8a8a80' : PAL.food);
         break;
       }
       case 'midden': // a growing heap of waste
