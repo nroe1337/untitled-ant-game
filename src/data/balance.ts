@@ -23,7 +23,7 @@ export const BROOD = {
 
 export const COLONY = {
   baseAntCap: 6,            // living space before tunnels
-  antFoodPerSecond: 0.02,   // upkeep per adult ant
+  antFoodPerSecond: 0.04,   // upkeep per adult ant (one forager feeds 3)
   starvingPenalty: 0.75,    // job output multiplier while food is 0
   starveFoodPerDeath: 4,    // unpaid food that costs one worker's life (very gradual)
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
