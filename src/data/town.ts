@@ -51,3 +51,40 @@ export const TOWN = {
     filings: { name: 'Iron mandibles', desc: 'Soldiers fight {p} harder per level', per: 0.03, base: { filings: 8, chitin: 5 }, growth: 1.2, max: 30 },
   },
 };
+
+/** The supercolony (third prestige): one people across a continent of regions. */
+export const SUPER = {
+  needs: { migrations: 1, sites: 6, satellites: 6, heritage: 25 },   // heritage earned over all time
+  cols: 10, rows: 6,
+  home: [1, 3] as [number, number],
+  unityPerRegion: 0.01,
+  claimCost: (owned: number) => ({ unity: Math.ceil(10 * Math.pow(1.35, owned - 1)) }),
+  garrison: 10,             // front strength per garrison region
+  soldierShare: 0.2,        // share of this colony's soldier strength that serves on the fronts
+  push: 0.5,                // progress per second per point of strength over theirs (out of 100)
+  raidUnity: 0.02,          // unity per second per raided front
+  pressure: 0.3,            // their pressure per second per point of strength over yours
+  nationGrowth: 0.004,      // nations grow this share per minute
+  roles: {
+    farm:     { name: 'Farm',     mod: 'job:forager',  per: 0.01, desc: 'foragers +1% everywhere' },
+    forge:    { name: 'Forge',    mod: 'soldierPower', per: 0.01, desc: 'soldiers +1% everywhere' },
+    nursery:  { name: 'Nursery',  mod: 'brood',        per: 0.01, desc: 'brood +1% everywhere' },
+    garrison: { name: 'Garrison', mod: '',             per: 0,    desc: '+10 strength on every front' },
+  } as Record<string, { name: string; mod: string; per: number; desc: string }>,
+  nations: {
+    army:     { name: 'Army ants',       color: '#b04a2a', strength: 60,  aggression: 1.2, terrain: 'forest' },
+    fire:     { name: 'Fire ants',       color: '#d0602e', strength: 50,  aggression: 1,   terrain: 'meadow' },
+    leaf:     { name: 'Leafcutters',     color: '#6f8a3a', strength: 40,  aggression: 0.4, terrain: 'meadow' },
+    weaver:   { name: 'Weaver ants',     color: '#c9a03a', strength: 45,  aggression: 0.6, terrain: 'forest' },
+    honeypot: { name: 'Honeypot ants',   color: '#d08a2e', strength: 30,  aggression: 0.3, terrain: 'desert' },
+  } as Record<string, { name: string; color: string; strength: number; aggression: number; terrain: string }>,
+  seeds: { army: [8, 1], fire: [6, 4], leaf: [4, 0], weaver: [8, 5], honeypot: [4, 5] } as Record<string, [number, number]>,
+  terrains: { meadow: '#3d4a2a', forest: '#2e3a22', marsh: '#2b4556', desert: '#7a6a44', town: '#77746e' } as Record<string, string>,
+  laws: {
+    scent:    { name: 'Common scent',  desc: 'Foragers +{p} per level',      per: 0.03, base: { unity: 15 }, growth: 1.25, max: 30 },
+    brood:    { name: 'One brood',     desc: 'Eggs and larvae +{p} per level', per: 0.03, base: { unity: 15 }, growth: 1.25, max: 30 },
+    roads:    { name: 'Highways',      desc: 'Unity +{p} per level',         per: 0.05, base: { unity: 20 }, growth: 1.3,  max: 20 },
+    army:     { name: 'Standing army', desc: 'Front strength +{p} per level', per: 0.05, base: { unity: 20 }, growth: 1.3, max: 20 },
+    stores:   { name: 'Shared stores', desc: 'Upkeep −{p} per level',        per: 0.02, base: { unity: 25 }, growth: 1.3,  max: 15 },
+  },
+};
