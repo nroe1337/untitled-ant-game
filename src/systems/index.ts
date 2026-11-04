@@ -16,6 +16,8 @@ import { champion } from './champion';
 import { archive } from './archive';
 import { genome } from './genome';
 import { husbandry } from './husbandry';
+import { migration } from './migration';
+import { town } from './town';
 
 export const SYSTEMS: GameSystem[] = [
   brood,
@@ -32,5 +34,7 @@ export const SYSTEMS: GameSystem[] = [
   husbandry,
   champion,
   archive,
+  migration,
+  town,
   genome,
 ];

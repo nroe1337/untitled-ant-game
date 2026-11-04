@@ -59,7 +59,7 @@ function advance(ctx: Context) {
   const w = wonder(ctx), st = W.stages[w.stage];
   if (!st || !stagePaid(ctx)) return;
   if (w.settle < st.time) return;
-  ctx.log(st.id === 'spire' ? 'The Wedding Mound is finished. On the next warm evening, the winged ones can fly. (Lineage tab)' : `${st.name} is done. The Wedding Mound rises.`, 'story');
+  ctx.log(st.id === 'spire' ? 'The Swarm Spire is finished. On the next warm evening, the winged ones can fly. (Lineage tab)' : `${st.name} is done. The Swarm Spire rises.`, 'story');
   w.stage++; w.paid = {}; w.settle = 0;
 }
 
@@ -105,6 +105,8 @@ export const lineage: GameSystem = {
   keep(ctx) {
     const s = S(ctx);
     // carry unspent lineage as part of total; perks stay bought
+    // a migration starts the line over: lineage and its perks are traded for heritage
+    if (ctx.state.migration?.migrating) return { perks: {}, flights: s.flights, best: s.best, total: 0, pending: true };
     return { perks: s.perks, flights: s.flights, best: s.best, total: s.total, pending: true };
   },
 
@@ -134,13 +136,13 @@ export const lineage: GameSystem = {
         });
         perks = upgradeList(ctx, () => S(ctx).perks, PERKS);
         haul = actionButton({
-          ctx, label: 'Haul a load', cooldown: W.haulCooldown, desc: `Carry ${W.haul} units of what the mound needs from your stores. Builders (Colony tab) do this on their own.`,
+          ctx, label: 'Haul a load', cooldown: W.haulCooldown, desc: `Carry ${W.haul} units of what the spire needs from your stores. Builders (Colony tab) do this on their own.`,
           enabled: (c) => !moundDone(c) && !stagePaid(c), onBuy: (c) => { carry(c, W.haul); advance(c); },
         });
         moundHead = el('h3');
         moundInfo = el('div.ledger');
-        mound = el('div.section', {}, el('h3', {}, 'The Wedding Mound'),
-          el('p.muted', {}, 'Before a flight the colony raises a great mound. Build it stage by stage. Nothing is lost if you stop for a while.'),
+        mound = el('div.section', {}, el('h3', {}, 'The Swarm Spire'),
+          el('p.muted', {}, 'Before a flight the colony raises a great spire of soil. Build it stage by stage. Nothing is lost if you stop for a while.'),
           moundHead, moundInfo, moundBar.root, el('div.row', {}, haul.root));
         root.append(
           el('p.flavor', {}, 'One warm evening the winged ones climb out and take to the air. Only a queen needs to land.'),
@@ -164,8 +166,8 @@ export const lineage: GameSystem = {
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         const ok = canFly(ctx);
         flyBtn.disabled = !ok;
-        note.textContent = !ctx.flags.has('tech:flight') ? 'Research Winged queens to start the Wedding Mound.'
-          : ok ? 'Perks are bought with Lineage and kept forever.' : 'Finish the Wedding Mound to send a flight.';
+        note.textContent = !ctx.flags.has('tech:flight') ? 'Research Winged queens to start the Swarm Spire.'
+          : ok ? 'Perks are bought with Lineage and kept forever.' : 'Finish the Swarm Spire to send a flight.';
         mound.hidden = !ctx.flags.has('tech:flight');
         haul.update(ctx);
         const w = wonder(ctx), st = W.stages[w.stage];

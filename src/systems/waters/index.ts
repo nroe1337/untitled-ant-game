@@ -9,13 +9,18 @@ import { WATERS } from '../../data/balance';
 
 interface Voyage { dest: string; elapsed: number; time: number; eventAt: number; event: number | null; met: boolean; bonus: Record<string, number>; lostCrew: number }
 interface Boat { type: string; hull: number; name: string; voyage: Voyage | null }
-interface WatersState { boats: Boat[]; dest: string; built: number; voyages: number }
+interface WatersState { boats: Boat[]; dest: string; built: number; voyages: number; reached: string[]; settlements: string[]; founded: number }
 const S = (ctx: Context) => ctx.state.waters as WatersState;
 const BOATS = WATERS.boats;
 const destOf = (id: string) => WATERS.voyages.find((v) => v.id === id)!;
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const NAMES = ['Dewdrop', 'Old Leaf', 'Brave Stem', 'Petal', 'Long Reach', 'Driftwood', 'Little Queen', 'Mossback', 'Seedpod', 'Far Scent'];
 
+const RANK = Object.keys(BOATS);
+/** A voyage that needs a bark boat can also take anything bigger. */
+const fits = (type: string, d: { boat?: string }) => !d.boat || RANK.indexOf(type) >= RANK.indexOf(d.boat);
+const maxBoats = (ctx: Context) => WATERS.maxBoats + ctx.mods.get('boatSlots');
+const shown = (ctx: Context) => WATERS.voyages.filter((v) => v.boat !== 'galleon' || ctx.flags.has('tech:galleons'));
 const crewAway = (ctx: Context) => S(ctx).boats.filter((b) => b.voyage).reduce((t, b) => t + BOATS[b.type].crew, 0);
 function idle(ctx: Context) {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
@@ -67,6 +72,14 @@ function arrive(ctx: Context, b: Boat) {
   for (const [rid, n] of Object.entries(v.bonus)) if (!(rid in d.loot) && ctx.res.has(rid)) { ctx.res.add(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
   if (v.lostCrew) ctx.res.add('ant', -v.lostCrew);
   ctx.bus.emit('expedition:return', { dest: 'voyage:' + d.id, tile: d.tile });
+  if (!s.reached.includes(d.id)) {
+    s.reached.push(d.id);
+    if (d.settle) ctx.log(`The crew say there is good ground at ${d.name.toLowerCase()}. You could found a settlement there. (Waters tab)`, 'story');
+  }
+  if (d.farshore && !ctx.flags.has('legacy:farshore')) {
+    ctx.flags.add('legacy:farshore');
+    ctx.log('The galleon comes home from the far shore with strange news: stone hills with square caves, warm walls, rivers of sweet crumbs. Humans. A whole colony could live there. (Migration)', 'story');
+  }
   ctx.log(`The ${b.name} is back from ${d.name.toLowerCase()} with ${got.join(', ') || 'nothing'}.` + (v.lostCrew ? ` ${v.lostCrew} of the crew did not come home.` : ''));
 }
 
@@ -81,13 +94,23 @@ export const waters: GameSystem = {
   id: 'waters',
 
   init(ctx) {
-    ctx.state.waters = { boats: [], dest: 'puddle', built: 0, voyages: 0 } satisfies WatersState;
+    ctx.state.waters = { boats: [], dest: 'puddle', built: 0, voyages: 0, reached: [], settlements: [], founded: 0 } satisfies WatersState;
+  },
+
+  keep(ctx) {
+    // settlements belong to this colony, but the line remembers how many it founded
+    return { boats: [], dest: 'puddle', built: 0, voyages: 0, reached: [], settlements: [], founded: S(ctx).founded };
   },
 
   isUnlocked: (ctx) => ctx.flags.has('tech:rafts'),
 
   tick(ctx, dt) {
     const s = S(ctx);
+    s.reached ??= []; s.settlements ??= []; s.founded ??= 0;
+    for (const id of s.settlements) {
+      const d = destOf(id);
+      for (const [r, v] of Object.entries(d.settle!.yields)) if (ctx.res.has(r)) ctx.res.add(r, v * dt);
+    }
     for (const b of [...s.boats]) {
       const v = b.voyage;
       if (!v) continue;
@@ -98,7 +121,7 @@ export const waters: GameSystem = {
         arrive(ctx, b);
         // the archive's accord: boats set out again by themselves
         const d = destOf(s.dest);
-        if (ctx.flags.has('accord:relaunch') && s.boats.includes(b) && idle(ctx) >= BOATS[b.type].crew && (!d.boat || b.type === d.boat)) launch(ctx, b);
+        if (ctx.flags.has('accord:relaunch') && s.boats.includes(b) && idle(ctx) >= BOATS[b.type].crew && fits(b.type, d)) launch(ctx, b);
       }
     }
     ctx.busy.waters = crewAway(ctx);
@@ -107,7 +130,8 @@ export const waters: GameSystem = {
   },
 
   panel: (() => {
-    let destSel: HTMLSelectElement, fleet: HTMLElement, buildRow: HTMLElement, note: HTMLElement;
+    let destSel: HTMLSelectElement, fleet: HTMLElement, buildRow: HTMLElement, note: HTMLElement, settleBox: HTMLElement, settleSection: HTMLElement;
+    let settleSig = '';
     const builders: { type: string; btn: ActionButton }[] = [];
     let sig = '';
     return {
@@ -122,7 +146,7 @@ export const waters: GameSystem = {
           const btn = actionButton({
             ctx, label: `Build a ${def.name.toLowerCase()}`, costs: () => def.cost,
             desc: `Crew ${def.crew}, hull ${def.hull}, speed x${def.speed}.`,
-            enabled: (c) => S(c).boats.length < WATERS.maxBoats && (!def.needs || c.flags.has(def.needs)),
+            enabled: (c) => S(c).boats.length < maxBoats(c) && (!def.needs || c.flags.has(def.needs)),
             onBuy: (c) => {
               const st = S(c);
               const name = NAMES[st.built % NAMES.length] + (st.built >= NAMES.length ? ` ${Math.floor(st.built / NAMES.length) + 1}` : '');
@@ -137,6 +161,7 @@ export const waters: GameSystem = {
         }
         fleet = el('div.fleet');
         note = el('p.muted');
+        settleBox = el('div.ledger');
         root.append(
           el('p.flavor', {}, 'To an ant, a puddle is a sea. Leaves float. So do ants, if they are brave.'),
           buildRow,
@@ -144,16 +169,38 @@ export const waters: GameSystem = {
           note,
           el('h3', {}, 'Your boats'),
           fleet,
+          settleSection = el('div.section', {}, el('h3', {}, 'Settlements'),
+            el('p.muted', {}, `Found a settlement on ground your boats have reached. ${WATERS.settle.workers} workers stay there for good and send home what they gather. Settlements count toward migration.`),
+            settleBox),
         );
       },
       update(_root, ctx) {
         const s = S(ctx);
         for (const b of builders) { b.btn.update(ctx); b.btn.root.hidden = !!BOATS[b.type].needs && !ctx.flags.has(BOATS[b.type].needs!); }
         // destinations
-        const opts = WATERS.voyages.map((v) => `${v.id}:${v.name}`).join('|');
+        const opts = shown(ctx).map((v) => `${v.id}:${v.name}`).join('|');
         if (destSel.dataset.v !== opts) {
           destSel.dataset.v = opts;
-          destSel.replaceChildren(...WATERS.voyages.map((v) => el('option', { value: v.id }, `${v.name} (${Math.round(v.time / 60)} min${v.boat ? ', bark boat only' : ''})`)));
+          destSel.replaceChildren(...shown(ctx).map((v) => el('option', { value: v.id }, `${v.name} (${Math.round(v.time / 60)} min${v.boat ? `, ${BOATS[v.boat].name.toLowerCase()} or better` : ''})`)));
+        }
+        // settlements
+        const canSettle = WATERS.voyages.filter((v) => v.settle && s.reached.includes(v.id));
+        settleSection.hidden = !canSettle.length;
+        const ss = JSON.stringify([s.settlements, canSettle.map((v) => v.id)]);
+        if (ss !== settleSig) {
+          settleSig = ss;
+          settleBox.replaceChildren(...canSettle.map((v) => {
+            if (s.settlements.includes(v.id)) return el('div', {}, el('span', {}, v.settle!.name), el('span.muted', {}, 'sends home ' + Object.entries(v.settle!.yields).map(([r, n]) => `${n}/s ${r}`).join(', ')));
+            const b = el('button.action', { type: 'button' }, `Found the ${v.settle!.name.toLowerCase()} (${fmtCosts(WATERS.settle.cost, ctx.res)}, ${WATERS.settle.workers} workers)`) as HTMLButtonElement;
+            b.addEventListener('click', () => {
+              if (idle(ctx) < WATERS.settle.workers || !ctx.res.spend(WATERS.settle.cost)) return;
+              ctx.res.add('ant', -WATERS.settle.workers);
+              s.settlements.push(v.id); s.founded++;
+              ctx.log(`${WATERS.settle.workers} workers sail for ${v.name.toLowerCase()} and dig in. The ${v.settle!.name.toLowerCase()} is founded.`, 'story');
+              settleSig = '';
+            });
+            return el('div', {}, el('span', {}, v.name), b);
+          }));
         }
         destSel.value = s.dest;
         const d = destOf(s.dest);
@@ -171,7 +218,7 @@ export const waters: GameSystem = {
           const fill = card.querySelector<HTMLElement>('.fill');
           if (b?.voyage && fill) fill.style.width = `${Math.min(100, (b.voyage.elapsed / b.voyage.time) * 100)}%`;
           const go = card.querySelector<HTMLButtonElement>('button.launch');
-          if (go && b) go.disabled = idle(ctx) < BOATS[b.type].crew || (!!d.boat && b.type !== d.boat);
+          if (go && b) go.disabled = idle(ctx) < BOATS[b.type].crew || !fits(b.type, d);
         });
       },
     };

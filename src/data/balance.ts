@@ -64,6 +64,8 @@ export const NEST = {
     husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 },          desc: 'Raider shells shore up the walls: +6 living space, +2 defence', antCap: 6, defence: 2, needs: 'tech:husks' },
     library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 },           desc: '+40 knowledge storage, elders +5% each', knowCap: 40, elder: 0.05, needs: 'tech:elders' },
     fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 },           desc: 'One fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
+    harbour:  { name: 'Harbour',         base: { soil: 80, twig: 20, resin: 6 },  desc: 'A sheltered landing: +1 boat at a time (max 3)', boats: 1, max: 3, needs: 'tech:rafts' },
+    waxworks: { name: 'Wax store',       base: { soil: 40, wax: 5 },             desc: '+40 wax storage',                         waxCap: 40, needs: 'tech:husbandry' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 },           desc: 'Waste heap. Upkeep −2% each (max 15)',    upkeep: 0.02, max: 15, needs: 'tech:sanitation' },
   },
 };
@@ -193,9 +195,16 @@ export const RESEARCH = {
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 240, seed: 5 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
     castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 360, fungus: 30 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 420, leaf: 20, twig: 8 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
-    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 450, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Wedding Mound for its first flight.' },
+    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 450, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Swarm Spire for its first flight.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 60, food: 40 },          needs: ['scouting'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
+    galleons:   { name: 'Wax hulls',         age: 'forage', cost: { knowledge: 500, wax: 20 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
     husbandry:  { name: 'Herding',           age: 'forage', cost: { knowledge: 200, food: 60 },         needs: ['seeds'], flag: 'legacy:flown', desc: 'Keep herds of aphids and other small insects. Opens the Herds tab and the Herder job.' },
+    townlore:   { name: 'Town ways',         age: 'settlement', cost: { knowledge: 120, food: 60 },    needs: ['surface'], flag: 'legacy:migrated', desc: 'Learn the town: kitchens, walls, drains. Opens the Town tab and the Town forager job.' },
+    tasting:    { name: 'Tasting',           age: 'settlement', cost: { knowledge: 180, crumbs: 20 },  needs: ['townlore'],            desc: 'Some food is poisoned. Tasters find it. Unlocks the Taster job.' },
+    nightwork:  { name: 'Night work',        age: 'settlement', cost: { knowledge: 200, sugar: 10 },   needs: ['townlore'],            desc: 'Forage in the dark while the humans sleep. Choose working hours in the Town tab.' },
+    pavement:   { name: 'Street fighting',   age: 'settlement', cost: { knowledge: 220, crumbs: 30 },  needs: ['townlore', 'martial'], desc: 'Soldiers can clear pavement ants from town sites.' },
+    papercraft: { name: 'Paper nests',       age: 'settlement', cost: { knowledge: 260, paper: 20 },   needs: ['townlore'],            desc: 'Chewed paper makes walls. Opens the study and satellite nests.' },
+    metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 400, grease: 20 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
     campaigns:  { name: 'Campaigning',       age: 'forage', cost: { knowledge: 400, chitin: 12 },       needs: ['martial', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, { name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; desc: string }>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
@@ -248,7 +257,7 @@ export const CASTES = {
 /** The nuptial flight: the first prestige. */
 export const LINEAGE = {
   /**
-   * The Wedding Mound: a wonder the colony builds before its flight (Civ style).
+   * The Swarm Spire: a wonder the colony builds before its flight (Civ style).
    * Each stage takes resources, carried in by hand or by Builders, then may need time to settle.
    * Sized for a colony of about 100-150 workers; the aim is a first flight at 6-8 hours.
    */
@@ -262,7 +271,7 @@ export const LINEAGE = {
       { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 50, resin: 15 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
       { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch spire',      cost: { twig: 60, resin: 15, silk: 15 },    time: 0,    desc: 'A tall spire for the evening of the flight.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 60, resin: 15, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
@@ -282,14 +291,23 @@ export const WATERS = {
   boats: {
     raft:   { name: 'Leaf raft',  cost: { leaf: 20, twig: 6 },              crew: 3, hull: 3, speed: 1 },
     barque: { name: 'Bark boat',  cost: { twig: 25, resin: 8, silk: 10 },   crew: 5, hull: 6, speed: 1.5, needs: 'caste:weaver' },
+    galleon:{ name: 'Wax galleon', cost: { twig: 50, resin: 15, silk: 25, wax: 30 }, crew: 8, hull: 10, speed: 2, needs: 'tech:galleons' },
   } as Record<string, { name: string; cost: Record<string, number>; crew: number; hull: number; speed: number; needs?: string }>,
   /** tile: where the voyage reveals the map, as an offset from the nest. */
   voyages: [
     { id: 'puddle', name: 'The puddle',      time: 90,  loot: { food: [10, 25], leaf: [5, 15] },               tile: [-3, 4] },
     { id: 'gutter', name: 'The gutter',      time: 240, loot: { twig: [3, 8], resin: [1, 3], food: [15, 30] }, tile: [-5, 7] },
     { id: 'stream', name: 'The stream',      time: 480, loot: { food: [30, 60], seed: [2, 5], amber: [0, 2] }, tile: [-6, 10], boat: 'barque' },
-    { id: 'island', name: 'The pond island', time: 900, loot: { amber: [2, 5], resin: [4, 8], seed: [4, 8] },  tile: [10, 9], boat: 'barque' },
-  ] as { id: string; name: string; time: number; loot: Record<string, [number, number]>; tile: [number, number]; boat?: string }[],
+    { id: 'island', name: 'The pond island', time: 900, loot: { amber: [2, 5], resin: [4, 8], seed: [4, 8] },  tile: [10, 9], boat: 'barque',
+      settle: { name: 'Island colony', yields: { resin: 0.01, seed: 0.01 } } },
+    { id: 'reeds',  name: 'The far reeds',   time: 1200, loot: { leaf: [20, 40], twig: [6, 12] },             tile: [-6, 9], boat: 'barque',
+      settle: { name: 'Reed colony', yields: { leaf: 0.06, twig: 0.01 } } },
+    { id: 'lily',   name: 'The lily raft',   time: 1500, loot: { food: [40, 80], honeydew: [10, 20] },        tile: [16, 10], boat: 'galleon',
+      settle: { name: 'Lily colony', yields: { food: 0.1, honeydew: 0.02 } } },
+    { id: 'farshore', name: 'The far shore', time: 2400, loot: { food: [60, 120], amber: [4, 8] },          tile: [30, 4], boat: 'galleon', farshore: true },
+  ] as { id: string; name: string; time: number; loot: Record<string, [number, number]>; tile: [number, number]; boat?: string; settle?: { name: string; yields: Record<string, number> }; farshore?: boolean }[],
+  /** Founding a settlement across the water: the workers stay there for good. */
+  settle: { cost: { food: 120, wax: 10 }, workers: 8 },
   eventChance: 0.7,          // chance a voyage meets one event on the way
 };
 
@@ -318,10 +336,10 @@ export const ARCHIVE = {
     { id: 'alarm',   at: 10, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
     { id: 'relaunch',at: 14, name: 'Boats know the way',  desc: 'Boats set out again on their own when they come home.' },
     { id: 'elders',  at: 18, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
-    { id: 'plans',   at: 24, name: 'Mound plans',         desc: 'The Wedding Mound\'s foundation is laid before you start.' },
+    { id: 'plans',   at: 24, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },
     { id: 'call',    at: 30, name: 'The champion\'s call', desc: 'Your champion challenges a boss by itself once it reaches it.' },
     { id: 'surface', at: 38, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
-    { id: 'haul',    at: 46, name: 'Many hands',          desc: 'Builders carry twice as much to the Wedding Mound.' },
+    { id: 'haul',    at: 46, name: 'Many hands',          desc: 'Builders carry twice as much to the Swarm Spire.' },
     { id: 'founders',at: 56, name: 'Seasoned founders',   desc: 'New colonies start with full food stores and three tunnels\' worth of soil.' },
   ],
 };

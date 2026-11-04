@@ -10,7 +10,7 @@ type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
   name: string; base: Costs; desc: string; needs?: string; max?: number;
   antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
-  foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number;
+  foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 const IDS = Object.keys(DEFS) as ChamberId[];
@@ -47,6 +47,8 @@ function applyEffects(ctx: Context) {
   ctx.mods.set('job:elder', 'nest', sum('elder'));
   if (ctx.res.has('knowledge')) ctx.res.setCapBonus('knowledge', 'nest', sum('knowCap'));
   if (ctx.res.has('fungus')) ctx.res.setCapBonus('fungus', 'nest', sum('fungusCap'));
+  if (ctx.res.has('wax')) ctx.res.setCapBonus('wax', 'nest', sum('waxCap'));
+  ctx.mods.set('boatSlots', 'nest', sum('boats'));
 }
 
 export const nest: GameSystem = {

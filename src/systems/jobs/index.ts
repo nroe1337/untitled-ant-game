@@ -30,7 +30,9 @@ const JOB_DEFS: JobDef[] = [
   { id: 'replete', name: 'Replete', desc: 'A living food jar. Each holds +12 food.', produces: {}, requires: 'caste:replete' },
   { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate.', produces: {}, requires: 'caste:major' },
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
-  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Wedding Mound.', produces: {}, requires: 'tech:flight' },
+  { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
+  { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
+  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire.', produces: {}, requires: 'tech:flight' },
   { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 
