@@ -45,7 +45,7 @@ const waveComp = (w: number) => ({
   raiders: Math.min(WAR.maxRaiders, Math.round(B.wave.base + w * B.wave.perWave)),
   brutes: Math.floor(w / B.wave.bruteEvery),
 });
-const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : ''); };
+const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round(B.wave.toughness * (w - 1) * 100)}% tougher` : ''); };
 
 function freeWorkers(ctx: Context) {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
@@ -59,8 +59,9 @@ function startBattle(ctx: Context) {
   const comp = waveComp(waveOf(ctx));
   const n = comp.raiders + comp.brutes;
   const units: Unit[] = [];
-  for (let i = 0; i < comp.raiders; i++) units.push({ kind: 'raider', x: B.laneLength + i * 9, hp: B.raider.hp, max: B.raider.hp, atk: B.raider.atk, speed: B.raider.speed });
-  for (let i = 0; i < comp.brutes; i++) units.push({ kind: 'raider', big: true, x: B.laneLength + comp.raiders * 9 + 20 + i * 14, hp: B.brute.hp, max: B.brute.hp, atk: B.brute.atk, speed: B.brute.speed });
+  const tough = 1 + B.wave.toughness * (waveOf(ctx) - 1);
+  for (let i = 0; i < comp.raiders; i++) units.push({ kind: 'raider', x: B.laneLength + i * 2.5, hp: B.raider.hp * tough, max: B.raider.hp * tough, atk: B.raider.atk * tough, speed: B.raider.speed });
+  for (let i = 0; i < comp.brutes; i++) units.push({ kind: 'raider', big: true, x: B.laneLength + comp.raiders * 2.5 + 6 + i * 4, hp: B.brute.hp * tough, max: B.brute.hp * tough, atk: B.brute.atk * tough, speed: B.brute.speed });
   const hp = B.soldier.hp * (1 + F.carapace.per * fl(ctx, 'carapace'));
   for (let i = 0; i < Math.min(40, soldiers(ctx)); i++) units.push({ kind: 'soldier', x: 40 + (i % 8) * 4, hp, max: hp });
   s.battle = { units, kills: 0, breaches: 0, soldiersLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: soldiers(ctx) };

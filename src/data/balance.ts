@@ -132,7 +132,7 @@ export const WAR = {
     raider:   { hp: 3, atk: 0.8, speed: 10, chitin: 1 },
     brute:    { hp: 12, atk: 2, speed: 6, chitin: 4 },  // a big rival soldier, from wave 3
     // wave n brings raiders = base + n * perWave, and one brute every bruteEvery waves
-    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 2 }, // clearBonus: chitin per wave number on a clean win
+    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 2, toughness: 0.1 }, // toughness: raider hp and bite +10% per wave past the first, so waves keep getting harder after the raider cap // clearBonus: chitin per wave number on a clean win
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
