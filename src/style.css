@@ -135,3 +135,5 @@ input[type=checkbox] { accent-color: var(--accent); }
 .hunt .bar { flex: 1; min-width: 100px; }
 .hunt .bar.foe .fill { background: var(--accent); }
 .abilities .action { min-width: 130px; flex: 1; }
+.track { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.track .bar { margin-top: 4px; }

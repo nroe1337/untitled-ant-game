@@ -71,7 +71,7 @@ function startBattle(ctx: Context) {
   for (let i = 0; i < Math.min(20, majors(ctx)); i++) units.push({ kind: 'soldier', big: true, x: 44 + (i % 6) * 5, hp: hp * CASTES.major.hp, max: hp * CASTES.major.hp, atk: B.soldier.atk * CASTES.major.atk });
   s.battle = { units, kills: 0, breaches: 0, soldiersLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: soldiers(ctx) };
   ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${n} of them pour toward the entrance.`, 'warn');
-  if (fl(ctx, 'alarm')) rally(ctx);
+  if (fl(ctx, 'alarm') || ctx.flags.has('accord:alarm')) rally(ctx);
 }
 
 function rally(ctx: Context) {

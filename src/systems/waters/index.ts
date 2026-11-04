@@ -50,7 +50,7 @@ const EVENTS: { text: string; choices: { label: string; act: (ctx: Context, b: B
 function launch(ctx: Context, b: Boat) {
   const s = S(ctx);
   const d = destOf(s.dest);
-  const time = d.time / BOATS[b.type].speed;
+  const time = d.time / BOATS[b.type].speed / (1 + ctx.mods.get('voyageSpeed'));
   b.voyage = { dest: d.id, elapsed: 0, time, eventAt: Math.random() < WATERS.eventChance ? rand(0.25, 0.75) * time : Infinity, event: null, met: false, bonus: {}, lostCrew: 0 };
   ctx.log(`The ${b.name} pushes off toward ${d.name.toLowerCase()}.`);
 }
@@ -94,7 +94,12 @@ export const waters: GameSystem = {
       if (v.event !== null) continue; // waiting for your choice: nothing happens meanwhile
       v.elapsed += dt;
       if (!v.met && v.elapsed >= v.eventAt) { v.met = true; v.event = Math.floor(Math.random() * EVENTS.length); ctx.log(`The ${b.name} needs orders. (Waters tab)`, 'warn'); continue; }
-      if (v.elapsed >= v.time) arrive(ctx, b);
+      if (v.elapsed >= v.time) {
+        arrive(ctx, b);
+        // the archive's accord: boats set out again by themselves
+        const d = destOf(s.dest);
+        if (ctx.flags.has('accord:relaunch') && s.boats.includes(b) && idle(ctx) >= BOATS[b.type].crew && (!d.boat || b.type === d.boat)) launch(ctx, b);
+      }
     }
     ctx.busy.waters = crewAway(ctx);
     const waiting = s.boats.filter((b) => b.voyage?.event != null).length;

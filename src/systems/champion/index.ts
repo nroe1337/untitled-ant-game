@@ -80,7 +80,7 @@ function stats(ctx: Context) {
   }
   const grow = Math.pow(1 + C.perLevel, s.level - 1);
   return {
-    atk: (C.base.atk + flat.atk) * grow * (1 + pct.atk + C.training.grip.per * tl(ctx, 'grip')),
+    atk: (C.base.atk + flat.atk) * grow * (1 + pct.atk + C.training.grip.per * tl(ctx, 'grip') + ctx.mods.get('champAtk')),
     maxHp: (C.base.hp + flat.hp) * grow * (1 + pct.hp + C.training.shell.per * tl(ctx, 'shell')),
     def: flat.def * grow * (1 + pct.def),
     swing: C.base.swing / (1 + Math.min(1, flat.speed + (traits.has('swift') ? 0.1 : 0))),
@@ -271,7 +271,11 @@ export const champion: GameSystem = {
     }
     const e = dt * speedMult(ctx);
     s.hp = Math.min(st.maxHp, s.hp + st.maxHp * st.regen * e);
-    if (!s.foe) { s.gap -= e; if (s.gap <= 0) spawn(ctx); return; }
+    if (!s.foe) {
+      const g = groundOf(s.ground);
+      if (ctx.flags.has('accord:call') && !s.beaten.includes(g.boss.id) && (s.depth[g.id] ?? 0) >= g.bossAt) s.challenge = true;
+      s.gap -= e; if (s.gap <= 0) spawn(ctx); return;
+    }
     const f = s.foe;
     if (tl(ctx, 'instinct') && (s.cds.bite ?? 0) <= 0) useAbility(ctx, 'bite', false);
     s.swingT += e;

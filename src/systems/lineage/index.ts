@@ -20,7 +20,7 @@ function score(ctx: Context) {
   const chambers = ctx.state.nest?.order?.length ?? 0;
   const waves = ctx.state.war?.won ?? 0;
   const parts = { born: Math.floor(Math.sqrt(born)), techs, chambers: Math.floor(chambers / 10), waves: Math.floor(waves / 2) };
-  return { parts, total: parts.born + parts.techs + parts.chambers + parts.waves };
+  return { parts, total: Math.floor((parts.born + parts.techs + parts.chambers + parts.waves) * (1 + ctx.mods.get('lineageGain'))) };
 }
 const W = LINEAGE.wonder;
 const wonder = (ctx: Context) => (S(ctx).wonder ??= { stage: 0, paid: {}, settle: 0 });
@@ -88,7 +88,8 @@ export const lineage: GameSystem = {
     if (ctx.flags.has('tech:flight') && !moundDone(ctx)) {
       const w = wonder(ctx);
       const builders = ctx.state.jobs?.assigned?.builder ?? 0;
-      if (builders) carry(ctx, builders * W.builderRate * dt);
+      if (builders) carry(ctx, builders * W.builderRate * (ctx.flags.has('accord:haul') ? 2 : 1) * dt);
+      if (ctx.flags.has('accord:plans') && w.stage === 0) { w.stage = 1; w.paid = {}; }
       if (stagePaid(ctx)) w.settle += dt;
       advance(ctx);
     }

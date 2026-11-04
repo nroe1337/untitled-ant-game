@@ -29,7 +29,7 @@ const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.jelly.per * R(c
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseEggsPerSecond * (1 + RB.devotion.per * R(ctx, 'devotion'));
-const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity');
+const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
 
 const ROYAL = fromBalance(RB, (ctx, needs) => ctx.flags.has('tech:royal') && (!needs || ctx.flags.has(needs)));
 

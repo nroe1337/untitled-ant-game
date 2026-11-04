@@ -13,6 +13,9 @@ import { castes } from './castes';
 import { waters } from './waters';
 import { lineage } from './lineage';
 import { champion } from './champion';
+import { archive } from './archive';
+import { genome } from './genome';
+import { husbandry } from './husbandry';
 
 export const SYSTEMS: GameSystem[] = [
   brood,
@@ -26,5 +29,8 @@ export const SYSTEMS: GameSystem[] = [
   castes,
   waters,
   lineage,
+  husbandry,
   champion,
+  archive,
+  genome,
 ];

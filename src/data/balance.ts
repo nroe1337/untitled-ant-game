@@ -186,15 +186,16 @@ export const RESEARCH = {
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 110, seed: 3 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
     resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 150, resin: 2 },          needs: ['seeds'],               desc: 'Unlocks the Resin gallery.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 120, soil: 60 },          needs: ['elders', 'surface'],   desc: 'Unlocks the Midden.' },
-    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 180, pheromone: 10 },    needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
-    martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 220, food: 80 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
+    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 150, pheromone: 10 },    needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
+    martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 180, food: 80 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
     fortify:    { name: 'Fortification',     age: 'forage', cost: { knowledge: 260, twig: 15 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      age: 'forage', cost: { knowledge: 280, chitin: 8 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
-    fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 320, seed: 6 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
-    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 480, fungus: 30 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
+    fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 240, seed: 5 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
+    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 360, fungus: 30 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 420, leaf: 20, twig: 8 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
-    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 600, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Wedding Mound for its first flight.' },
+    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 450, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Wedding Mound for its first flight.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 60, food: 40 },          needs: ['scouting'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
+    husbandry:  { name: 'Herding',           age: 'forage', cost: { knowledge: 200, food: 60 },         needs: ['seeds'], flag: 'legacy:flown', desc: 'Keep herds of aphids and other small insects. Opens the Herds tab and the Herder job.' },
     campaigns:  { name: 'Campaigning',       age: 'forage', cost: { knowledge: 400, chitin: 12 },       needs: ['martial', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, { name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; desc: string }>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
@@ -258,10 +259,10 @@ export const LINEAGE = {
     foodFloor: 0.4,          // builders never take food below this share of storage
     stages: [
       { id: 'footing',    name: 'Foundation',        cost: { soil: 500 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
-      { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 100, resin: 30 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 50, resin: 15 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
       { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch spire',      cost: { twig: 150, resin: 40, silk: 20 },    time: 0,    desc: 'A tall spire for the evening of the flight.' },
+      { id: 'spire',      name: 'Launch spire',      cost: { twig: 60, resin: 15, silk: 15 },    time: 0,    desc: 'A tall spire for the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
@@ -290,4 +291,102 @@ export const WATERS = {
     { id: 'island', name: 'The pond island', time: 900, loot: { amber: [2, 5], resin: [4, 8], seed: [4, 8] },  tile: [10, 9], boat: 'barque' },
   ] as { id: string; name: string; time: number; loot: Record<string, [number, number]>; tile: [number, number]; boat?: string }[],
   eventChance: 0.7,          // chance a voyage meets one event on the way
+};
+
+/**
+ * Scent archive: lifetime records across every colony. Each track earns tiers on its own as its
+ * counter grows (thresholds double), and each tier is a small permanent bonus. No choices.
+ * Accords open in a fixed order as total tiers grow; each automates something you did by hand.
+ */
+export const ARCHIVE = {
+  tracks: {
+    brood:  { name: 'Brood',  what: 'workers born',          first: 50,  mod: 'brood',        per: 0.02,  bonus: 'eggs and larvae {p} faster' },
+    earth:  { name: 'Earth',  what: 'chambers dug',          first: 20,  mod: 'chamberCost',  per: -0.01, bonus: 'chambers {p} cheaper' },
+    lore:   { name: 'Lore',   what: 'techs learned',         first: 10,  mod: 'job:elder',    per: 0.02,  bonus: 'elders {p} better' },
+    trails: { name: 'Trails', what: 'expeditions home',      first: 10,  mod: 'expLoot',      per: 0.02,  bonus: 'expedition loot {p}' },
+    iron:   { name: 'Iron',   what: 'raid waves won',        first: 5,   mod: 'soldierPower', per: 0.02,  bonus: 'soldiers {p} harder' },
+    tide:   { name: 'Tide',   what: 'voyages made',          first: 5,   mod: 'voyageSpeed',  per: 0.02,  bonus: 'voyages {p} faster' },
+    hunt:   { name: 'Hunt',   what: 'champion kills',        first: 50,  mod: 'champAtk',     per: 0.02,  bonus: 'champion attack {p}' },
+    wings:  { name: 'Wings',  what: 'nuptial flights',       first: 1,   mod: 'lineageGain',  per: 0.05,  bonus: 'lineage from flights {p}' },
+    herd:   { name: 'Herd',   what: 'honeydew milked',       first: 100, mod: 'herdYield',    per: 0.02,  bonus: 'herds yield {p} more' },
+  } as Record<string, { name: string; what: string; first: number; mod: string; per: number; bonus: string }>,
+  growth: 2,       // each tier needs this many times the last
+  maxTier: 20,
+  accords: [
+    { id: 'habit',   at: 3,  name: 'The queen\'s habit',  desc: 'The queen lays an egg on her own every 20 seconds.' },
+    { id: 'basics',  at: 6,  name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Food caching and Brood care.' },
+    { id: 'alarm',   at: 10, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
+    { id: 'relaunch',at: 14, name: 'Boats know the way',  desc: 'Boats set out again on their own when they come home.' },
+    { id: 'elders',  at: 18, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
+    { id: 'plans',   at: 24, name: 'Mound plans',         desc: 'The Wedding Mound\'s foundation is laid before you start.' },
+    { id: 'call',    at: 30, name: 'The champion\'s call', desc: 'Your champion challenges a boss by itself once it reaches it.' },
+    { id: 'surface', at: 38, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
+    { id: 'haul',    at: 46, name: 'Many hands',          desc: 'Builders carry twice as much to the Wedding Mound.' },
+    { id: 'founders',at: 56, name: 'Seasoned founders',   desc: 'New colonies start with full food stores and three tunnels\' worth of soil.' },
+  ],
+};
+
+/**
+ * Genome: before each colony's queen settles, choose which genes she carries (one slot at first,
+ * more as flights add up). A gene carried through a flight gains expression; at full expression it
+ * becomes fixed in your line: always on, and its slot is free again. Every expression level also
+ * gives a tenth of the gene's effect forever, so nothing carried is wasted.
+ */
+export const GENOME = {
+  slotsAt: [0, 3, 6, 10],   // flights needed for slot 1, 2, 3, 4
+  fixAt: 4,                 // expression needed to fix a gene
+  partial: 0.1,             // share of the effect each expression level gives forever
+  genes: {
+    twins:   { name: 'Twin queens',    mod: 'brood',          value: 0.2,   desc: 'eggs and larvae +20%' },
+    legs:    { name: 'Long legs',      mod: 'expLoot',        value: 0.15,  desc: 'expedition loot +15%' },
+    acid:    { name: 'Formic acid',    mod: 'soldierPower',   value: 0.2,   desc: 'soldiers +20%' },
+    eyes:    { name: 'Night eyes',     mod: 'job:forager',    value: 0.15,  desc: 'foragers +15%' },
+    lean:    { name: 'Lean bodies',    mod: 'upkeep',         value: -0.08, desc: 'upkeep −8%' },
+    heads:   { name: 'Broad heads',    mod: 'job:digger',     value: 0.15,  desc: 'diggers +15%' },
+    memory:  { name: 'Old memory',     mod: 'job:elder',      value: 0.15,  desc: 'elders +15%' },
+    fungal:  { name: 'Fungus-born',    mod: 'job:leafcutter', value: 0.2,   desc: 'leafcutters +20%' },
+    sea:     { name: 'Sea legs',       mod: 'voyageSpeed',    value: 0.2,   desc: 'voyages +20% faster' },
+    hunter:  { name: 'Hunter\'s blood', mod: 'champAtk',      value: 0.15,  desc: 'champion attack +15%' },
+    shepherd:{ name: 'Shepherd\'s scent', mod: 'herdYield',   value: 0.15,  desc: 'herds yield +15%' },
+    builder: { name: 'Mound-builders', mod: 'chamberCost',    value: -0.08, desc: 'chambers −8% cost' },
+  } as Record<string, { name: string; mod: string; value: number; desc: string }>,
+};
+
+/** Husbandry: herds of small insects, kept for honeydew and wax. */
+export const HUSBANDRY = {
+  pastureBase: 8,           // room for pasture herds before you own grass tiles
+  pasturePerTile: 4,        // each grass tile you own adds this much pasture
+  cellarBase: 4,            // room for underground herds
+  cellarPerChambers: 3,     // +1 cellar room per this many chambers
+  honeydewCap: 80, waxCap: 40,
+  herderTends: 6,           // animals each herder looks after
+  untended: 0.3,            // untended animals give this share
+  breed: 0.004,             // growth per animal per second when there's room
+  drinkBelow: 0.3,          // workers drink honeydew when food falls below this share of storage
+  drinkRate: 0.5,           // honeydew per second they drink at most
+  drinkValue: 1.5,          // food per honeydew
+  milk: { cooldown: 5, seconds: 20 },  // a manual milking collects this many seconds of yield
+  predatorEvery: 1200,      // a predator finds the pasture about once per this many seconds
+  predatorBite: 25,         // seconds between animals eaten
+  predatorMax: 0.15,        // a predator leaves after eating this share of the pasture
+  driveCooldown: 8, driveChance: 0.4, herderDrive: 0.004,
+  predators: [
+    { name: 'A ladybird', note: 'It works down the line of aphids, one after another.' },
+    { name: 'A lacewing larva', note: 'It wears the empty skins of the aphids it has drained.' },
+    { name: 'A wasp', note: 'It hovers, drops, and lifts away with something every time.' },
+  ],
+  species: {
+    aphid:  { name: 'Green aphids',      room: 'pasture', capture: { food: 20 },                yields: { honeydew: 0.02 },                 unlock: 0,    desc: 'The first herd. Soft, slow, sweet.' },
+    root:   { name: 'Root aphids',       room: 'cellar',  capture: { food: 30, soil: 20 },      yields: { honeydew: 0.012 },                unlock: 100,  desc: 'Kept underground on the roots. Predators never reach them.' },
+    scale:  { name: 'Scale insects',     room: 'pasture', capture: { honeydew: 30 },            yields: { wax: 0.004 },                     unlock: 400,  desc: 'They barely move. They grow wax.' },
+    mealy:  { name: 'Mealybugs',         room: 'pasture', capture: { honeydew: 60 },            yields: { honeydew: 0.01, wax: 0.003 },     unlock: 1000, desc: 'Fluffy with wax, and sweet as well.' },
+    hopper: { name: 'Treehoppers',       room: 'pasture', capture: { honeydew: 80, fungus: 30 }, yields: { honeydew: 0.05 },                unlock: 2500, desc: 'Rich, but flighty: untended treehoppers give nothing and slowly wander off.' },
+    blue:   { name: 'Blue caterpillars', room: 'cellar',  capture: { honeydew: 150, jelly: 10 }, yields: { jelly: 0.002 },                  unlock: 5000, desc: 'A butterfly caterpillar that sings like a queen. It makes a kind of royal jelly. At most 6.', max: 6 },
+  } as Record<string, { name: string; room: 'pasture' | 'cellar'; capture: Record<string, number>; yields: Record<string, number>; unlock: number; desc: string; max?: number }>,
+  upgrades: {
+    sweet:  { name: 'Sweeter lines',  desc: 'Herds yield {p} more per level',           per: 0.03,  base: { honeydew: 20, food: 20 },  growth: 1.2,  max: 30 },
+    docile: { name: 'Docile lines',   desc: 'Each herder tends {p} more animals per level', per: 1, base: { honeydew: 30, knowledge: 30 }, growth: 1.3, max: 10, unit: 'flat' as const },
+    fences: { name: 'Thorn fences',   desc: 'Predators come {p} less often per level',   per: 0.04,  base: { twig: 10, honeydew: 15 }, growth: 1.25, max: 15 },
+    litters:{ name: 'Big litters',    desc: 'Herds breed {p} faster per level',          per: 0.05,  base: { honeydew: 25 },           growth: 1.2,  max: 20 },
+  },
 };
