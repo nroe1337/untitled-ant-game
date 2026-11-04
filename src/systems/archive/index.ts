@@ -73,8 +73,10 @@ export const archive: GameSystem = {
         if (ctx.flags.has('legacy:flown')) ctx.log(`The archive remembers: ${A.tracks[id].name} reaches tier ${t}.`, 'info');
       }
       s.tiers[id] = t;
-      ctx.mods.set(A.tracks[id].mod, 'archive', A.tracks[id].per * t);
+      // the first colony is counted, but nothing pays out until the line has flown once
+      ctx.mods.set(A.tracks[id].mod, 'archive', ctx.flags.has('legacy:flown') ? A.tracks[id].per * t : 0);
     }
+    if (!ctx.flags.has('legacy:flown')) return;
     const tiers = totalTiers(ctx);
     for (const a of A.accords) {
       if (tiers < a.at || ctx.flags.has('accord:' + a.id)) continue;
