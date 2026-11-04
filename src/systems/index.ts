@@ -12,6 +12,7 @@ import { garden } from './garden';
 import { castes } from './castes';
 import { waters } from './waters';
 import { lineage } from './lineage';
+import { champion } from './champion';
 
 export const SYSTEMS: GameSystem[] = [
   brood,
@@ -25,4 +26,5 @@ export const SYSTEMS: GameSystem[] = [
   castes,
   waters,
   lineage,
+  champion,
 ];

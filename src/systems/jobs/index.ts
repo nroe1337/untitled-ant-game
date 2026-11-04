@@ -29,6 +29,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'gardener', name: 'Gardener', desc: 'A minim. Keeps fungus beds free of mould (2 beds each).', produces: {}, requires: 'caste:minim' },
   { id: 'replete', name: 'Replete', desc: 'A living food jar. Each holds +12 food.', produces: {}, requires: 'caste:replete' },
   { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate.', produces: {}, requires: 'caste:major' },
+  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Wedding Mound.', produces: {}, requires: 'tech:flight' },
   { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 

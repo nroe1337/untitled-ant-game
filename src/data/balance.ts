@@ -62,7 +62,7 @@ export const NEST = {
     gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 },       desc: 'Scouts +5% each, +15 pheromone storage',  pheroCap: 15, scout: 0.05, needs: 'tech:scouting' },
     barracks: { name: 'Guard post',      base: { soil: 60, twig: 10 },           desc: '+2 nest defence, +3 living space',        defence: 2, antCap: 3, needs: 'tech:martial' },
     husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 },          desc: 'Raider shells shore up the walls: +6 living space, +2 defence', antCap: 6, defence: 2, needs: 'tech:husks' },
-    library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 },           desc: '+25 knowledge storage, elders +5% each', knowCap: 25, elder: 0.05, needs: 'tech:elders' },
+    library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 },           desc: '+40 knowledge storage, elders +5% each', knowCap: 40, elder: 0.05, needs: 'tech:elders' },
     fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 },           desc: 'One fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 },           desc: 'Waste heap. Upkeep −2% each (max 15)',    upkeep: 0.02, max: 15, needs: 'tech:sanitation' },
   },
@@ -182,19 +182,20 @@ export const RESEARCH = {
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 20 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores and speeds up knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 40, soil: 30 },          needs: ['storage', 'brood'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'],              desc: 'Unlocks Colony techniques.' },
-    scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 60, food: 40 },          needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
-    seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 70, seed: 3 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
-    resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 90, resin: 2 },          needs: ['seeds'],               desc: 'Unlocks the Resin gallery.' },
-    sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 80, soil: 60 },          needs: ['elders', 'surface'],   desc: 'Unlocks the Midden.' },
-    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 100, pheromone: 10 },    needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
-    martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 100, food: 60 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
-    fortify:    { name: 'Fortification',     age: 'forage', cost: { knowledge: 140, twig: 10 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
-    husks:      { name: 'Husk masonry',      age: 'forage', cost: { knowledge: 160, chitin: 5 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
-    fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 80, seed: 4 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
-    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 150, fungus: 20 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
-    rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 120, leaf: 20, twig: 8 }, needs: ['fungus', 'surface'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
-    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 250, jelly: 5 },         needs: ['castes'],              desc: 'Young queens grow wings. Opens the Lineage tab and the nuptial flight.' },
-    campaigns:  { name: 'Campaigning',       age: 'forage', cost: { knowledge: 220, chitin: 10 },       needs: ['martial', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
+    scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 70, food: 40 },          needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
+    seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 110, seed: 3 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
+    resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 150, resin: 2 },          needs: ['seeds'],               desc: 'Unlocks the Resin gallery.' },
+    sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 120, soil: 60 },          needs: ['elders', 'surface'],   desc: 'Unlocks the Midden.' },
+    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 180, pheromone: 10 },    needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
+    martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 220, food: 80 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
+    fortify:    { name: 'Fortification',     age: 'forage', cost: { knowledge: 260, twig: 15 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
+    husks:      { name: 'Husk masonry',      age: 'forage', cost: { knowledge: 280, chitin: 8 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
+    fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 320, seed: 6 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
+    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 480, fungus: 30 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
+    rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 420, leaf: 20, twig: 8 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
+    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 600, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Wedding Mound for its first flight.' },
+    hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 60, food: 40 },          needs: ['scouting'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
+    campaigns:  { name: 'Campaigning',       age: 'forage', cost: { knowledge: 400, chitin: 12 },       needs: ['martial', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, { name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; desc: string }>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
@@ -245,7 +246,24 @@ export const CASTES = {
 
 /** The nuptial flight: the first prestige. */
 export const LINEAGE = {
-  minWorkers: 50,            // workers needed before a flight can leave
+  /**
+   * The Wedding Mound: a wonder the colony builds before its flight (Civ style).
+   * Each stage takes resources, carried in by hand or by Builders, then may need time to settle.
+   * Sized for a colony of about 100-150 workers; the aim is a first flight at 6-8 hours.
+   */
+  wonder: {
+    haul: 10,                // units carried per manual haul
+    haulCooldown: 3,
+    builderRate: 0.08,       // units each builder carries per second
+    foodFloor: 0.4,          // builders never take food below this share of storage
+    stages: [
+      { id: 'footing',    name: 'Foundation',        cost: { soil: 500 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 100, resin: 30 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
+      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
+      { id: 'spire',      name: 'Launch spire',      cost: { twig: 150, resin: 40, silk: 20 },    time: 0,    desc: 'A tall spire for the evening of the flight.' },
+    ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
+  },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
   perks: {
     blood:   { name: 'Royal blood',    desc: 'Eggs hatch and larvae grow {p} faster per level', per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },

@@ -131,3 +131,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .boat p { margin: 0; }
 .boat .bar { flex: 1; min-width: 120px; }
 .age { font-family: var(--display); font-size: 1.15rem; color: var(--warn); margin: 0; }
+.ghost.on { border-color: var(--accent); color: var(--fg); }
+.hunt .bar { flex: 1; min-width: 100px; }
+.hunt .bar.foe .fill { background: var(--accent); }
+.abilities .action { min-width: 130px; flex: 1; }
