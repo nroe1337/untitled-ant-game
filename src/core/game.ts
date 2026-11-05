@@ -22,7 +22,7 @@ interface Tab {
 function unlockKeys(body: HTMLElement) {
   const keys = new Set<string>();
   const shown = (n: Element) => { const h = n.closest('[hidden]'); return !h || h === body; };
-  body.querySelectorAll('.buildrow .label, .job .jname, option[value], [data-unlock]').forEach((n) => {
+  body.querySelectorAll('.tile .label, .job .jname, option[value], [data-unlock]').forEach((n) => {
     if (!shown(n)) return;
     const k = (n as HTMLElement).dataset.unlock ?? (n instanceof HTMLOptionElement ? 'opt:' + n.value : n.textContent ?? '');
     if (k) keys.add(k);

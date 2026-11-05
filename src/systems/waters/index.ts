@@ -3,7 +3,7 @@
 // until you choose what to do. Voyages pay loot and push back the map fog across water.
 // Emits 'expedition:return' with a tile, which the map uses to reveal fog.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
+import { el, progressBar, tileButton } from '../../core/ui';
 import { fmtCosts } from '../../core/resources';
 import { WATERS } from '../../data/balance';
 
@@ -132,7 +132,7 @@ export const waters: GameSystem = {
   panel: (() => {
     let destSel: HTMLSelectElement, fleet: HTMLElement, buildRow: HTMLElement, note: HTMLElement, settleBox: HTMLElement, settleSection: HTMLElement;
     let settleSig = '';
-    const builders: { type: string; btn: ActionButton }[] = [];
+    const builders: { type: string; btn: ReturnType<typeof tileButton> }[] = [];
     let sig = '';
     return {
       title: 'Waters',
@@ -141,12 +141,13 @@ export const waters: GameSystem = {
         const s = S(ctx);
         destSel = el('select', { id: 'voyage-dest' }) as HTMLSelectElement;
         destSel.addEventListener('change', () => { s.dest = destSel.value; sig = ''; });
-        buildRow = el('div.row');
+        buildRow = el('div.tiles');
         for (const type of Object.keys(BOATS)) {
           const def = BOATS[type];
-          const btn = actionButton({
-            ctx, label: `Build a ${def.name.toLowerCase()}`, costs: () => def.cost,
-            desc: `Crew ${def.crew}, hull ${def.hull}, speed x${def.speed}.`,
+          const btn = tileButton({
+            ctx, label: def.name, costs: () => def.cost,
+            effect: () => `Crew ${def.crew}, hull ${def.hull}, speed x${def.speed}. Boats: ${S(ctx).boats.length} of ${maxBoats(ctx)}.`,
+            count: () => S(ctx).boats.filter((b) => b.type === type).length,
             enabled: (c) => S(c).boats.length < maxBoats(c) && (!def.needs || c.flags.has(def.needs)),
             onBuy: (c) => {
               const st = S(c);
