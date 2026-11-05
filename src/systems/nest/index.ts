@@ -149,7 +149,8 @@ export const nest: GameSystem = {
 };
 
 // ---- the cross-section view: flat placeholder art drawn in code ----
-const LANES = [-1, 1, -2, 2];        // left near, right near, left far, right far
+const LANES = [-1, 1, -2, 2, -3, 3];  // three chambers each side, nearest first
+const LANE_X = [0, 36, 86, 134];      // distance from the shaft for lanes 1..3
 /** When each chamber (by build order) first appeared on screen, so new ones can fade in. */
 const bornAt: number[] = [];
 const FADE_MS = 1400;
@@ -211,7 +212,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
     const lane = LANES[i % LANES.length];
     const y = top + 24 + Math.floor(i / LANES.length) * ROW_H + (i % 3);
-    const cx = shaftX + lane * 62 + (lane > 0 ? 6 : -6);
+    const cx = shaftX + Math.sign(lane) * LANE_X[Math.abs(lane)];
     rect(c, Math.min(shaftX, cx), y - 1, Math.abs(cx - shaftX), 3, PAL.hole); // connecting tunnel
     spots.push({ x: cx, y });
 
