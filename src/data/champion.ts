@@ -17,11 +17,16 @@ export const CHAMPION = {
   xpBase: 12, xpGrowth: 1.2, // xp to reach the next level
   regen: 0.01,              // share of max hp regained per second (fight time)
   recoverTime: 60,          // seconds to get back up after a defeat
-  retreatDepth: 3,          // a defeat pushes you back this many foes in the ground
+  retreatDepth: 3,          // (old saves) a defeat pushed you back this many foes
+  /** The fight level: you pick it (or let Auto pick). Each ground spans levelsPerGround levels; every
+   *  bossEvery levels a guardian (halfway) or the ground's boss (at the end) bars the way on. */
+  levelsPerGround: 20, bossEvery: 10,
+  auto: { climbAfter: 3, minHp: 0.5, dropOnLoss: 2, holdAfterLoss: 120 },
   gap: 2,                   // seconds between foes
 
   foe: { hp: 10, atk: 2, scale: 1.09, xp: 4, xpScale: 1.075, swing: 2.4 },
   boss: { hp: 5, atk: 1.6, extraLevels: 3 },
+  guardian: { hp: 3, atk: 1.3, extraLevels: 1 },   // the halfway foe of a ground: an elder of one of its kinds
   foodPerKill: 0.6,         // meat brought home per kill, times (1 + level / 10)
 
   /** Abilities. Cooldowns are in game seconds and tick at the same rate whether you're watching or not. */

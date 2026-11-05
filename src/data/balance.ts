@@ -349,7 +349,7 @@ export const ARCHIVE = {
     { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Colony tab, and new workers take jobs to match it.' },
     { id: 'plans',    track: 'wings',  n: 3,    cost: 4, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },
     { id: 'elders',   track: 'lore',   n: 60,   cost: 5, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
-    { id: 'call',     track: 'hunt',   n: 1500, cost: 5, name: 'The champion\'s call', desc: 'Your champion challenges a boss by itself once it reaches it.' },
+    { id: 'call',     track: 'hunt',   n: 1500, cost: 5, name: 'The champion\'s call', desc: 'Your champion hunts much faster while you are away (+30% idle speed).' },
     { id: 'relaunch', track: 'tide',   n: 10,   cost: 5, name: 'Boats know the way',  desc: 'Boats set out again on their own when they come home.' },
     { id: 'garden',   track: 'wings',  n: 4,    cost: 5,  name: 'Old gardens',         desc: 'New colonies start knowing Leaf culture, with the Garden tab open from the first hour.' },
     { id: 'haul',     track: 'wings',  n: 5,    cost: 6, name: 'Many hands',          desc: 'Builders carry twice as much to the Swarm Spire.' },

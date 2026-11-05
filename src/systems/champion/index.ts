@@ -1,4 +1,6 @@
-// Champion hunts: one named ant fights through hunting grounds, a ladder of foes and a boss each.
+// Champion hunts: one named ant fights at a fight level you choose (or Auto chooses). Each ground spans
+// 20 levels; level 10 of it is guarded by an elder foe, level 20 by the ground's boss, and you can't
+// fight past a guard until it falls. Higher levels: harder foes, more experience, better gear odds.
 // Idle, it fights at a crawl. Use its abilities and it fights at full speed for a while (about 5x).
 // Every foe can drop a piece of its ground's gear set. A duplicate levels up the piece you own,
 // so there is no bag to sort. Rare pieces roll a trait. Wearing 3 or 6 of a set gives a bonus.
@@ -17,7 +19,9 @@ interface ChampState {
   name: string | null;
   level: number; xp: number; hp: number; kills: number; defeats: number;
   ground: string;
-  depth: Record<string, number>;
+  depth: Record<string, number>;     // old saves only
+  /** Fight level now, the highest guard beaten (0 = none), Auto on or off, wins in a row at this level, and the pause after a loss. */
+  lvl?: number; top?: number; auto?: boolean; streak?: number; hold?: number;
   beaten: string[];
   items: Record<string, Owned>;
   worn: (string | null)[];
@@ -94,22 +98,40 @@ function stats(ctx: Context) {
 }
 const xpNeed = (lvl: number) => Math.ceil(C.xpBase * Math.pow(C.xpGrowth, lvl - 1));
 const mitigation = (def: number, atk: number) => Math.min(0.75, def / (def + atk));
-const speedMult = (ctx: Context) => (S(ctx).active > 0 ? 1 : C.idleSpeed + C.training.stamina.per * tl(ctx, 'stamina'));
-const unlockedGrounds = (ctx: Context) => GROUNDS.filter((g, i) => i === 0 || S(ctx).beaten.includes(GROUNDS[i - 1].boss.id));
+const speedMult = (ctx: Context) => (S(ctx).active > 0 ? 1 : C.idleSpeed + C.training.stamina.per * tl(ctx, 'stamina') + (ctx.flags.has('accord:call') ? 0.3 : 0));
+const unlockedGrounds = (ctx: Context) => GROUNDS.filter((g, i) => i * C.levelsPerGround < (S(ctx).top ?? 0) + C.bossEvery);
 const fighting = (ctx: Context) => !!S(ctx).name && S(ctx).recover <= 0;
+const LPG = C.levelsPerGround;
+/** Which ground a fight level is in (past the last ground, the last one keeps going). */
+const groundAt = (L: number) => GROUNDS[Math.min(GROUNDS.length - 1, Math.floor((L - 1) / LPG))];
+const isGuard = (L: number) => L % C.bossEvery === 0;
+const isBossLevel = (L: number) => L % LPG === 0 && Math.floor((L - 1) / LPG) < GROUNDS.length;
+/** The highest level you may fight at: up to and including the next guard. */
+const maxLevel = (ctx: Context) => (S(ctx).top ?? 0) + C.bossEvery;
+/** Better odds of fine and rare gear the deeper into a ground you hunt. */
+const deepBonus = (L: number) => (((L - 1) % LPG) + 1) * C.gear.deepQuality;
+function setLevel(ctx: Context, L: number) {
+  const s = S(ctx);
+  L = Math.max(1, Math.min(maxLevel(ctx), Math.round(L)));
+  if (L === s.lvl) return;
+  s.lvl = L; s.ground = groundAt(L).id; s.foe = null; s.gap = Math.min(s.gap, C.gap); s.streak = 0;
+}
 
 // ---- the fight ----
 function spawn(ctx: Context) {
-  const s = S(ctx), g = groundOf(s.ground);
-  const d = s.depth[g.id] ?? 0;
-  if (s.challenge) {
-    const b = g.boss, L = g.level + g.bossAt + C.boss.extraLevels;
-    const sc = Math.pow(C.foe.scale, L);
-    s.foe = { id: b.id, name: b.name, lvl: L, hp: C.foe.hp * C.boss.hp * sc, max: C.foe.hp * C.boss.hp * sc, atk: C.foe.atk * C.boss.atk * sc, swing: C.foe.swing, t: 0, boss: true, size: b.size, color: b.color, drop: b.drop };
-    ctx.log(`${s.name} faces ${b.name.startsWith('The') ? b.name.toLowerCase() : 'the ' + b.name.toLowerCase()}.`, 'story');
+  const s = S(ctx), L = s.lvl ?? 1, g = groundAt(L);
+  s.ground = g.id;
+  const guarded = isGuard(L) && L > (s.top ?? 0);
+  if (guarded || s.challenge) {
+    const ground = isBossLevel(L) || s.challenge;
+    const b = ground ? g.boss : (() => { const f = g.foes[(L / C.bossEvery) % g.foes.length]; return { id: 'elder_' + f.id, name: 'Elder ' + f.name.toLowerCase(), size: f.size + 3, color: f.color, drop: f.drop }; })();
+    const k = ground ? C.boss : C.guardian;
+    const lv = L + k.extraLevels, sc = Math.pow(C.foe.scale, lv);
+    s.foe = { id: b.id, name: b.name, lvl: lv, hp: C.foe.hp * k.hp * sc, max: C.foe.hp * k.hp * sc, atk: C.foe.atk * k.atk * sc, swing: C.foe.swing, t: 0, boss: true, size: b.size, color: b.color, drop: b.drop };
+    if (guarded) ctx.log(`${s.name} faces ${b.name.startsWith('The') ? b.name.toLowerCase() : 'the ' + b.name.toLowerCase()}, who guards level ${L}.`, 'story');
     return;
   }
-  const f = pick(g.foes), L = g.level + d;
+  const f = pick(g.foes);
   const sc = Math.pow(C.foe.scale, L);
   s.foe = { id: f.id, name: f.name, lvl: L, hp: C.foe.hp * f.hp * sc, max: C.foe.hp * f.hp * sc, atk: C.foe.atk * f.atk * sc, swing: C.foe.swing, t: Math.random() * C.foe.swing * 0.5, boss: false, size: f.size, color: f.color, drop: f.drop };
 }
@@ -125,18 +147,21 @@ function hit(ctx: Context, dmg: number, st: ReturnType<typeof stats>) {
 }
 
 function defeat(ctx: Context) {
-  const s = S(ctx), g = groundOf(s.ground);
+  const s = S(ctx);
   s.defeats++;
   s.recover = C.recoverTime;
   s.poison = null; s.brace = 0;
-  const wasBoss = s.foe?.boss;
-  s.foe = null; s.challenge = false;
-  s.depth[g.id] = Math.max(0, (s.depth[g.id] ?? 0) - C.retreatDepth);
-  ctx.log(wasBoss ? `${s.name} is thrown back by the ${g.boss.name.toLowerCase()}, and limps home to recover. Get stronger and try again.` : `${s.name} is beaten and limps home to recover. It will hunt again in a minute.`, 'warn');
+  const f = s.foe;
+  s.foe = null; s.challenge = false; s.streak = 0;
+  // fall back a little so it doesn't walk straight into the same jaws (Auto falls back further and waits)
+  const L = s.lvl ?? 1;
+  setLevel(ctx, L - (s.auto ? C.auto.dropOnLoss : 1));
+  if (s.auto) s.hold = C.auto.holdAfterLoss;
+  ctx.log(f?.boss ? `${s.name} is thrown back by the ${f.name.toLowerCase()} at level ${L}, and limps home to recover. Get stronger and try again.` : `${s.name} is beaten at level ${L} and limps home to recover. It will hunt again at level ${s.lvl} in a minute.`, 'warn');
 }
 
 function win(ctx: Context) {
-  const s = S(ctx), f = s.foe!, g = groundOf(s.ground);
+  const s = S(ctx), f = s.foe!, L = s.lvl ?? 1, g = groundAt(L);
   const st = stats(ctx);
   s.foe = null; s.poison = null; s.gap = C.gap;
   s.kills++;
@@ -149,24 +174,28 @@ function win(ctx: Context) {
   if (ctx.res.has('food')) ctx.res.add('food', C.foodPerKill * (1 + f.lvl / 10));
   ctx.bus.emit('champion:kill', { foe: f.id, boss: f.boss });
   // loot
-  const d = s.depth[g.id] ?? 0;
-  const deep = s.beaten.includes(g.boss.id) ? Math.max(0, d - g.bossAt) * C.gear.deepQuality : 0;
+  const deep = deepBonus(L);
   if (f.boss) {
     s.challenge = false;
     gain(ctx, f.drop, rollQuality(deep + 0.15));
-    if (!s.beaten.includes(f.id)) {
-      s.beaten.push(f.id);
-      const t = C.trophies[g.boss.trophy];
-      s.trophies.push(g.boss.trophy);
-      const next = GROUNDS[gIndex(g.id) + 1];
-      ctx.log(`${s.name} kills the ${f.name.toLowerCase()}! The colony hangs up its ${t.name.toLowerCase()} (${t.desc}).` + (next ? ` ${next.name} is open to hunt.` : ''), 'story');
+    if (isGuard(L) && L > (s.top ?? 0)) {
+      s.top = L;
+      if (f.id === g.boss.id && !s.beaten.includes(f.id)) {
+        s.beaten.push(f.id);
+        const t = C.trophies[g.boss.trophy];
+        s.trophies.push(g.boss.trophy);
+        ctx.log(`${s.name} kills the ${f.name.toLowerCase()}! The colony hangs up its ${t.name.toLowerCase()} (${t.desc}). Levels up to ${maxLevel(ctx)} are open.`, 'story');
+      } else ctx.log(`${s.name} kills the ${f.name.toLowerCase()}. Levels up to ${maxLevel(ctx)} are open.`, 'story');
     }
-    return;
+  } else {
+    if (Math.random() < C.gear.dropChance * (1 + st.luck)) gain(ctx, f.drop, rollQuality(deep));
+    if (Math.random() < C.gear.rareFind * (1 + st.luck)) gain(ctx, g.rare, rollQuality(deep + 0.1));
   }
-  if (Math.random() < C.gear.dropChance * (1 + st.luck)) gain(ctx, f.drop, rollQuality(deep));
-  if (Math.random() < C.gear.rareFind * (1 + st.luck)) gain(ctx, g.rare, rollQuality(deep + 0.1));
-  const cap = s.beaten.includes(g.boss.id) ? g.bossAt * 2 : g.bossAt;
-  s.depth[g.id] = Math.min(cap, d + 1);
+  // Auto: climb after a few clean wins, up to the next guard
+  if (s.auto && (s.hold ?? 0) <= 0) {
+    s.streak = (s.streak ?? 0) + 1;
+    if (s.streak >= C.auto.climbAfter && s.hp / st.maxHp >= C.auto.minHp && L < maxLevel(ctx)) setLevel(ctx, L + 1);
+  }
 }
 
 function rollQuality(bonus: number) {
@@ -233,7 +262,7 @@ export const champion: GameSystem = {
 
   init(ctx) {
     ctx.state.champion = {
-      name: null, level: 1, xp: 0, hp: C.base.hp, kills: 0, defeats: 0, ground: 'litter', depth: {}, beaten: [],
+      name: null, level: 1, xp: 0, hp: C.base.hp, kills: 0, defeats: 0, ground: 'litter', depth: {}, beaten: [], lvl: 1, top: 0, auto: false, streak: 0, hold: 0,
       items: {}, worn: C.gear.slots.map(() => null), trophies: [], train: {}, recent: [],
       foe: null, gap: 0, recover: 0, active: 0, swingT: 0, poison: null, brace: 0, cds: {}, flash: 0, lunge: 0, challenge: false,
     } satisfies ChampState;
@@ -248,6 +277,11 @@ export const champion: GameSystem = {
 
   tick(ctx, dt) {
     const s = S(ctx);
+    if (s.lvl === undefined) {   // an old save: rebuild the fight level from the bosses it has beaten
+      const beaten = GROUNDS.filter((g) => s.beaten.includes(g.boss.id)).length;
+      s.top = beaten * LPG; s.lvl = Math.max(1, s.top); s.auto = false; s.streak = 0; s.hold = 0;
+    }
+    s.hold = Math.max(0, (s.hold ?? 0) - dt);
     // the colony feels its champion
     const lv = s.name ? s.level : 0;
     const troph: Record<string, number> = {};
@@ -271,11 +305,7 @@ export const champion: GameSystem = {
     }
     const e = dt * speedMult(ctx);
     s.hp = Math.min(st.maxHp, s.hp + st.maxHp * st.regen * e);
-    if (!s.foe) {
-      const g = groundOf(s.ground);
-      if (ctx.flags.has('accord:call') && !s.beaten.includes(g.boss.id) && (s.depth[g.id] ?? 0) >= g.bossAt) s.challenge = true;
-      s.gap -= e; if (s.gap <= 0) spawn(ctx); return;
-    }
+    if (!s.foe) { s.gap -= e; if (s.gap <= 0) spawn(ctx); return; }
     const f = s.foe;
     if (tl(ctx, 'instinct') && (s.cds.bite ?? 0) <= 0) useAbility(ctx, 'bite', false);
     s.swingT += e;
@@ -295,11 +325,11 @@ export const champion: GameSystem = {
 
   panel: (() => {
     let cv: HTMLCanvasElement, status: HTMLElement, speedEl: HTMLElement, raise: ActionButton, fightBox: HTMLElement;
-    let groundRow: HTMLElement, groundNote: HTMLElement, bossBtn: HTMLButtonElement, ledger: HTMLElement, gearBox: HTMLElement, collection: HTMLElement;
+    let levelEl: HTMLElement, autoBtn: HTMLButtonElement, groundNote: HTMLElement, dropsNote: HTMLElement, bossBtn: HTMLButtonElement, ledger: HTMLElement, gearBox: HTMLElement, collection: HTMLElement;
     let trophyBox: HTMLElement, recentBox: HTMLElement, train: ReturnType<typeof upgradeList>;
     const hpBar = progressBar(), foeBar = progressBar(), xpBar = progressBar();
     const abil: { id: string; btn: HTMLButtonElement; cd: HTMLElement }[] = [];
-    let sigGround = '', sigGear = '';
+    let sigGear = '';
     return {
       title: 'Hunts',
       group: 'War',
@@ -321,10 +351,14 @@ export const champion: GameSystem = {
           abil.push({ id, btn, cd });
           abRow.append(btn);
         }
-        groundRow = el('div.row');
+        const step = (label: string, d: number, title: string) => el('button.small.step', { type: 'button', title, onclick: () => { const s = S(ctx); s.auto = false; setLevel(ctx, (s.lvl ?? 1) + d); } }, label);
+        levelEl = el('strong.fightlvl');
+        autoBtn = el('button.ghost', { type: 'button', title: 'Auto climbs after a few clean wins and steps back after a loss, so the champion stays at the best level it can hold.', onclick: () => { const s = S(ctx); s.auto = !s.auto; s.streak = 0; s.hold = 0; } }) as HTMLButtonElement;
         groundNote = el('p.muted');
+        dropsNote = el('p.drops');
         bossBtn = el('button.action', { type: 'button' }) as HTMLButtonElement;
         bossBtn.addEventListener('click', () => { const s = S(ctx); if (bossBtn.disabled) return; s.challenge = true; s.foe = null; s.gap = 0.5; });
+        const levelRow = el('div.row.levelpick', {}, step('−10', -10, 'Down 10 levels'), step('−', -1, 'Down a level'), el('span.muted', {}, 'Fight level'), levelEl, step('+', 1, 'Up a level'), step('+10', 10, 'Up 10 levels (as far as is open)'), autoBtn);
         ledger = el('div.ledger');
         gearBox = el('div.ledger');
         collection = el('div');
@@ -336,7 +370,7 @@ export const champion: GameSystem = {
         fightBox = el('div.hunt', {},
           cv, el('div.row', {}, el('span.muted', {}, 'Health'), hpBar.root, el('span.muted', {}, 'Foe'), foeBar.root),
           status, speedEl, abRow,
-          el('h3', {}, 'Hunting grounds'), groundRow, groundNote, el('div.row', {}, bossBtn),
+          el('h3', {}, 'Fight level'), levelRow, groundNote, dropsNote, el('div.row', {}, bossBtn),
           el('h3', {}, 'Champion'), ledger, el('div.row', {}, el('span.muted', {}, 'Experience'), xpBar.root),
           el('h3', {}, 'Gear'), el('p.muted', {}, 'Every foe can drop a piece of its ground\'s set. Finding a piece again levels it up. Rare pieces carry a trait.'),
           gearBox, el('div.row', {}, best),
@@ -347,7 +381,7 @@ export const champion: GameSystem = {
         );
         root.append(
           el('p.flavor', {}, 'Out past the trails, things live that would eat a forager whole. Send something that bites back.'),
-          el('p.muted', {}, 'Your champion hunts on its own, slowly. Use its abilities and it fights at full speed for a while.'),
+          el('p.muted', {}, 'Your champion hunts on its own, slowly. Use its abilities and it fights at full speed for a while. Pick a fight level: higher is harder, and pays better.'),
           el('div.row', {}, raise.root), fightBox,
         );
       },
@@ -358,7 +392,7 @@ export const champion: GameSystem = {
         fightBox.hidden = !s.name;
         if (!s.name) return;
         const st = stats(ctx);
-        draw(cv, s, groundOf(s.ground));
+        draw(cv, s, groundAt(s.lvl ?? 1));
         hpBar.set(s.hp / st.maxHp);
         foeBar.set(s.foe ? s.foe.hp / s.foe.max : 0);
         xpBar.set(s.xp / xpNeed(s.level));
@@ -374,19 +408,29 @@ export const champion: GameSystem = {
           (a.btn.querySelector('.cost') as HTMLElement).textContent = locked ? `Learned at level ${def.lvl}` : def.desc;
           a.cd.style.width = `${((s.cds[a.id] ?? 0) / def.cd) * 100}%`;
         }
-        // grounds
-        const open = unlockedGrounds(ctx);
-        const gs = open.map((g) => g.id + (g.id === s.ground ? '*' : '')).join('|');
-        if (gs !== sigGround) {
-          sigGround = gs;
-          groundRow.replaceChildren(...open.map((g) => el((g.id === s.ground ? 'button.ghost.on' : 'button.ghost') as 'button', { type: 'button', onclick: () => { if (s.ground !== g.id) { s.ground = g.id; s.foe = null; s.challenge = false; s.gap = C.gap; sigGround = ''; } } }, g.name)));
-        }
-        const g = groundOf(s.ground), d = s.depth[g.id] ?? 0, beat = s.beaten.includes(g.boss.id);
-        groundNote.textContent = `${g.flavor} Foe ${d} of ${beat ? g.bossAt * 2 : g.bossAt} (levels ${g.level}-${g.level + (beat ? g.bossAt * 2 : g.bossAt)}).` +
-          (beat ? ' Boss beaten: hunting deeper improves the odds of fine and rare gear.' : ` Reach foe ${g.bossAt} to challenge the ${g.boss.name.toLowerCase()}.`);
-        bossBtn.textContent = beat ? `Fight the ${g.boss.name.toLowerCase()} again` : `Challenge the ${g.boss.name.toLowerCase()}`;
-        bossBtn.hidden = d < g.bossAt;
-        bossBtn.disabled = s.challenge || s.foe?.boss || !fighting(ctx);
+        // fight level
+        const L = s.lvl ?? 1, g = groundAt(L), top = s.top ?? 0, cap = maxLevel(ctx);
+        levelEl.textContent = String(L);
+        autoBtn.textContent = s.auto ? ((s.hold ?? 0) > 0 ? `Auto: on (resting ${Math.ceil(s.hold! / ctx.speed)}s)` : 'Auto: on') : 'Auto: off';
+        autoBtn.classList.toggle('on', !!s.auto);
+        const nextGuard = cap;
+        const guardName = isBossLevel(nextGuard) ? `the ${groundAt(nextGuard).boss.name.toLowerCase()}` : 'an elder foe';
+        groundNote.textContent = `${g.name}, levels ${Math.floor((L - 1) / LPG) * LPG + 1} to ${Math.floor((L - 1) / LPG) * LPG + LPG}. ${g.flavor} ` +
+          `Open up to level ${cap}: ${guardName} guards it` + (L === cap && L > top ? ' and is fighting you now.' : '.');
+        // what this level drops, and what you still lack: the reason to farm a particular level
+        const groundItems = Object.keys(ITEMS).filter((id) => ITEMS[id].ground === g.id && !ITEMS[id].rare);
+        const have = (id: string) => { const from = id === g.boss.drop ? 'boss drop, ' : ''; return s.items[id] ? `${ITEMS[id].name} (${from}level ${s.items[id].lvl}, ${C.gear.quality[s.items[id].q].name.toLowerCase()})` : `${ITEMS[id].name} (${from}missing)`; };
+        const missing = groundItems.filter((id) => !s.items[id]).length;
+        const odds = Math.round(deepBonus(L) * 100);
+        dropsNote.textContent = `Drops here: ${groundItems.map(have).join(' · ')}. ` +
+          (missing ? `${missing} piece${missing > 1 ? 's' : ''} still to find on this ground. ` : 'Every piece found: more kills here level them up. ') +
+          `Deeper into a ground gives better odds of fine and rare gear (+${odds}% here). Higher levels give more experience.`;
+        const g20 = groundAt(L);
+        const beat = s.beaten.includes(g20.boss.id);
+        bossBtn.textContent = `Fight the ${g20.boss.name.toLowerCase()} again`;
+        bossBtn.title = 'Bosses always drop their piece, with better odds of quality.';
+        bossBtn.hidden = !beat;
+        bossBtn.disabled = s.challenge || !!s.foe?.boss || !fighting(ctx);
         // stats
         ledger.replaceChildren(...[
           ['Level', `${s.level} (${fmt(s.xp)} / ${xpNeed(s.level)} xp)`],
@@ -405,7 +449,7 @@ export const champion: GameSystem = {
         if (gsig !== sigGear) {
           sigGear = gsig;
           gearBox.replaceChildren(...C.gear.slots.map((slot, i) => gearRow(ctx, slot, i, () => { sigGear = ''; })));
-          collection.replaceChildren(...open.map((gr) => setBlock(ctx, gr.id)));
+          collection.replaceChildren(...unlockedGrounds(ctx).map((gr) => setBlock(ctx, gr.id)));
         }
         recentBox.replaceChildren(...(s.recent.length ? s.recent.map((r) => el('div', {}, r)) : [el('div', {}, 'Nothing yet.')]));
         trophyBox.replaceChildren(...(s.trophies.length ? s.trophies.map((t) => el('div', {}, el('span', {}, C.trophies[t].name), el('span.muted', {}, C.trophies[t].desc))) : [el('div', {}, el('span.muted', {}, 'Kill a ground\'s boss to bring home a trophy.'))]));
@@ -449,7 +493,7 @@ function setBlock(ctx: Context, gid: string) {
   const worn = setCounts(ctx)[gid] ?? 0;
   const fmtBonus = (b: Partial<Record<Stat, number>>) => Object.entries(b).map(([k, v]) => `${k === 'def' ? 'armour' : k} +${k === 'regen' ? (v! * 100).toFixed(0) + '%/s' : Math.round(v! * 100) + '%'}`).join(', ');
   return el('div.section', {},
-    el('div', {}, el('strong', {}, g.set.name), ' ', el('span.muted', {}, `${found.length}/${ids.length} found, ${worn} worn. 3 worn: ${fmtBonus(g.set.three)}. 6 worn: ${fmtBonus(g.set.six)}.`)),
+    el('div', {}, el('strong', {}, g.set.name), ' ', el('span.muted', {}, `Levels ${gIndex(gid) * C.levelsPerGround + 1} to ${gIndex(gid) * C.levelsPerGround + C.levelsPerGround}. ${found.length}/${ids.length} found, ${worn} worn. 3 worn: ${fmtBonus(g.set.three)}. 6 worn: ${fmtBonus(g.set.six)}.`)),
     el('div.muted', {}, ids.map((id) => s.items[id] ? `${ITEMS[id].name} (${s.items[id].lvl})` : ITEMS[id].rare ? '??? (rare find)' : '???').join(' · ')),
   );
 }
