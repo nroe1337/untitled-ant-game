@@ -3,7 +3,7 @@
 // every flight and migration. Achievements are feats, earned once and kept forever; they give
 // no bonus, they are a record. Publishes nothing.
 import type { GameSystem, Context } from '../../core/types';
-import { el } from '../../core/ui';
+import { el, hoverTip } from '../../core/ui';
 
 interface Run { kind: 'flight' | 'migration'; time: number; peak: number }
 interface StatsState {
@@ -165,9 +165,13 @@ export const stats: GameSystem = {
           featList.dataset.sig = sig;
           featList.replaceChildren(...FEATS.map((f) => {
             const when = s.feats[f.id];
-            return el(when !== undefined ? 'div.feat.got' : 'div.feat', { title: when !== undefined ? `Earned ${hms(when)} into your line.` : '' },
+            const card = el(when !== undefined ? 'div.feat.got' : 'div.feat', { tabindex: 0 },
               el('strong', {}, when !== undefined ? f.name : '???'),
               el('span.muted', {}, f.desc));
+            hoverTip(card, () => when !== undefined
+              ? [el('div', {}, f.desc), el('div.teffect', {}, `Earned ${hms(when)} into your line.`)]
+              : [el('div', {}, 'Not earned yet.')]);
+            return card;
           }));
         }
       },

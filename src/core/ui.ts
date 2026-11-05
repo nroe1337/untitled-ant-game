@@ -100,14 +100,43 @@ function tip() {
   if (!tipEl) { tipEl = el('div.tip', { role: 'tooltip', hidden: true }); document.body.append(tipEl); }
   return tipEl;
 }
+let tipWatch = 0;
 function placeTip(anchor: HTMLElement) {
   const t = tip(), r = anchor.getBoundingClientRect();
+  // close it if the element it belongs to is rebuilt or hidden while the pointer sits there
+  if (!tipWatch) {
+    const watch = () => {
+      if (tipOwner && (!tipOwner.isConnected || tipOwner.offsetParent === null)) { tipOwner = null; tip().hidden = true; }
+      tipWatch = tipOwner ? requestAnimationFrame(watch) : 0;
+    };
+    tipWatch = requestAnimationFrame(watch);
+  }
   t.hidden = false;
   const w = t.offsetWidth, h = t.offsetHeight;
   const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
   const below = r.bottom + 6 + h < window.innerHeight;
   t.style.left = `${left}px`;
   t.style.top = `${below ? r.bottom + 6 : Math.max(8, r.top - h - 6)}px`;
+}
+
+/**
+ * Attach the shared info window to any element: it opens on hover or focus and stays
+ * open while the pointer is over it. `content` is rebuilt each time it opens.
+ */
+export function hoverTip(anchor: HTMLElement, content: () => (Node | string)[]) {
+  const show = () => {
+    const parts = content();
+    if (!parts.length) return;
+    tipOwner = anchor;
+    tip().replaceChildren(...parts.map((p) => (typeof p === 'string' ? el('div', {}, p) : p)));
+    placeTip(anchor);
+  };
+  const hide = () => { if (tipOwner === anchor) { tipOwner = null; tip().hidden = true; } };
+  anchor.addEventListener('mouseenter', show);
+  anchor.addEventListener('mouseleave', hide);
+  anchor.addEventListener('focusin', show);
+  anchor.addEventListener('focusout', hide);
+  return { show, hide };
 }
 
 /**
