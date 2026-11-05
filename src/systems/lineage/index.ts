@@ -142,7 +142,7 @@ export const lineage: GameSystem = {
         perks = upgradeList(ctx, () => S(ctx).perks, PERKS);
         haul = actionButton({
           ctx, label: 'Haul a load', cooldown: W.haulCooldown, desc: `Carry ${W.haul} units of what the spire needs from your stores. Builders (Colony tab) do this on their own.`,
-          enabled: (c) => !moundDone(c) && !stagePaid(c), onBuy: (c) => { carry(c, W.haul); advance(c); },
+          enabled: (c) => c.flags.has('tech:flight') && !moundDone(c) && !stagePaid(c), onBuy: (c) => { carry(c, W.haul); advance(c); },
         });
         moundHead = el('h3');
         moundInfo = el('div.ledger');
