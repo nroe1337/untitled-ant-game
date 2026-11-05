@@ -75,8 +75,10 @@ const adjacentToYou = (ctx: Context, i: number) => {
   const [x, y] = xy(i);
   return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => inside(x + dx, y + dy) && S(ctx).tiles[idx(x + dx, y + dy)].o === 'you');
 };
+/** Priced by the outposts you hold right now, so the 10th outpost costs the same in every colony. */
+const heldOutposts = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you' && t.outpost).length;
 const claimCost = (ctx: Context): Costs =>
-  Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * Math.pow(MAP.claimGrowth, S(ctx).claims))]));
+  Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * Math.pow(MAP.claimGrowth, heldOutposts(ctx)))]));
 export const canClaim = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = S(ctx).tiles[i];
