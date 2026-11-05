@@ -9,7 +9,7 @@ import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
 type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
-  name: string; base: Costs; desc: string; needs?: string; max?: number;
+  name: string; base: Costs; desc: string; needs?: string; max?: number; growth?: number;
   antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
   soilCap?: number; matCap?: Record<string, number>;
   foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
@@ -23,7 +23,7 @@ const S = (ctx: Context) => ctx.state.nest as NestState;
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
 const costOf = (ctx: Context, id: ChamberId): Costs => {
   const cheaper = Math.max(0.5, 1 + ctx.mods.get('chamberCost'));
-  return Object.fromEntries(Object.entries(DEFS[id].base).map(([r, v]) => [r, Math.ceil(v * Math.pow(NEST.costGrowth, count(ctx, id)) * cheaper)]));
+  return Object.fromEntries(Object.entries(DEFS[id].base).map(([r, v]) => [r, Math.ceil(v * Math.pow(DEFS[id].growth ?? NEST.costGrowth, count(ctx, id)) * cheaper)]));
 };
 const totalChambers = (ctx: Context) => Object.values(S(ctx).built).reduce((a, b) => a + b, 0);
 
@@ -37,13 +37,15 @@ function visible(ctx: Context, id: ChamberId) {
 }
 
 function applyEffects(ctx: Context) {
-  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id), 0);
+  const mult = (id: ChamberId) => 1 + Object.entries(NEST.storageTechs)
+    .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
+  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id) * (k.endsWith('Cap') ? mult(id) : 1), 0);
   ctx.res.setCapBonus('ant', 'nest', sum('antCap'));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
   for (const r of Object.keys(NEST.baseMaterialCap)) {
-    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * count(ctx, id), 0));
+    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * count(ctx, id) * mult(id), 0));
   }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
   ctx.mods.set('defence', 'nest', sum('defence'));
