@@ -321,7 +321,7 @@ export const WATERS = {
 /**
  * Scent archive: lifetime records across every colony. Each track earns tiers on its own as its
  * counter grows (thresholds double), and each tier is a small permanent bonus. No choices.
- * Accords automate something you did by hand: each opens at a milestone and is bought with Lineage.
+ * Accords automate something you did by hand: each opens at a milestone and is bought with Memory.
  */
 export const ARCHIVE = {
   tracks: {
@@ -339,19 +339,20 @@ export const ARCHIVE = {
   maxTier: 20,
   /**
    * Accords: automations. Each one opens when a lifetime milestone is reached (shown with its progress),
-   * then is bought once with Lineage, the same pool as the lineage perks. Track ids are the ones above.
+   * then is bought once with Memory: 1 Memory for every archive tier your line has earned. Track ids are the ones above.
    */
   accords: [
-    { id: 'habit',    track: 'wings',  n: 1,    cost: 8,  name: 'The queen\'s habit',  desc: 'The queen lays an egg on her own every 20 seconds.' },
-    { id: 'basics',   track: 'earth',  n: 120,  cost: 15, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Food caching and Brood care.' },
-    { id: 'alarm',    track: 'iron',   n: 40,   cost: 20, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
-    { id: 'surface',  track: 'trails', n: 80,   cost: 25, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
-    { id: 'plans',    track: 'wings',  n: 3,    cost: 30, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },
-    { id: 'elders',   track: 'lore',   n: 60,   cost: 35, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
-    { id: 'call',     track: 'hunt',   n: 1500, cost: 35, name: 'The champion\'s call', desc: 'Your champion challenges a boss by itself once it reaches it.' },
-    { id: 'relaunch', track: 'tide',   n: 10,   cost: 30, name: 'Boats know the way',  desc: 'Boats set out again on their own when they come home.' },
-    { id: 'haul',     track: 'wings',  n: 5,    cost: 50, name: 'Many hands',          desc: 'Builders carry twice as much to the Swarm Spire.' },
-    { id: 'founders', track: 'brood',  n: 8000, cost: 60, name: 'Seasoned founders',   desc: 'New colonies start with full food stores and three tunnels\' worth of soil.' },
+    { id: 'habit',    track: 'wings',  n: 1,    cost: 2,  name: 'The queen\'s habit',  desc: 'The queen lays an egg on her own every 20 seconds.' },
+    { id: 'basics',   track: 'earth',  n: 120,  cost: 3, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Food caching and Brood care.' },
+    { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
+    { id: 'surface',  track: 'trails', n: 80,   cost: 4, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
+    { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Colony tab, and new workers take jobs to match it.' },
+    { id: 'plans',    track: 'wings',  n: 3,    cost: 4, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },
+    { id: 'elders',   track: 'lore',   n: 60,   cost: 5, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
+    { id: 'call',     track: 'hunt',   n: 1500, cost: 5, name: 'The champion\'s call', desc: 'Your champion challenges a boss by itself once it reaches it.' },
+    { id: 'relaunch', track: 'tide',   n: 10,   cost: 5, name: 'Boats know the way',  desc: 'Boats set out again on their own when they come home.' },
+    { id: 'haul',     track: 'wings',  n: 5,    cost: 6, name: 'Many hands',          desc: 'Builders carry twice as much to the Swarm Spire.' },
+    { id: 'founders', track: 'brood',  n: 8000, cost: 8, name: 'Seasoned founders',   desc: 'New colonies start with full food stores and three tunnels\' worth of soil.' },
   ],
 };
 

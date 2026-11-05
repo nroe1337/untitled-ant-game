@@ -181,3 +181,6 @@ input[type=checkbox] { accent-color: var(--accent); }
 .accord .row .bar { flex: 1; min-width: 120px; }
 .accord.ready strong { color: var(--accent, inherit); }
 .accord .made { font-size: 0.85em; opacity: 0.8; }
+.decree { display: grid; gap: 4px; padding: 8px 0; border-bottom: 1px dashed var(--line); margin-bottom: 8px; }
+.decree .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.decree .row .small { width: auto; padding: 0 10px; white-space: nowrap; }

@@ -1,15 +1,15 @@
 // Scent archive: what every colony of your line has done, remembered forever.
 // Counters are read from other systems' state (never imported) and added up over all colonies.
 // Tracks earn tiers on their own; each tier is a small bonus. Accords automate things you used to
-// do by hand: each opens at a visible lifetime milestone, then is bought once with Lineage.
+// do by hand: each opens at a visible lifetime milestone, then is bought once with Memory.
+// Memory is 1 per archive tier the line has earned, less what accords have cost.
 // Publishes mods per track, the 'queenLay' mod, and 'accord:<id>' flags other systems read.
-// Lineage spent here is kept in state.archive.spentLineage, which the lineage system reads.
 import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { ARCHIVE as A } from '../../data/balance';
 
-interface ArchiveState { total: Record<string, number>; seen: Record<string, number>; tiers: Record<string, number>; pending?: boolean; bought?: string[]; spentLineage?: number }
+interface ArchiveState { total: Record<string, number>; seen: Record<string, number>; tiers: Record<string, number>; pending?: boolean; bought?: string[]; spentMemory?: number }
 const S = (ctx: Context) => ctx.state.archive as ArchiveState;
 const IDS = Object.keys(A.tracks);
 const need = (id: string, tier: number) => A.tracks[id].first * Math.pow(A.growth, tier);
@@ -45,12 +45,13 @@ export const archive: GameSystem = {
   id: 'archive',
 
   init(ctx) {
-    ctx.state.archive = { total: {}, seen: {}, tiers: {}, bought: [], spentLineage: 0 } satisfies ArchiveState;
+    ctx.state.archive = { total: {}, seen: {}, tiers: {}, bought: [], spentMemory: 0 } satisfies ArchiveState;
+    ctx.res.define({ id: 'memory', name: 'Memory', order: 1001, integer: true, group: 'Legacy' });
     ctx.bus.on('loaded', () => {
       const s = S(ctx);
       // older saves: accords already granted by tiers count as bought, at no cost
       s.bought ??= A.accords.filter((a) => ctx.flags.has('accord:' + a.id)).map((a) => a.id);
-      s.spentLineage ??= 0;
+      s.spentMemory ??= 0;
       if (!s.pending) return;
       s.pending = false;
       if (has(ctx, 'founders')) { ctx.res.set('food', ctx.res.cap('food')); ctx.res.add('soil', 30); }
@@ -64,7 +65,7 @@ export const archive: GameSystem = {
     const s = S(ctx);
     // the champion and the lineage keep their own counters, so carry those over as already seen
     const cur = current(ctx);
-    return { total: s.total, tiers: s.tiers, seen: { hunt: cur.hunt, wings: cur.wings }, pending: true, bought: s.bought ?? [], spentLineage: s.spentLineage ?? 0 };
+    return { total: s.total, tiers: s.tiers, seen: { hunt: cur.hunt, wings: cur.wings }, pending: true, bought: s.bought ?? [], spentMemory: s.spentMemory ?? 0 };
   },
 
   tick(ctx) {
@@ -85,11 +86,12 @@ export const archive: GameSystem = {
       ctx.mods.set(A.tracks[id].mod, 'archive', ctx.flags.has('legacy:flown') ? A.tracks[id].per * t : 0);
     }
     if (!ctx.flags.has('legacy:flown')) return;
+    ctx.res.set('memory', Math.max(0, totalTiers(ctx) - (s.spentMemory ?? 0)));
     for (const a of A.accords) {
       if (has(ctx, a.id)) ctx.flags.add('accord:' + a.id);
       else if (reached(ctx, a) && !ctx.flags.has('accord-open:' + a.id)) {
         ctx.flags.add('accord-open:' + a.id);
-        ctx.log(`An accord can be made: ${a.name}. Buy it with Lineage in the Archive tab.`, 'story');
+        ctx.log(`An accord can be made: ${a.name}. Buy it with Memory in the Archive tab.`, 'story');
       }
     }
     ctx.mods.set('queenLay', 'archive', has(ctx, 'habit') ? 0.05 : 0);
@@ -120,13 +122,13 @@ export const archive: GameSystem = {
           const bar = progressBar();
           const done = el('span.made', {}, 'Made: in effect');
           const buy = actionButton({
-            ctx, label: 'Make this accord', costs: () => ({ lineage: a.cost }),
+            ctx, label: 'Make this accord', costs: () => ({ memory: a.cost }),
             desc: a.desc,
             enabled: (c) => reached(c, a) && !has(c, a.id),
             onBuy: (c) => {
               const s = S(c);
               (s.bought ??= []).push(a.id);
-              s.spentLineage = (s.spentLineage ?? 0) + a.cost;
+              s.spentMemory = (s.spentMemory ?? 0) + a.cost;
               c.flags.add('accord:' + a.id);
               c.log(`A new accord: ${a.name}. ${a.desc}`, 'story');
               for (const t of START_TECHS[a.id] ?? []) c.flags.add('tech:' + t);
@@ -157,7 +159,7 @@ export const archive: GameSystem = {
           r.bar.set(t >= A.maxTier ? 1 : (tot - lo) / (hi - lo));
         }
         const bought = A.accords.filter((a) => has(ctx, a.id)).length;
-        summary.textContent = `${totalTiers(ctx)} tiers in all. ${bought} of ${A.accords.length} accords made. Each accord opens at a milestone, then costs Lineage, the same Lineage as your perks.`;
+        summary.textContent = `${totalTiers(ctx)} tiers in all. ${bought} of ${A.accords.length} accords made. Each accord opens at a milestone, then costs Memory. You get 1 Memory for every archive tier.`;
         // show what is made, what can be bought, and the next three milestones; hide the rest
         let upcoming = 0;
         for (const a of A.accords) {

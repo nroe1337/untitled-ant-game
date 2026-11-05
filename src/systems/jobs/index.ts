@@ -45,7 +45,11 @@ const TECH_MODS: Record<string, [string, number]> = {
   lore: ['job:elder', T.lore.per], craft: ['chamberCost', T.craft.per], carrying: ['expLoot', T.carrying.per],
 };
 
-interface JobsState { assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; warned?: boolean; lowest?: number }
+interface JobsState {
+  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; warned?: boolean; lowest?: number;
+  /** The queen's decree (an archive accord): the worker mix new workers are sent to match. Kept across colonies. */
+  decree?: Record<string, number>; decreeOn?: boolean;
+}
 const S = (ctx: Context) => ctx.state.jobs as JobsState;
 
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
@@ -54,6 +58,25 @@ const busySum = (ctx: Context) => Object.values(ctx.busy).reduce((a, b) => a + b
 export const idleAnts = (ctx: Context) => totalAnts(ctx) - assignedSum(ctx) - busySum(ctx);
 const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
 const jobMult = (ctx: Context, id: string) => 1 + ctx.mods.get('job:' + id);
+const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requires);
+
+/** Send idle workers to whichever decreed job is furthest below its share. Never moves anyone already working. */
+function followDecree(ctx: Context) {
+  const s = S(ctx);
+  if (!s.decreeOn || !s.decree || !ctx.flags.has('accord:decree')) return;
+  const open = JOB_DEFS.filter((j) => (s.decree![j.id] ?? 0) > 0 && jobOpen(ctx, j));
+  const weight = open.reduce((t, j) => t + s.decree![j.id], 0);
+  if (!weight) return;
+  for (let idle = idleAnts(ctx); idle > 0; idle--) {
+    const staff = open.reduce((t, j) => t + s.assigned[j.id], 0) + 1;
+    let best = open[0], gap = -Infinity;
+    for (const j of open) {
+      const g = (s.decree![j.id] / weight) * staff - s.assigned[j.id];
+      if (g > gap) { gap = g; best = j; }
+    }
+    s.assigned[best.id]++;
+  }
+}
 
 export const jobs: GameSystem = {
   id: 'jobs',
@@ -67,6 +90,11 @@ export const jobs: GameSystem = {
 
   isUnlocked: (ctx) => ctx.res.get('ant').seen,
 
+  keep(ctx) {
+    const s = S(ctx);
+    return { assigned: Object.fromEntries(JOB_DEFS.map((j) => [j.id, 0])), tech: {}, decree: s.decree, decreeOn: s.decreeOn } satisfies JobsState;
+  },
+
   tick(ctx, dt) {
     const s = S(ctx);
     for (const j of JOB_DEFS) s.assigned[j.id] ??= 0;
@@ -79,6 +107,8 @@ export const jobs: GameSystem = {
       const take = Math.min(over, s.assigned[j.id] ?? 0);
       s.assigned[j.id] -= take; over -= take;
     }
+
+    followDecree(ctx);
 
     // upkeep. Whatever can't be paid builds up as hunger, and hunger slowly kills workers.
     // The queen never starves, so the colony can always rebuild from her.
@@ -120,6 +150,7 @@ export const jobs: GameSystem = {
   panel: (() => {
     const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement }>();
     let idleEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, techHead: HTMLElement, census: HTMLElement;
+    let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     let techs: ReturnType<typeof upgradeList>;
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
@@ -137,9 +168,19 @@ export const jobs: GameSystem = {
         list = el('div.jobs');
         techHead = el('h3', {}, 'Techniques');
         techs = upgradeList(ctx, () => S(ctx).tech, TECHS);
+        decreeText = el('span.muted');
+        decreeSet = el('button.small', { type: 'button', title: 'New workers will be sent to keep the jobs in these proportions.', onclick: () => {
+          const s = S(ctx);
+          s.decree = Object.fromEntries(Object.entries(s.assigned).filter(([, n]) => n > 0));
+          s.decreeOn = true;
+          ctx.log('The queen decrees the colony\'s work. New workers will keep to it.', 'info');
+        } }, 'Decree this mix') as HTMLButtonElement;
+        decreeToggle = el('button.small', { type: 'button', onclick: () => { const s = S(ctx); s.decreeOn = !s.decreeOn; } }) as HTMLButtonElement;
+        decreeBox = el('div.decree', { hidden: true }, el('strong', {}, 'The queen\'s decree'), decreeText, el('div.row', {}, decreeSet, decreeToggle));
         root.append(
           el('p.flavor', {}, 'Every worker waits for a purpose. Idle ants still eat.'),
           el('p', {}, 'Idle workers: ', idleEl),
+          decreeBox,
           list, upkeepEl, census, techHead, techs.root,
         );
         for (const j of JOB_DEFS) {
@@ -154,6 +195,18 @@ export const jobs: GameSystem = {
       update(_root, ctx) {
         const s = S(ctx);
         idleEl.textContent = String(idleAnts(ctx));
+        decreeBox.hidden = !ctx.flags.has('accord:decree');
+        if (!decreeBox.hidden) {
+          const d = s.decree ?? {};
+          const tot = Object.values(d).reduce((a, b) => a + b, 0);
+          const mix = Object.entries(d).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
+            .map(([id, n]) => `${Math.round((n / tot) * 100)}% ${(JOB_DEFS.find((j) => j.id === id)?.name ?? id).toLowerCase()}`).join(', ');
+          decreeText.textContent = tot
+            ? (s.decreeOn ? ` In force: ${mix}. Idle workers are sent to match it.` : ` Lifted. Last decree: ${mix}.`)
+            : ' Assign workers the way you like, then decree it. New workers will keep the same mix.';
+          decreeToggle.hidden = !tot;
+          decreeToggle.textContent = s.decreeOn ? 'Lift the decree' : 'Restore the decree';
+        }
         for (const j of JOB_DEFS) {
           const r = rows.get(j.id)!;
           r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);

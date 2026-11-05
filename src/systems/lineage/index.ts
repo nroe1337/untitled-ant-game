@@ -199,10 +199,9 @@ export const lineage: GameSystem = {
   })(),
 };
 
-/** Lineage already spent on perks and accords (so a new colony shows only what is left). */
+/** Lineage already spent on perks (so a new colony shows only what is left). */
 function spent(ctx: Context) {
   let total = 0;
   for (const d of PERKS) for (let L = 0; L < (S(ctx).perks[d.id] ?? 0); L++) total += d.cost(L).lineage ?? 0;
-  // accords are bought from the same pool (the archive keeps its own tally)
-  return total + ((ctx.state.archive as { spentLineage?: number } | undefined)?.spentLineage ?? 0);
+  return total;
 }
