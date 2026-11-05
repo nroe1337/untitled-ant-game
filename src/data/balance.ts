@@ -13,9 +13,9 @@ export const BROOD = {
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
-    // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
-    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster per level',               per: 0.01, base: { food: 20 },           growth: 1.18, max: 25 },
-    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster per level',              per: 0.01, base: { food: 30 },           growth: 1.18, max: 25 },
+    // Felt early (+4% a level on the basics) so faster breeding shows up right away; prestige multiplies these later.
+    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster per level',               per: 0.04, base: { food: 20 },           growth: 1.18, max: 25 },
+    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster per level',              per: 0.04, base: { food: 30 },           growth: 1.18, max: 25 },
     devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay {p} faster per level',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
     clutch:    { name: 'Larger clutch',   desc: 'The queen lays {p} more egg per lay, per level', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
     plates:    { name: 'Chitin plates',   desc: 'Plate the queen in raider chitin: eggs hatch {p} faster per level', per: 0.02, base: { chitin: 5 }, growth: 1.15, max: 50, needs: 'rival' },
@@ -29,7 +29,7 @@ export const COLONY = {
   starvingPenalty: 0.75,    // job output multiplier while food is 0
   starveFoodPerDeath: 4,    // unpaid food that costs one worker's life (very gradual)
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
-  // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
+  // Felt early (+4% a level on the basics) so faster breeding shows up right away; prestige multiplies these later.
   techniques: {
     trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.01,  base: { pheromone: 4 },          growth: 1.16, max: 40, needs: 'surface' },
     grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 4 },               growth: 1.16, max: 40, needs: 'surface' },
