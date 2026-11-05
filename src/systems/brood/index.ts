@@ -111,7 +111,7 @@ export const brood: GameSystem = {
   panel: (() => {
     let lay: ActionButton, forage: ActionButton;
     const eggBar = progressBar(), larvaBar = progressBar();
-    let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, hint: HTMLElement;
+    let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, layWrap: HTMLElement, hint: HTMLElement;
     let ledger: HTMLElement, royalHead: HTMLElement;
     let royal: ReturnType<typeof upgradeList>;
     return {
@@ -121,6 +121,7 @@ export const brood: GameSystem = {
         lay = actionButton({
           ctx, label: () => (clutch(ctx) > 1 ? `Lay ${clutch(ctx)} eggs` : 'Lay an egg'),
           cooldown: BROOD.layEggCooldown,
+          costs: () => ({ food: BROOD.eggFoodCost * clutch(ctx) }),
           desc: 'The queen lays. Eggs hatch into larvae.',
           enabled: (c) => broodUsed(c) < broodCap(c),
           onBuy: (c) => addEggs(c, clutch(c)),
@@ -135,9 +136,10 @@ export const brood: GameSystem = {
         royalHead = el('h3', {}, 'Royal care');
         royal = upgradeList(ctx, () => S(ctx).royal, ROYAL);
         forageWrap = el('div', {}, forage.root);
+        layWrap = el('div', {}, lay.root);
         root.append(
           el('div.queen', {}, icon('queen', 64), el('p.flavor', {}, 'The queen rests in a small earthen cell. Everything begins with her.')),
-          el('div.row', {}, lay.root, forageWrap),
+          el('div.row', {}, forageWrap, layWrap),
           el('div.stat', {}, el('span.statlabel', {}, icon('egg', 24), eggTxt), eggBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('larva', 24), larvaTxt), larvaBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('pupa', 24), pupaTxt)),
@@ -149,7 +151,9 @@ export const brood: GameSystem = {
       update(_root, ctx) {
         const s = S(ctx);
         lay.update(ctx); forage.update(ctx);
-        forageWrap.hidden = !ctx.flags.has('hungry');
+        // Lay opens after a few forages; it stays open after that
+        if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
+        layWrap.hidden = !ctx.flags.has('queen:lays');
         eggTxt.textContent = `Eggs hatching: ${Math.floor(ctx.res.amt('egg'))}`;
         larvaTxt.textContent = `Larvae growing: ${Math.floor(ctx.res.amt('larva'))}`;
         eggBar.set(ctx.res.amt('egg') >= 1 ? s.eggProgress % 1 : 0);

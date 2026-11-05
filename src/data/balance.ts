@@ -3,7 +3,10 @@
 // with many small upgrade levels (+2-3% each) instead of a few big jumps.
 
 export const BROOD = {
-  startFood: 10,
+  startFood: 0,             // the first colony starts with nothing: forage for the first eggs
+  flightStartFood: 10,      // a colony founded by a nuptial flight lands with a little
+  eggFoodCost: 2,           // food per egg the queen lays by hand
+  layOpensAtFood: 4,        // Lay an egg appears once the stores first reach this (a few forages)
   layEggCooldown: 3,        // seconds between manual lays
   eggHatchTime: 30,         // seconds for an egg to become a larva
   larvaGrowTime: 40,        // seconds for a larva to become a worker
