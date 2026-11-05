@@ -173,3 +173,11 @@ input[type=checkbox] { accent-color: var(--accent); }
 .gtab.on { color: var(--fg); border-color: var(--accent); background: var(--raise); }
 .gtab.new { color: var(--fg); }
 .gtab.new::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; background: var(--accent); animation: newdot 1.2s ease-in-out 2; }
+
+/* accords: a milestone with progress, then a Lineage purchase */
+.accords { display: grid; gap: 10px; }
+.accord { display: grid; gap: 4px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.accord .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.accord .row .bar { flex: 1; min-width: 120px; }
+.accord.ready strong { color: var(--accent, inherit); }
+.accord .made { font-size: 0.85em; opacity: 0.8; }
