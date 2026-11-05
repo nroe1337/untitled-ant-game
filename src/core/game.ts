@@ -139,11 +139,19 @@ export class Game {
     this.logEl = el('div.log');
     this.alertEl = el('div.alerts', { role: 'status' });
 
-    const speedBtn = el('button.ghost', { type: 'button', title: 'Developer tool: speed up time' }, 'x1');
+    // A plain 2x toggle for players who want things quicker. Balance is tuned at 1x.
+    // (Developers can still set window.game.ctx.speed from the console.)
+    let fast = false;
+    try { fast = localStorage.getItem('formicarium-speed') === '2'; } catch { /* storage blocked */ }
+    if (fast) this.ctx.speed = 2;
+    const speedBtn = el('button.ghost', { type: 'button', title: 'Play at double speed' }, fast ? 'Speed ×2' : 'Speed ×1') as HTMLButtonElement;
+    speedBtn.setAttribute('aria-pressed', String(fast));
     speedBtn.addEventListener('click', () => {
-      const steps = [1, 10];
-      this.ctx.speed = steps[(steps.indexOf(this.ctx.speed) + 1) % steps.length];
-      speedBtn.textContent = 'x' + this.ctx.speed;
+      fast = !fast;
+      this.ctx.speed = fast ? 2 : 1;
+      speedBtn.textContent = fast ? 'Speed ×2' : 'Speed ×1';
+      speedBtn.setAttribute('aria-pressed', String(fast));
+      try { localStorage.setItem('formicarium-speed', fast ? '2' : '1'); } catch { /* storage blocked */ }
     });
     this.pauseBtn = el('button.ghost', { type: 'button', title: 'Pause or resume the colony (P)', onclick: () => this.togglePause() }, 'Pause') as HTMLButtonElement;
     this.fanfareEl = el('div.fanfare', { hidden: true, role: 'status', onclick: () => { this.fanfareEl.hidden = true; } });
