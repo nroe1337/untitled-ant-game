@@ -318,7 +318,7 @@ export class Game {
           this.groups.set(group, { btn: gbtn, last: s.id });
         }
         // tabs already open when the save loads stay quiet; ones that open during play get a dot
-        if (!this.active) this.show(s.id); else if (!this.firstRender) btn.classList.add('new');
+        if (!this.active) this.show(s.id); else if (!this.firstRender && !s.panel.quiet) btn.classList.add('new');
       }
       if (tab && !tab.mounted) { s.panel.mount(tab.body, ctx); tab.mounted = true; }
       if (tab && this.active === s.id) {
@@ -333,7 +333,7 @@ export class Game {
       this.lastScan = now2;
       for (const s of this.systems) {
         const tab = this.tabs.get(s.id);
-        if (!tab || !tab.mounted || this.active === s.id) continue;
+        if (!tab || !tab.mounted || this.active === s.id || s.panel!.quiet) continue;
         if (!tab.known && tab.btn.classList.contains('new')) continue; // already lit; learns its contents when opened
         s.panel!.update?.(tab.body, ctx);
         if (!tab.known) { tab.known = unlockKeys(tab.body); continue; }
