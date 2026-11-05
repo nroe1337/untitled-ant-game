@@ -20,6 +20,7 @@ import { migration } from './migration';
 import { town } from './town';
 import { supercolony } from './supercolony';
 import { stats } from './stats';
+import { happenings } from './happenings';
 
 export const SYSTEMS: GameSystem[] = [
   brood,
@@ -43,4 +44,5 @@ export const SYSTEMS: GameSystem[] = [
   supercolony,
   stats,
   genome,
+  happenings,
 ];
