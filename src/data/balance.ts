@@ -417,8 +417,8 @@ export const HUSBANDRY = {
   species: {
     aphid:  { name: 'Green aphids',      room: 'pasture', capture: { food: 20 },                yields: { honeydew: 0.02 },                 unlock: 0,    desc: 'The first herd. Soft, slow, sweet.' },
     root:   { name: 'Root aphids',       room: 'cellar',  capture: { food: 30, soil: 20 },      yields: { honeydew: 0.012 },                unlock: 100,  desc: 'Kept underground on the roots. Predators never reach them.' },
-    scale:  { name: 'Scale insects',     room: 'pasture', capture: { honeydew: 30 },            yields: { wax: 0.004 },                     unlock: 400,  desc: 'They barely move. They grow wax.' },
-    mealy:  { name: 'Mealybugs',         room: 'pasture', capture: { honeydew: 60 },            yields: { honeydew: 0.01, wax: 0.003 },     unlock: 1000, desc: 'Fluffy with wax, and sweet as well.' },
+    scale:  { name: 'Scale insects',     room: 'pasture', capture: { honeydew: 30 },            yields: { wax: 0.008 },                     unlock: 400,  desc: 'They barely move. They grow wax.' },
+    mealy:  { name: 'Mealybugs',         room: 'pasture', capture: { honeydew: 60 },            yields: { honeydew: 0.01, wax: 0.006 },     unlock: 1000, desc: 'Fluffy with wax, and sweet as well.' },
     hopper: { name: 'Treehoppers',       room: 'pasture', capture: { honeydew: 80, fungus: 30 }, yields: { honeydew: 0.05 },                unlock: 2500, desc: 'Rich, but flighty: untended treehoppers give nothing and slowly wander off.' },
     blue:   { name: 'Blue caterpillars', room: 'cellar',  capture: { honeydew: 150, jelly: 10 }, yields: { jelly: 0.002 },                  unlock: 5000, desc: 'A butterfly caterpillar that sings like a queen. It makes a kind of royal jelly. At most 6.', max: 6 },
   } as Record<string, { name: string; room: 'pasture' | 'cellar'; capture: Record<string, number>; yields: Record<string, number>; unlock: number; desc: string; max?: number }>,
