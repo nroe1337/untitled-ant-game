@@ -221,7 +221,7 @@ export const RESEARCH = {
   } as Record<string, { name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; desc: string }>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
-    { id: 'dirt', name: 'Age of Dirt', note: 'A queen, a hole, and whatever she can raise.' },
+    { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },
     { id: 'forage', name: 'Age of Forage', note: 'The surface, the garden, and everything that lives in it.' },
     { id: 'settlement', name: 'Age of Settlement', note: 'Across the water: houses, walls, and humans.' },
     { id: 'industry', name: 'Age of Industry', note: 'Water wheels, beetle rail and workshops.' },
