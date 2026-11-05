@@ -27,6 +27,8 @@ export class Resources {
   /** One-off changes (purchases, loot) since the last rate measurement; left out of the shown rate. */
   private lumps = new Map<string, number>();
   private capBonus = new Map<string, Record<string, number>>();
+  /** Amounts a system has earmarked (e.g. for the Swarm Spire); purchases can't dip into them. */
+  private holds = new Map<string, Record<string, number>>();
 
   define(def: ResourceDef) {
     if (this.map.has(def.id)) return this.map.get(def.id)!;
@@ -67,7 +69,21 @@ export class Resources {
   }
   set(id: string, n: number) { this.get(id).amount = 0; this.add(id, n); }
 
+  /** A system sets how much of a resource it is holding back (replaces its previous value; 0 releases it). */
+  hold(id: string, source: string, n: number) {
+    if (!this.holds.has(id)) this.holds.set(id, {});
+    this.holds.get(id)![source] = Math.max(0, n);
+  }
+  /** Total held back from purchases. */
+  held(id: string) { return Object.values(this.holds.get(id) ?? {}).reduce((a, b) => a + b, 0); }
+  /** Names of whatever holds this resource, for tooltips. */
+  holders(id: string) { return Object.entries(this.holds.get(id) ?? {}).filter(([, n]) => n > 0).map(([k]) => k); }
+
   canAfford(costs: Costs) {
+    return Object.entries(costs).every(([id, n]) => this.amt(id) - this.held(id) >= n);
+  }
+  /** Could afford it if nothing were held back. */
+  canAffordIgnoringHolds(costs: Costs) {
     return Object.entries(costs).every(([id, n]) => this.amt(id) >= n);
   }
   spend(costs: Costs) {

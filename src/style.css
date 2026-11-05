@@ -43,6 +43,7 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
 .res .rate.pos { color: var(--good); }
 .res .rate.neg { color: var(--accent); }
 .res.full .amt { color: var(--warn); }
+.res.held .name::after { content: "held"; margin-left: 6px; font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 0 4px; }
 
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
 .tab { background: none; border: 0; color: var(--muted); font: 600 14px var(--body); padding: 8px 12px; cursor: pointer;

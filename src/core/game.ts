@@ -241,6 +241,9 @@ export class Game {
       row.rate.textContent = flat ? '0/s' : (r.rate > 0 ? '+' : '') + fmt(r.rate) + '/s';
       row.rate.className = 'rate ' + (flat ? 'flat' : r.rate < 0 ? 'neg' : 'pos');
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
+      const held = ctx.res.held(r.id);
+      const tip = held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : '';
+      if (row.row.title !== tip) { row.row.title = tip; row.row.classList.toggle('held', held > 0); }
     }
 
     // panels

@@ -7,7 +7,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, LINEAGE } from '../../data/balance';
 
-interface Wonder { stage: number; paid: Record<string, number>; settle: number }
+interface Wonder { stage: number; paid: Record<string, number>; settle: number; hold?: boolean }
 interface LineageState { perks: Record<string, number>; flights: number; best: number; total: number; pending?: boolean; wonder?: Wonder }
 const S = (ctx: Context) => ctx.state.lineage as LineageState;
 const P = (ctx: Context, id: keyof typeof LINEAGE.perks) => S(ctx).perks[id] ?? 0;
@@ -93,6 +93,10 @@ export const lineage: GameSystem = {
       if (stagePaid(ctx)) w.settle += dt;
       advance(ctx);
     }
+    // Hold scarce materials for the Spire, so other purchases can't spend what it still needs.
+    // Soil and food are plentiful and never held. On by default; the player can turn it off.
+    const holding = ctx.flags.has('tech:flight') && !moundDone(ctx) && wonder(ctx).hold !== false;
+    for (const r of W.held) if (ctx.res.has(r)) ctx.res.hold(r, 'the Swarm Spire', holding ? owed(ctx, r) : 0);
     const per = (id: keyof typeof LINEAGE.perks) => LINEAGE.perks[id].per * P(ctx, id);
     ctx.mods.set('brood', 'lineage', per('blood'));
     ctx.mods.set('job:forager', 'lineage', per('trails'));
@@ -112,7 +116,7 @@ export const lineage: GameSystem = {
 
   panel: (() => {
     let ledger: HTMLElement, flyBtn: HTMLButtonElement, note: HTMLElement, perks: ReturnType<typeof upgradeList>;
-    let mound: HTMLElement, moundHead: HTMLElement, moundInfo: HTMLElement, haul: ActionButton;
+    let mound: HTMLElement, moundHead: HTMLElement, moundInfo: HTMLElement, haul: ActionButton, holdBox: HTMLInputElement;
     const moundBar = progressBar();
     return {
       title: 'Lineage',
@@ -142,9 +146,12 @@ export const lineage: GameSystem = {
         });
         moundHead = el('h3');
         moundInfo = el('div.ledger');
+        holdBox = el('input', { type: 'checkbox', id: 'spire-hold' }) as HTMLInputElement;
+        holdBox.addEventListener('change', () => { wonder(ctx).hold = holdBox.checked; });
         mound = el('div.section', {}, el('h3', {}, 'The Swarm Spire'),
           el('p.muted', {}, 'Before a flight the colony raises a great spire of soil. Build it stage by stage. Nothing is lost if you stop for a while.'),
-          moundHead, moundInfo, moundBar.root, el('div.row', {}, haul.root));
+          moundHead, moundInfo, moundBar.root, el('div.row', {}, haul.root),
+          el('label.row', { for: 'spire-hold' }, holdBox, 'Hold twigs, resin, silk and jelly for the Spire (other purchases can\'t spend what it still needs)'));
         root.append(
           el('p.flavor', {}, 'One warm evening the winged ones climb out and take to the air. Only a queen needs to land.'),
           el('p.muted', {}, 'A flight ends this colony and starts a new one. You keep Lineage, its perks, and the territory on your map. Everything else starts over.'),
@@ -171,6 +178,7 @@ export const lineage: GameSystem = {
           : ok ? 'Perks are bought with Lineage and kept forever.' : 'Finish the Swarm Spire to send a flight.';
         mound.hidden = !ctx.flags.has('tech:flight');
         haul.update(ctx);
+        holdBox.checked = wonder(ctx).hold !== false;
         const w = wonder(ctx), st = W.stages[w.stage];
         if (!st) { moundHead.textContent = 'Finished'; moundInfo.replaceChildren(); moundBar.set(1); haul.root.hidden = true; }
         else {

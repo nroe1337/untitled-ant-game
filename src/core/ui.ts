@@ -73,6 +73,10 @@ export function actionButton(opts: {
       } else bar.style.width = '0';
       const ok = cdLeft <= 0 && ctx.res.canAfford(c) && (!opts.enabled || opts.enabled(ctx));
       root.disabled = !ok;
+      // explain a button that is short only because something is holding the stores back
+      const heldBy = !ok && ctx.res.canAffordIgnoringHolds(c) ? [...new Set(Object.keys(c).flatMap((r) => ctx.res.holders(r)))] : [];
+      const title = (opts.desc ?? '') + (heldBy.length ? `\nHeld back for ${heldBy.join(' and ')}. Turn that off to spend it here.` : '');
+      if (root.title !== title) root.title = title;
       // can't afford (but otherwise could buy): drawn dimmer than a button that is ready
       root.classList.toggle('short', cdLeft <= 0 && (!opts.enabled || opts.enabled(ctx)) && !ctx.res.canAfford(c));
     },

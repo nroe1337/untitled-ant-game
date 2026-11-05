@@ -272,6 +272,7 @@ export const LINEAGE = {
     haulCooldown: 3,
     builderRate: 0.08,       // units each builder carries per second
     foodFloor: 0.4,          // builders never take food below this share of storage
+    held: ['twig', 'resin', 'silk', 'jelly'],  // what the Spire holds back from other purchases (see Lineage)
     stages: [
       { id: 'footing',    name: 'Foundation',        cost: { soil: 350 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
       { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 25, resin: 6 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
