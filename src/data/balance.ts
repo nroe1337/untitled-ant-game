@@ -119,7 +119,7 @@ export const MAP = {
   yield: {
     grass: { food: 0.03, twig: 0.0015 },   // fallen grass stems: a slow, steady trickle of twigs
     soil: { soil: 0.02, seed: 0.0008 },     // seeds blow in and lodge in bare ground
-    stone: { resin: 0.0006 },             // sap from the roots that run under the stones
+    stone: { resin: 0.001 },              // sap from the roots that run under the stones
     water: { pheromone: 0.008 },
     paved: { food: 0.08 },
   } as Record<string, Record<string, number>>,
@@ -201,7 +201,7 @@ export const RESEARCH = {
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 220, seed: 5 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
     castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 300, fungus: 30 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 420, leaf: 20, twig: 8 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
-    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 380, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Swarm Spire for its first flight.' },
+    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 300, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Swarm Spire for its first flight.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 60, food: 40 },          needs: ['scouting'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
     galleons:   { name: 'Wax hulls',         age: 'forage', cost: { knowledge: 500, wax: 20 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
     husbandry:  { name: 'Herding',           age: 'forage', cost: { knowledge: 200, food: 60 },         needs: ['seeds'], flag: 'legacy:flown', desc: 'Keep herds of aphids and other small insects. Opens the Herds tab and the Herder job.' },
@@ -274,10 +274,10 @@ export const LINEAGE = {
     foodFloor: 0.4,          // builders never take food below this share of storage
     stages: [
       { id: 'footing',    name: 'Foundation',        cost: { soil: 350 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
-      { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 30, resin: 8 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 25, resin: 6 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
-      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 40, resin: 8, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1200, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 30, resin: 6, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
