@@ -118,7 +118,7 @@ export const MAP = {
   /** Per-second output of each owned tile by terrain. */
   yield: {
     grass: { food: 0.03, twig: 0.0015 },   // fallen grass stems: a slow, steady trickle of twigs
-    soil: { soil: 0.02 },
+    soil: { soil: 0.02, seed: 0.0008 },     // seeds blow in and lodge in bare ground
     stone: { resin: 0.0006 },             // sap from the roots that run under the stones
     water: { pheromone: 0.008 },
     paved: { food: 0.08 },
@@ -273,8 +273,8 @@ export const LINEAGE = {
     builderRate: 0.08,       // units each builder carries per second
     foodFloor: 0.4,          // builders never take food below this share of storage
     stages: [
-      { id: 'footing',    name: 'Foundation',        cost: { soil: 500 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
-      { id: 'galleries',  name: 'Galleries',         cost: { soil: 300, twig: 30, resin: 8 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'footing',    name: 'Foundation',        cost: { soil: 350 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 30, resin: 8 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
       { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
       { id: 'spire',      name: 'Launch crown',      cost: { twig: 40, resin: 8, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
