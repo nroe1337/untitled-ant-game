@@ -99,7 +99,7 @@ export const stats: GameSystem = {
       box.replaceChildren(...list.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
     return {
       title: 'Records',
-      group: 'Knowledge',
+      group: 'Lineage',
       mount(root) {
         overall = el('div.ledger.stats');
         colony = el('div.ledger.stats');

@@ -44,7 +44,7 @@ export const genome: GameSystem = {
     let sig = '';
     return {
       title: 'Genome',
-      group: 'Knowledge',
+      group: 'Lineage',
       mount(root) {
         head = el('p');
         list = el('div.ledger');
