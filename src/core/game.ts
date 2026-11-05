@@ -39,6 +39,14 @@ const STEPS_PER_FRAME = 200;
 /** Seconds each banner shows before the strip moves to the next one. */
 const ALERT_ROTATE_S = 5;
 
+/** Top tabs always sit in this order, whatever order they unlock in. Unlisted groups go last. */
+const GROUP_ORDER = ['Home', 'Nest', 'World', 'War', 'Lineage'];
+function sortChildren(bar: HTMLElement) {
+  const kids = Array.from(bar.children) as HTMLElement[];
+  kids.sort((a, b) => Number(a.dataset.rank ?? 99) - Number(b.dataset.rank ?? 99));
+  for (const k of kids) bar.append(k);
+}
+
 export class Game {
   ctx: Context;
   time = 0;
@@ -263,7 +271,10 @@ export class Game {
         const btn = el('button.tab', { type: 'button' }, s.panel.title) as HTMLButtonElement;
         const body = el('section.panel', { hidden: true });
         btn.addEventListener('click', () => this.show(s.id));
+        // sub-tabs keep the system list's order, whatever order they unlock in
+        btn.dataset.rank = String(this.systems.indexOf(s));
         this.tabBar.append(btn);
+        sortChildren(this.tabBar);
         this.panelHost.append(body);
         const group = s.panel.group ?? s.panel.title;
         tab = { btn, body, mounted: false, known: null, group };
@@ -276,7 +287,10 @@ export class Game {
             const ids = [...this.tabs].filter(([, t]) => t.group === group).map(([id]) => id);
             this.show(ids.find((id) => this.tabs.get(id)!.btn.classList.contains('new')) ?? (ids.includes(g.last) ? g.last : ids[0]));
           });
+          const gi = GROUP_ORDER.indexOf(group);
+          gbtn.dataset.rank = String(gi < 0 ? 99 : gi);
           this.groupBar.append(gbtn);
+          sortChildren(this.groupBar);
           this.groups.set(group, { btn: gbtn, last: s.id });
         }
         // tabs already open when the save loads stay quiet; ones that open during play get a dot
