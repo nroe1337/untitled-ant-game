@@ -212,7 +212,7 @@ export const jobs: GameSystem = {
           const each = Object.entries(j.produces).map(([rid, per]) => [ctx.res.get(rid).name.toLowerCase(), per * jobMult(ctx, j.id)] as const);
           const n = s.assigned[j.id];
           const parts = each.map(([name, per]) => n ? `+${fmt(per * n)} ${name}/s (${fmt(per)} each)` : `${fmt(per)} ${name}/s each`);
-          r.row.title = j.desc + (each.length ? '\nEach ' + j.name.toLowerCase() + ' makes ' + each.map(([name, per]) => `+${fmt(per)} ${name}/s`).join(', ') + ', bonuses included. Every worker adds the same amount.' : '');
+          r.row.dataset.tip = j.desc + (each.length ? '\nEach ' + j.name.toLowerCase() + ' makes ' + each.map(([name, per]) => `+${fmt(per)} ${name}/s`).join(', ') + ', bonuses included. Every worker adds the same amount.' : '');
           if (j.id === 'nurse' && s.assigned.nurse) parts.push('laying eggs');
           if (j.id === 'soldier' && s.assigned.soldier) parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
           r.out.textContent = parts.join(', ');
