@@ -258,7 +258,7 @@ export class Game {
       const msg = this.alertEl.querySelector('.msg');
       if (msg && msg.textContent !== txt[i]) msg.textContent = txt[i];
       const p = this.alertEl.firstElementChild as HTMLElement | null;
-      if (p) p.title = txt.join('\n');
+      if (p) p.dataset.tip = txt.join('\n');
     }
     // resources
     for (const r of ctx.res.all()) {
@@ -283,7 +283,7 @@ export class Game {
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
       const held = ctx.res.held(r.id);
       const tip = held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : '';
-      if (row.row.title !== tip) { row.row.title = tip; row.row.classList.toggle('held', held > 0); }
+      if ((row.row.dataset.tip ?? '') !== tip) { row.row.dataset.tip = tip; row.row.classList.toggle('held', held > 0); }
     }
 
     // panels

@@ -428,7 +428,7 @@ export const champion: GameSystem = {
         const g20 = groundAt(L);
         const beat = s.beaten.includes(g20.boss.id);
         bossBtn.textContent = `Fight the ${g20.boss.name.toLowerCase()} again`;
-        bossBtn.title = 'Bosses always drop their piece, with better odds of quality.';
+        bossBtn.dataset.tip = 'Bosses always drop their piece, with better odds of quality.';
         bossBtn.hidden = !beat;
         bossBtn.disabled = s.challenge || !!s.foe?.boss || !fighting(ctx);
         // stats

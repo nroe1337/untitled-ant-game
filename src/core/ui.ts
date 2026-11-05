@@ -13,6 +13,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   for (const [k, v] of Object.entries(attrs)) {
     if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
     else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+    else if (k === 'title') { if (v) node.dataset.tip = String(v); } // shown by the shared info window, not the browser's
     else if (v !== undefined && v !== null && v !== false) node.setAttribute(k, String(v));
   }
   for (const c of children) if (c != null) node.append(c);
@@ -43,7 +44,7 @@ export function actionButton(opts: {
   const labelEl = el('span.label');
   const costEl = el('span.cost');
   const bar = el('span.cd');
-  const root = el('button.action', { type: 'button', title: opts.desc ?? '' }, labelEl, costEl, bar);
+  const root = el('button.action', { type: 'button', title: opts.noTitle ? '' : opts.desc ?? '' }, labelEl, costEl, bar);
   let cdLeft = 0;
   let cdStart = 0;
   let lastSeen = 0;
@@ -78,7 +79,7 @@ export function actionButton(opts: {
       // explain a button that is short only because something is holding the stores back
       const heldBy = !ok && ctx.res.canAffordIgnoringHolds(c) ? [...new Set(Object.keys(c).flatMap((r) => ctx.res.holders(r)))] : [];
       const title = (opts.desc ?? '') + (heldBy.length ? `\nHeld back for ${heldBy.join(' and ')}. Turn that off to spend it here.` : '');
-      if (!opts.noTitle && root.title !== title) root.title = title;
+      if (!opts.noTitle && (root.dataset.tip ?? '') !== title) root.dataset.tip = title;
       // can't afford (but otherwise could buy): drawn dimmer than a button that is ready
       root.classList.toggle('short', cdLeft <= 0 && (!opts.enabled || opts.enabled(ctx)) && !ctx.res.canAfford(c));
     },
@@ -107,6 +108,7 @@ function placeTip(anchor: HTMLElement) {
   if (!tipWatch) {
     const watch = () => {
       if (tipOwner && (!tipOwner.isConnected || tipOwner.offsetParent === null)) { tipOwner = null; tip().hidden = true; }
+      else if (tipOwner && tipText !== null && tipOwner.dataset.tip !== tipText) showText(tipOwner); // text changed while open
       tipWatch = tipOwner ? requestAnimationFrame(watch) : 0;
     };
     tipWatch = requestAnimationFrame(watch);
@@ -127,7 +129,7 @@ export function hoverTip(anchor: HTMLElement, content: () => (Node | string)[]) 
   const show = () => {
     const parts = content();
     if (!parts.length) return;
-    tipOwner = anchor;
+    tipOwner = anchor; tipText = null;
     tip().replaceChildren(...parts.map((p) => (typeof p === 'string' ? el('div', {}, p) : p)));
     placeTip(anchor);
   };
@@ -166,7 +168,7 @@ export function tileButton(opts: {
       ...(opts.effect ? [el('div.teffect', {}, typeof opts.effect === 'function' ? opts.effect() : opts.effect)] : []),
     );
   };
-  const show = () => { tipOwner = wrap; fill(opts.ctx); placeTip(wrap); };
+  const show = () => { tipOwner = wrap; tipText = null; fill(opts.ctx); placeTip(wrap); };
   const hide = () => { if (tipOwner === wrap) { tipOwner = null; tip().hidden = true; } };
   wrap.addEventListener('mouseenter', show);
   wrap.addEventListener('mouseleave', hide);
@@ -183,4 +185,32 @@ export function tileButton(opts: {
       }
     },
   };
+}
+
+/** Every element with a data-tip (any el(..., { title })) gets the shared info window, open while hovered. */
+let tipText: string | null = null;
+function showText(node: HTMLElement) {
+  tipText = node.dataset.tip ?? '';
+  if (!tipText) { if (tipOwner === node) { tipOwner = null; tip().hidden = true; } return; }
+  tipOwner = node;
+  tip().replaceChildren(...tipText.split('\n').map((line) => el('div', {}, line)));
+  placeTip(node);
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('mouseover', (e) => {
+    const node = (e.target as Element | null)?.closest?.('[data-tip]') as HTMLElement | null;
+    if (node && node !== tipOwner) showText(node);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (tipText === null || !tipOwner) return;
+    const to = e.relatedTarget as Node | null;
+    if (to && tipOwner.contains(to)) return;
+    if ((e.target as Element | null)?.closest?.('[data-tip]') !== tipOwner) return;
+    tipOwner = null; tipText = null; tip().hidden = true;
+  });
+  document.addEventListener('focusin', (e) => {
+    const node = (e.target as Element | null)?.closest?.('[data-tip]') as HTMLElement | null;
+    if (node) showText(node);
+  });
+  document.addEventListener('focusout', () => { if (tipText !== null) { tipOwner = null; tipText = null; tip().hidden = true; } });
 }
