@@ -47,7 +47,7 @@ export const archive: GameSystem = {
 
   init(ctx) {
     ctx.state.archive = { total: {}, seen: {}, tiers: {}, bought: [], spentMemory: 0 } satisfies ArchiveState;
-    ctx.res.define({ id: 'memory', name: 'Memory', order: 1001, integer: true, group: 'Legacy' });
+    ctx.res.define({ id: 'memory', name: 'Memory', order: 1002, integer: true, group: 'Legacy' });
     ctx.bus.on('loaded', () => {
       const s = S(ctx);
       // older saves: accords already granted by tiers count as bought, at no cost
