@@ -131,7 +131,7 @@ export const town: GameSystem = {
         purge = actionButton({
           ctx, label: 'Purge the stores', cooldown: 30, desc: `Throw out ${Math.round(T.purgeShare * 100)}% of food and sugar, and all the poison with it.`,
           enabled: (c) => S(c).taint > 0,
-          onBuy: (c) => { c.res.add('food', -c.res.amt('food') * T.purgeShare); c.res.add('sugar', -c.res.amt('sugar') * T.purgeShare); S(c).taint = 0; c.log('The stores are emptied and scrubbed. The poison is gone.', 'info'); },
+          onBuy: (c) => { c.res.lump('food', -c.res.amt('food') * T.purgeShare); c.res.lump('sugar', -c.res.amt('sugar') * T.purgeShare); S(c).taint = 0; c.log('The stores are emptied and scrubbed. The poison is gone.', 'info'); },
         });
         ledger = el('div.ledger');
         siteBox = el('div.ledger');

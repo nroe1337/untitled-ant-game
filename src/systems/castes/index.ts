@@ -46,7 +46,7 @@ export const castes: GameSystem = {
         chew = actionButton({
           ctx, label: 'Chew royal jelly', costs: () => CASTES.chew.cost, cooldown: CASTES.chew.cooldown,
           desc: 'Nurses chew food into one drop of royal jelly.',
-          onBuy: (c) => { c.res.add('jelly', 1); S(c).chewed++; },
+          onBuy: (c) => { c.res.lump('jelly', 1); S(c).chewed++; },
         });
         list = el('div.build');
         for (const id of IDS) {
