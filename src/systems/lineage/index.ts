@@ -151,7 +151,7 @@ export const lineage: GameSystem = {
         mound = el('div.section', {}, el('h3', {}, 'The Swarm Spire'),
           el('p.muted', {}, 'Before a flight the colony raises a great spire of soil. Build it stage by stage. Nothing is lost if you stop for a while.'),
           moundHead, moundInfo, moundBar.root, el('div.row', {}, haul.root),
-          el('label.row', { for: 'spire-hold' }, holdBox, 'Hold twigs, resin, silk and jelly for the Spire (other purchases can\'t spend what it still needs)'));
+          el('label.row', { for: 'spire-hold' }, holdBox, 'Hold twigs, resin, seeds, silk and jelly for the Spire (other purchases can\'t spend what it still needs)'));
         root.append(
           el('p.flavor', {}, 'One warm evening the winged ones climb out and take to the air. Only a queen needs to land.'),
           el('p.muted', {}, 'A flight ends this colony and starts a new one. You keep Lineage, its perks, and the territory on your map. Everything else starts over.'),
@@ -188,6 +188,8 @@ export const lineage: GameSystem = {
           const paid = Object.keys(st.cost).reduce((a, r) => a + (w.paid[r] ?? 0), 0);
           const rows: [string, string][] = [['', st.desc]];
           for (const r of Object.keys(st.cost)) rows.push([ctx.res.has(r) ? ctx.res.get(r).name : r, `${fmt(w.paid[r] ?? 0)} / ${st.cost[r]}` + (owed(ctx, r) > 0 && spare(ctx, r) <= 0 ? ' (none spare in stores)' : '')]);
+          const waiting = Object.keys(st.cost).filter((r) => owed(ctx, r) > 0 && spare(ctx, r) <= 0 && W.sources[r]);
+          for (const r of waiting) rows.push([`Need ${ctx.res.has(r) ? ctx.res.get(r).name.toLowerCase() : r}?`, `Find it from ${W.sources[r]}.`]);
           if (st.time) rows.push(['Then', stagePaid(ctx) ? `settling, ${Math.ceil((st.time - w.settle) / 60)} min left` : `${Math.round(st.time / 60)} min to settle once paid`]);
           rows.push(['Builders', `${ctx.state.jobs?.assigned?.builder ?? 0}, carrying ${fmt((ctx.state.jobs?.assigned?.builder ?? 0) * W.builderRate)}/s`]);
           moundInfo.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));

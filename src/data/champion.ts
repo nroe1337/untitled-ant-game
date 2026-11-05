@@ -14,7 +14,7 @@ export const CHAMPION = {
 
   base: { atk: 3, hp: 30, def: 0, swing: 2 },  // before level and gear
   perLevel: 0.04,           // atk and hp grow 4% per level, compounding
-  xpBase: 12, xpGrowth: 1.2, // xp to reach the next level
+  xpBase: 12, xpGrowth: 1.15, // xp to reach the next level
   regen: 0.01,              // share of max hp regained per second (fight time)
   recoverTime: 60,          // seconds to get back up after a defeat
   retreatDepth: 3,          // (old saves) a defeat pushed you back this many foes
@@ -24,7 +24,7 @@ export const CHAMPION = {
   auto: { climbAfter: 3, minHp: 0.5, dropOnLoss: 2, holdAfterLoss: 120 },
   gap: 2,                   // seconds between foes
 
-  foe: { hp: 10, atk: 2, scale: 1.09, xp: 4, xpScale: 1.075, swing: 2.4 },
+  foe: { hp: 10, atk: 2, scale: 1.075, xp: 4, xpScale: 1.075, swing: 2.4 },
   boss: { hp: 5, atk: 1.6, extraLevels: 3 },
   guardian: { hp: 3, atk: 1.3, extraLevels: 1 },   // the halfway foe of a ground: an elder of one of its kinds
   foodPerKill: 0.6,         // meat brought home per kill, times (1 + level / 10)
