@@ -121,7 +121,7 @@ export const nest: GameSystem = {
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
           picked = null;
         });
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap their places.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, grid);
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap their places. Layout is cosmetic only: where a chamber sits changes nothing.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, grid);
       },
       update(_root, ctx) {
         for (const id of IDS) {
