@@ -191,3 +191,8 @@ input[type=checkbox] { accent-color: var(--accent); }
 /* a deep nest scrolls inside its own frame instead of pushing the page down */
 .nestscroll { max-height: 560px; max-width: 642px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--line) transparent; }
 .nestscroll:focus-visible { outline: 2px solid var(--accent); }
+/* records: achievements as a quiet grid; locked ones are dim */
+.feats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.feat { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); opacity: .55; }
+.feat.got { opacity: 1; border-left: 3px solid var(--good); }
+.feat .muted { font-size: 0.85em; }

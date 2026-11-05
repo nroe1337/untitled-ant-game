@@ -278,13 +278,15 @@ export const LINEAGE = {
     haulCooldown: 3,
     builderRate: 0.08,       // units each builder carries per second
     foodFloor: 0.4,          // builders never take food below this share of storage
-    held: ['twig', 'resin', 'silk', 'jelly'],  // what the Spire holds back from other purchases (see Lineage)
+    /** Where to find each held material, shown when the Spire is waiting on it. */
+    sources: { twig: 'expeditions (the stump, the hedge) and grass tiles on the Map', resin: 'expeditions to the old leaf, the stump or the edge of the stones, and stone tiles on the Map', seed: 'Seed lore, expeditions and bare soil tiles on the Map', jelly: 'chewing it in the Castes tab' } as Record<string, string>,
+    held: ['twig', 'resin', 'seed', 'silk', 'jelly'],  // what the Spire holds back from other purchases (see Lineage)
     stages: [
       { id: 'footing',    name: 'Foundation',        cost: { soil: 350 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
       { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 25, resin: 6 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { food: 500, seed: 30, jelly: 15 },    time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
       { id: 'princesses', name: 'Winged princesses', cost: { jelly: 25, food: 300 },              time: 1200, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 35, resin: 8, seed: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 35, resin: 6, seed: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
