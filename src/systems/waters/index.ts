@@ -98,8 +98,14 @@ export const waters: GameSystem = {
   },
 
   keep(ctx) {
-    // settlements belong to this colony, but the line remembers how many it founded
-    return { boats: [], dest: 'puddle', built: 0, voyages: 0, reached: [], settlements: [], founded: S(ctx).founded };
+    // The waters are a long chain that builds up across flights: boats come home and stay moored,
+    // places reached and settlements founded stay yours. Only this colony's voyage count resets
+    // (the archive has already added it to the line's lifetime total).
+    const s = S(ctx);
+    return {
+      boats: s.boats.map((b) => ({ ...b, voyage: null })), dest: s.dest, built: s.built, voyages: 0,
+      reached: [...s.reached], settlements: [...s.settlements], founded: s.founded,
+    };
   },
 
   isUnlocked: (ctx) => ctx.flags.has('tech:rafts'),
@@ -107,6 +113,11 @@ export const waters: GameSystem = {
   tick(ctx, dt) {
     const s = S(ctx);
     s.reached ??= []; s.settlements ??= []; s.founded ??= 0;
+    // boat-building know-how is remembered by the line once learned
+    for (const t of ['rafts', 'galleons']) {
+      if (ctx.flags.has('tech:' + t)) ctx.flags.add('legacy:' + t);
+      else if (ctx.flags.has('legacy:' + t)) ctx.flags.add('tech:' + t);
+    }
     for (const id of s.settlements) {
       const d = destOf(id);
       for (const [r, v] of Object.entries(d.settle!.yields)) if (ctx.res.has(r)) ctx.res.add(r, v * dt);
