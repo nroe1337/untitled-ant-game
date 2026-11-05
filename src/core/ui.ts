@@ -44,7 +44,19 @@ export function actionButton(opts: {
   const labelEl = el('span.label');
   const costEl = el('span.cost');
   const bar = el('span.cd');
-  const root = el('button.action', { type: 'button', title: opts.noTitle ? '' : opts.desc ?? '' }, labelEl, costEl, bar);
+  const root = el('button.action', { type: 'button' }, labelEl, costEl, bar);
+  // Evolve-style: the button shows only its name; description and costs live in the info window
+  let held = '';
+  const info = opts.noTitle ? null : hoverTip(root, () => {
+    const c = opts.costs?.() ?? {};
+    const lines = costLines(opts.ctx, c);
+    return [
+      ...(opts.desc ? [el('div.tdesc', {}, opts.desc)] : []),
+      ...(lines.length ? [el('div.tcost', {}, ...lines)] : []),
+      ...(held ? [el('div.short', {}, held)] : []),
+    ];
+  });
+  if (info) root.classList.add('evo');
   let cdLeft = 0;
   let cdStart = 0;
   let lastSeen = 0;
@@ -78,8 +90,8 @@ export function actionButton(opts: {
       root.disabled = !ok;
       // explain a button that is short only because something is holding the stores back
       const heldBy = !ok && ctx.res.canAffordIgnoringHolds(c) ? [...new Set(Object.keys(c).flatMap((r) => ctx.res.holders(r)))] : [];
-      const title = (opts.desc ?? '') + (heldBy.length ? `\nHeld back for ${heldBy.join(' and ')}. Turn that off to spend it here.` : '');
-      if (!opts.noTitle && (root.dataset.tip ?? '') !== title) root.dataset.tip = title;
+      held = heldBy.length ? `Held back for ${heldBy.join(' and ')}. Turn that off to spend it here.` : '';
+      if (info && tipOwner === root) info.show(); // keep the open window's costs live
       // can't afford (but otherwise could buy): drawn dimmer than a button that is ready
       root.classList.toggle('short', cdLeft <= 0 && (!opts.enabled || opts.enabled(ctx)) && !ctx.res.canAfford(c));
     },
@@ -92,6 +104,15 @@ export function progressBar() {
   const fill = el('span.fill');
   const root = el('span.bar', {}, fill);
   return { root, set(p: number) { fill.style.width = `${Math.max(0, Math.min(1, p)) * 100}%`; } };
+}
+
+/** Cost rows for an info window: one per resource, orange when short, red when over the storage cap. */
+function costLines(ctx: Context, c: Costs) {
+  return Object.entries(c).map(([r, n]) => {
+    const name = ctx.res.has(r) ? ctx.res.get(r).name : r;
+    const short = ctx.res.amt(r) < n, over = ctx.res.has(r) && ctx.res.cap(r) < n;
+    return el(`div.${over ? 'over' : short ? 'short' : 'ok'}`, {}, `${name}: ${fmt(n, true)}`);
+  });
 }
 
 /** One floating tooltip shared by every tile: shows on hover or keyboard focus, follows live costs. */
@@ -156,12 +177,7 @@ export function tileButton(opts: {
   if (opts.count) btn.root.append(badge);
   const wrap = el('div.tilewrap', {}, btn.root);
   const fill = (ctx: Context) => {
-    const c = opts.costs();
-    const lines = Object.entries(c).map(([r, n]) => {
-      const name = ctx.res.has(r) ? ctx.res.get(r).name : r;
-      const short = ctx.res.amt(r) < n, over = ctx.res.has(r) && ctx.res.cap(r) < n;
-      return el(`div.${over ? 'over' : short ? 'short' : 'ok'}`, { title: over ? 'More than you can store' : '' }, `${name}: ${fmt(n, true)}`);
-    });
+    const lines = costLines(ctx, opts.costs());
     tip().replaceChildren(
       ...(opts.desc ? [el('div.tdesc', {}, opts.desc)] : []),
       ...(lines.length ? [el('div.tcost', {}, ...lines)] : []),
