@@ -111,7 +111,7 @@ export const nest: GameSystem = {
           grid.append(wrap);
           buttons.set(id, { btn, wrap, count: cnt });
         }
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), canvas, progress, extra, grid);
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, grid);
       },
       update(_root, ctx) {
         for (const id of IDS) {

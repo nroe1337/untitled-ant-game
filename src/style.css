@@ -188,3 +188,6 @@ input[type=checkbox] { accent-color: var(--accent); }
 .levelpick .fightlvl { font-size: 1.4em; min-width: 2.5ch; text-align: center; font-variant-numeric: tabular-nums; }
 .levelpick .ghost.on { border-color: var(--accent); }
 .drops { font-size: 0.9em; line-height: 1.5; }
+/* a deep nest scrolls inside its own frame instead of pushing the page down */
+.nestscroll { max-height: 560px; max-width: 642px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--line) transparent; }
+.nestscroll:focus-visible { outline: 2px solid var(--accent); }
