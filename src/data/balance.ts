@@ -192,7 +192,7 @@ export const RESEARCH = {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Food caching',      age: 'dirt', cost: { knowledge: 12, soil: 10 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Storeroom.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 15 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
-    royal:      { name: 'Royal court',       age: 'dirt', cost: { knowledge: 25, food: 30 },          needs: ['brood'],               desc: 'Unlocks Royal care upgrades for the queen.' },
+    royal:      { name: 'Royal court',       age: 'forage', cost: { knowledge: 180, food: 100 },       needs: ['seeds'],               desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 20 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores and speeds up knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 40, soil: 30 },          needs: ['storage', 'brood'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'],              desc: 'Unlocks Colony techniques.' },
