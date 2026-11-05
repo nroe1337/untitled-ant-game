@@ -149,9 +149,8 @@ export const jobs: GameSystem = {
 
   panel: (() => {
     const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement }>();
-    let idleEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, techHead: HTMLElement, census: HTMLElement;
+    let idleEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
-    let techs: ReturnType<typeof upgradeList>;
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
       if (d > 0) d = Math.min(d, idleAnts(ctx));
@@ -166,8 +165,6 @@ export const jobs: GameSystem = {
         upkeepEl = el('p.muted');
         census = el('div.ledger');
         list = el('div.jobs');
-        techHead = el('h3', {}, 'Techniques');
-        techs = upgradeList(ctx, () => S(ctx).tech, TECHS);
         decreeText = el('span.muted');
         decreeSet = el('button.small', { type: 'button', title: 'New workers will be sent to keep the jobs in these proportions.', onclick: () => {
           const s = S(ctx);
@@ -181,7 +178,7 @@ export const jobs: GameSystem = {
           el('p.flavor', {}, 'Every worker waits for a purpose. Idle ants still eat.'),
           el('p', {}, 'Idle workers: ', idleEl),
           decreeBox,
-          list, upkeepEl, census, techHead, techs.root,
+          list, upkeepEl, census,
         );
         for (const j of JOB_DEFS) {
           const count = el('span.count'), out = el('span.muted');
@@ -227,8 +224,26 @@ export const jobs: GameSystem = {
         const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'outposts' ? 'Holding outposts' : k === 'campaign' ? 'On campaign' : k, String(n)]);
         census.replaceChildren(...[['Total workers', String(totalAnts(ctx))], ...away].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         census.hidden = !busy;
-        techHead.hidden = !techs.update(ctx);
       },
+    };
+  })(),
+};
+
+/** Techniques get their own sub-tab under Home: with steep chamber costs they are part of the core loop. */
+export const techniques: GameSystem = {
+  id: 'techniques',
+  init() {},
+  isUnlocked: (ctx) => ctx.flags.has('tech:teaching'),
+  panel: (() => {
+    let techs: ReturnType<typeof upgradeList>;
+    return {
+      title: 'Techniques',
+      group: 'Home',
+      mount(root, ctx) {
+        techs = upgradeList(ctx, () => S(ctx).tech, TECHS);
+        root.append(el('p.flavor', {}, 'What the elders teach, the colony keeps.'), techs.root);
+      },
+      update(_root, ctx) { techs.update(ctx); },
     };
   })(),
 };

@@ -2,7 +2,7 @@
 // To remove a system: delete its line here (and its folder). Nothing else imports it.
 import type { GameSystem } from '../core/types';
 import { brood } from './brood';
-import { jobs } from './jobs';
+import { jobs, techniques } from './jobs';
 import { research } from './research';
 import { nest } from './nest';
 import { expeditions } from './expeditions';
@@ -24,6 +24,7 @@ import { stats } from './stats';
 export const SYSTEMS: GameSystem[] = [
   brood,
   jobs,
+  techniques,
   research,
   nest,
   expeditions,
