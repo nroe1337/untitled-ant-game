@@ -61,7 +61,7 @@ export const NEST = {
   baseMaterialCap: { twig: 40, seed: 25, resin: 15, silk: 20 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Tunnel',          base: { soil: 10 },                     desc: '+3 living space',                         antCap: 3 },
-    brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 },           desc: '+4 brood space. Unlocks nurses.',         broodCap: 4, needs: 'tech:brood' },
+    brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 },           desc: '+4 brood space, +1 living space. Unlocks nurses.', broodCap: 4, antCap: 1, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 },                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
     storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 },           desc: '+40 soil, +25 twig, +15 seed, +10 resin and +15 silk storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10, silk: 15 }, needs: 'tech:storage' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 },            desc: 'Sprouting seeds give +0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
