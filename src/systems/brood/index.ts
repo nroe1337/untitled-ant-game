@@ -24,7 +24,7 @@ const broodCap = (ctx: Context) => ctx.res.cap('egg');
 const broodUsed = (ctx: Context) => ctx.res.amt('egg') + ctx.res.amt('larva');
 const RB = BROOD.royal;
 // mods: 'brood' (lineage perks) speeds both; 'larvaGrowth' (fungus feeding) speeds larvae
-const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
+const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + RB.plates.per * R(ctx, 'plates') + ctx.mods.get('brood'));
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.jelly.per * R(ctx, 'jelly') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');

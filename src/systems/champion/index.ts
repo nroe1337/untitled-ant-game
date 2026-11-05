@@ -85,11 +85,11 @@ function stats(ctx: Context) {
   const grow = Math.pow(1 + C.perLevel, s.level - 1);
   return {
     atk: (C.base.atk + flat.atk) * grow * (1 + pct.atk + C.training.grip.per * tl(ctx, 'grip') + ctx.mods.get('champAtk')),
-    maxHp: (C.base.hp + flat.hp) * grow * (1 + pct.hp + C.training.shell.per * tl(ctx, 'shell')),
+    maxHp: (C.base.hp + flat.hp) * grow * (1 + pct.hp + C.training.shell.per * tl(ctx, 'shell') + C.training.wraps.per * tl(ctx, 'wraps')),
     def: flat.def * grow * (1 + pct.def),
     swing: C.base.swing / (1 + Math.min(1, flat.speed + (traits.has('swift') ? 0.1 : 0))),
     crit: Math.min(0.5, 0.03 + flat.crit + (traits.has('keen') ? 0.08 : 0)),
-    luck: flat.luck + (traits.has('lucky') ? 0.15 : 0),
+    luck: flat.luck + (traits.has('lucky') ? 0.15 : 0) + C.training.nets.per * tl(ctx, 'nets'),
     regen: C.regen + flat.regen + (traits.has('hardy') ? 0.01 : 0),
     venom: flat.venom * grow,
     xp: flat.xp,

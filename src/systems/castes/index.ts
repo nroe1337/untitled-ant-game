@@ -6,7 +6,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { CASTES } from '../../data/balance';
+import { CASTES, NEST } from '../../data/balance';
 
 interface CasteState { ups: Record<string, number>; chewed: number }
 const S = (ctx: Context) => ctx.state.castes as CasteState;
@@ -20,7 +20,7 @@ export const castes: GameSystem = {
 
   init(ctx) {
     ctx.res.define({ id: 'jelly', name: 'Royal jelly', cap: CASTES.jellyCap, order: 12, group: 'Brood' });
-    ctx.res.define({ id: 'silk', name: 'Silk', order: 24, group: 'Surface' });
+    ctx.res.define({ id: 'silk', name: 'Silk', cap: NEST.baseMaterialCap.silk, order: 24, integer: true, group: 'Surface' });
     ctx.state.castes = { ups: {}, chewed: 0 } satisfies CasteState;
   },
 

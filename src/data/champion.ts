@@ -69,6 +69,8 @@ export const CHAMPION = {
     shell:   { name: 'Shell hardening', desc: 'Champion health +{p} per level',  per: 0.03, base: { food: 40, soil: 30 },    growth: 1.2,  max: 40 },
     stamina: { name: 'Stamina',        desc: 'Fights {p} faster while you are away, per level', per: 0.01, base: { food: 80, fungus: 10 }, growth: 1.3, max: 10 },
     focus:   { name: 'Focus',          desc: 'Full speed lasts {p}s longer after an ability, per level', per: 2, base: { food: 60, pheromone: 10 }, growth: 1.25, max: 10, unit: 'flat' as const },
+    wraps:   { name: 'Silk wraps',     desc: 'Champion health +{p} per level', per: 0.03, base: { silk: 3 }, growth: 1.18, max: 40 },
+    nets:    { name: 'Hunting nets',   desc: 'Champion finds {p} more drops per level', per: 0.05, base: { silk: 4, food: 40 }, growth: 1.2, max: 20 },
     instinct:{ name: 'Hunting instinct', desc: 'The champion bites on its own when Bite is ready', per: 1, base: { chitin: 20, fungus: 40 }, growth: 1, max: 1, unit: 'flat' as const },
   },
 

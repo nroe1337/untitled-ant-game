@@ -18,6 +18,7 @@ export const BROOD = {
     jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster per level',              per: 0.01, base: { food: 30 },           growth: 1.18, max: 25 },
     devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay {p} faster per level',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
     clutch:    { name: 'Larger clutch',   desc: 'The queen lays {p} more egg per lay, per level', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
+    plates:    { name: 'Chitin plates',   desc: 'Plate the queen in raider chitin: eggs hatch {p} faster per level', per: 0.02, base: { chitin: 5 }, growth: 1.15, max: 50, needs: 'rival' },
     longevity: { name: 'Royal rhythm',    desc: 'The queen lays {p} eggs/s on her own, per level', per: 0.005, base: { seed: 6, resin: 1 }, growth: 1.3, max: 20, unit: 'flat' as const, needs: 'surface' },
   },
 };
@@ -57,12 +58,12 @@ export const NEST = {
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Storerooms hold far more
   /** Surface materials have small stores until you dig Storerooms (Evolve-style warehouses). */
-  baseMaterialCap: { twig: 40, seed: 25, resin: 15 } as Record<string, number>,
+  baseMaterialCap: { twig: 40, seed: 25, resin: 15, silk: 20 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Tunnel',          base: { soil: 10 },                     desc: '+3 living space',                         antCap: 3 },
     brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 },           desc: '+4 brood space. Unlocks nurses.',         broodCap: 4, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 },                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
-    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 },           desc: '+40 soil, +25 twig, +15 seed and +10 resin storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10 }, needs: 'tech:storage' },
+    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 },           desc: '+40 soil, +25 twig, +15 seed, +10 resin and +15 silk storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10, silk: 15 }, needs: 'tech:storage' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 },            desc: 'Sprouting seeds give +0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 },  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, needs: 'tech:resin' },
     gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 },       desc: 'Scouts +5% each, +15 pheromone storage',  pheroCap: 15, scout: 0.05, needs: 'tech:scouting' },
@@ -115,6 +116,10 @@ export const MAP = {
   claimCost: { food: 40, twig: 4 },
   claimGrowth: 1.35,
   claimWorkers: 2,          // workers who stay at each outpost
+  /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
+  upgrades: {
+    lines: { name: 'Silk lines', desc: 'Silk guy-lines and nets at every outpost: they yield {p} more per level', per: 0.05, base: { silk: 5 }, growth: 1.2, max: 20, needs: 'res:silk' },
+  },
   /** Per-second output of each owned tile by terrain. */
   yield: {
     grass: { food: 0.03, twig: 0.0015 },   // fallen grass stems: a slow, steady trickle of twigs
@@ -143,7 +148,7 @@ export const WAR = {
     raider:   { hp: 3, atk: 0.8, speed: 10, chitin: 1 },
     brute:    { hp: 12, atk: 2, speed: 6, chitin: 4 },  // a big rival soldier, from wave 3
     // wave n brings raiders = base + n * perWave, and one brute every bruteEvery waves
-    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 2, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
+    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 1, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
@@ -160,6 +165,7 @@ export const WAR = {
     spitters:{ name: 'Acid spitters',   desc: 'Guard posts deal {p} more damage per level', per: 0.05, base: { chitin: 3, resin: 1 },  growth: 1.2,  max: 30 },
     carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health per level',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
     plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less per level', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },
+    plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder per level. Keep adding plates.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
     alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
   // campaigns on the map

@@ -204,6 +204,7 @@ export const war: GameSystem = {
   tick(ctx, dt) {
     if (!ctx.flags.has('rival')) return;
     const s = S(ctx);
+    ctx.mods.set('soldierPower', 'plating', F.plating.per * fl(ctx, 'plating'));
     s.rallyCd = Math.max(0, s.rallyCd - dt);
     if (!s.rivalDefeated) {
       s.rivalArmy = Math.min(rivalTiles(ctx) * WAR.rivalArmyPerTile, s.rivalArmy + WAR.rivalGrowthPerSecond * dt);

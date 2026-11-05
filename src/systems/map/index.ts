@@ -7,11 +7,14 @@ import { actionButton, el, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP } from '../../data/balance';
+import { fromBalance, upgradeList } from '../../core/upgrades';
 
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
-interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number }
+interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number> }
+const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
+const yieldMult = (ctx: Context) => 1 + MAP.upgrades.lines.per * (S(ctx).ups?.lines ?? 0);
 
 const S = (ctx: Context) => ctx.state.map as MapState;
 const idx = (x: number, y: number) => y * MAP.cols + x;
@@ -122,7 +125,7 @@ export const map: GameSystem = {
   // but outposts stand empty until you claim workers for them again
   keep(ctx) {
     const s = S(ctx);
-    return { ...s, selected: null, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
+    return { ...s, selected: null, ups: {}, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
   },
 
   tick(ctx, dt) {
@@ -130,13 +133,14 @@ export const map: GameSystem = {
     const outposts = mine.filter((t) => t.outpost).length;
     ctx.busy.outposts = outposts * MAP.claimWorkers;
     // territory pays only once the colony has mapped it; the start is fully manual
-    if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * dt);
+    if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * yieldMult(ctx) * dt);
     ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence);
     ctx.mods.set('tiles', 'map', mine.length);
   },
 
   panel: (() => {
     let cv: HTMLCanvasElement, info: HTMLElement, hover: HTMLElement, claim: ActionButton, claimWrap: HTMLElement, summary: HTMLElement;
+    let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement;
     let hoverI: number | null = null;
     return {
       title: 'Map',
@@ -166,10 +170,13 @@ export const map: GameSystem = {
           },
         });
         claimWrap = el('div.row', {}, claim.root);
+        upsHead = el('h3', {}, 'Outposts');
+        ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
         root.append(
           el('p.flavor', {}, 'The garden, as far as your scouts have seen. Click a tile to inspect it.'),
           cv, hover, summary,
           el('h3', {}, 'Selected tile'), info, claimWrap,
+          upsHead, ups.root,
         );
       },
       update(_root, ctx) {
@@ -181,9 +188,10 @@ export const map: GameSystem = {
           return t.seen ? `${x},${y}  ${TERRAIN_NAME[t.t]}, ${OWNER_NAME[String(t.o)]}${t.core ? ' (home)' : ''}` : `${x},${y}  Unexplored`;
         };
         hover.textContent = describe(hoverI) || 'Hover a tile.';
+        upsHead.hidden = !ups.update(ctx);
         const mine = owned(ctx);
         const income: Record<string, number> = {};
-        for (const t of mine) for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v;
+        for (const t of mine) for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * yieldMult(ctx);
         summary.textContent = `You hold ${mine.length} tiles. ` +
           (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${v.toFixed(2)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
         const i = s.selected;
