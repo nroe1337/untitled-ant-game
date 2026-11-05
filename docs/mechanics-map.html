@@ -90,7 +90,7 @@ aside h3 { font: 11px var(--pixel); letter-spacing: .08em; color: var(--accent);
 <script>
 const N = {
   queen:  { x: 190, y: 290, t: 'Queen & brood', s: 'BROOD TAB', core: 1,
-    d: 'The queen lays eggs, eggs become larvae, larvae become workers. Everything starts here.',
+    d: 'The queen lays eggs, eggs become larvae, larvae become workers. Everything starts here. Her sprite in the nest view fattens as the colony grows and changes for good across flights and ages, ending as a wired cyborg egg in the Age of Orbit.',
     in: ['Food for larvae', 'Nurses lay eggs for you', 'Brood space from chambers'], out: ['New workers'] },
   colony: { x: 540, y: 460, t: 'Colony', s: 'JOBS + TECHNIQUES', core: 1,
     d: 'Workers take jobs: forager, digger, elder, nurse, scout, soldier. Each worker on a job makes the same amount. Every worker eats.',
@@ -105,15 +105,15 @@ const N = {
     d: 'Send parties of workers to six destinations, each repeatable as often as you like; a new one appears after 3, 8, 15, 25 and 40 trips. Each worker past 3 adds 15% loot. They come back with food, twigs, seeds, resin and rare amber, plus a trail mark. Trail upgrades unfold one at a time as trips pile up.',
     in: ['Workers away from jobs', 'Pheromone to mark trails'], out: ['Loot', 'Map fog revealed', 'The rival colony, after 6 runs'] },
   map:    { x: 1040, y: 910, t: 'Map', s: 'TERRITORY', core: 1,
-    d: 'A tile map of the garden. Claim tiles as outposts (each holds 2 workers) for steady yields: grass gives food and a trickle of twigs, stones give a trickle of resin and add defence.',
+    d: 'A tile map of the garden. Claim tiles as outposts (each holds 2 workers) for steady yields. Each claim costs 35% more per outpost you hold right now, so the 10th outpost costs the same in every colony: grass gives food and a trickle of twigs, stones give a trickle of resin and add defence.',
     in: ['Fog revealed by expeditions', 'Pheromone and workers to claim', 'Tiles taken by campaigns'], out: ['Territory yields', 'Stone defence', 'Campaign targets'] },
   war:    { x: 660, y: 910, t: 'War', s: 'RAIDS + CAMPAIGNS', core: 1,
     d: 'Provoke a raid when ready. Soldiers, rallied workers and defences fight at the gate. Each clean win makes the next wave harder.',
     in: ['Soldiers', 'Defence from chambers, fortifications and stone', 'Pheromone to provoke'], out: ['Chitin', 'Captured tiles'] },
   // the long game
   archive: { x: 130, y: 60, t: 'Scent archive', s: 'LIFETIME RECORDS', core: 1,
-    d: 'Every colony of your line adds to nine records: workers born, chambers, techs, expeditions, waves won, voyages, champion kills, flights and honeydew. Each record earns tiers on its own, and each tier is a small permanent bonus. Total tiers open ten accords, in order, that automate chores: the queen lays by herself, colonies start with early techs, boats relaunch, the champion challenges bosses. No choices to agonise over.',
-    in: ['Counts from every system, in every colony'], out: ['Small permanent bonuses', 'Accords that automate'] },
+    d: 'Every colony of your line adds to nine records: workers born, chambers, techs, expeditions, waves won, voyages, champion kills, flights and honeydew. Each record earns tiers on its own, and each tier is a small permanent bonus. Ten accords automate chores: the queen lays by herself, colonies start with early techs, boats relaunch, the champion challenges bosses. Each accord opens at a visible lifetime milestone (say, 40 raid waves won), then is bought once with Lineage from the same pool as the perks.',
+    in: ['Counts from every system, in every colony'], out: ['Small permanent bonuses', 'Accords that automate (cost Lineage)'] },
   genome: { x: 370, y: 60, t: 'Genome', s: 'GENES', core: 1,
     d: 'From the second flight, the queen carries chosen genes for the whole colony (one slot, more at 3, 6 and 10 flights). Each flight with a gene adds expression; at 4 it is fixed in your line, always on, and frees its slot. Each level of expression keeps a tenth of the effect forever.',
     in: ['Flights'], out: ['Per-colony bonuses', 'Fixed genes'] },
