@@ -3,8 +3,9 @@
 import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, type ActionButton } from '../../core/ui';
 import type { Costs } from '../../core/resources';
-import { NEST } from '../../data/balance';
+import { NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
+import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
 type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
@@ -145,10 +146,22 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const ROW_H = 22;
 
 let seenOnce = false;
+
+/** How far the queen has come: she fattens as this colony grows, and changes for good with each
+ *  flight and, from the Age of Settlement on, each new age (Orbit is the last form). */
+function queenLook(ctx: Context): QueenLook {
+  const flights = (ctx.state.lineage as { flights?: number } | undefined)?.flights ?? 0;
+  const ageId = (ctx.state.research as { age?: string } | undefined)?.age;
+  const ageIdx = Math.max(0, RESEARCH.ages.findIndex((a) => a.id === ageId));
+  const tier = Math.min(6, Math.max(flights >= 3 ? 2 : flights >= 1 ? 1 : 0, ageIdx >= 2 ? ageIdx + 1 : 0));
+  return { tier, fat: Math.min(1, ctx.res.amt('ant') / 120) };
+}
 function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const order = S(ctx).order;
   const rows = Math.ceil(order.length / LANES.length);
-  const H = Math.min(720, 70 + rows * ROW_H);
+  const look = queenLook(ctx);
+  const qs = queenSize(look);
+  const H = Math.max(Math.min(720, 70 + rows * ROW_H), 30 + rows * ROW_H + 8 + 2 + qs.h + 6);
   if (cv.height !== H) cv.height = H;
   const c = setup(cv);
   const W = cv.width;
@@ -165,8 +178,8 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const shaftX = W / 2;
   const bottom = 30 + rows * ROW_H + 8;
   rect(c, shaftX - 3, surface ? 0 : 16, 6, bottom - (surface ? 0 : 16), PAL.hole);
-  blob(c, shaftX, bottom + 6, 18, 6, PAL.hole);         // the queen's cell
-  rect(c, shaftX - 3, bottom + 4, 6, 4, PAL.you);       // the queen
+  const qy = bottom + 2 + Math.ceil(qs.h / 2);
+  blob(c, shaftX, qy, Math.max(18, Math.ceil(qs.w / 2) + 4), Math.max(6, Math.ceil(qs.h / 2) + 2), PAL.hole); // the queen's cell
 
   const fillFood = ctx.res.amt('food') / Math.max(1, ctx.res.cap('food'));
   const broodCount = ctx.res.amt('egg') + ctx.res.amt('larva');
@@ -277,6 +290,8 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     }
   });
   seenOnce = true;
+
+  drawQueen(c, shaftX, qy, look, t);
 
   // workers walk real paths: down the shaft, along a side tunnel to a chamber, and back
   const ants = Math.min(48, Math.floor(ctx.res.amt('ant')));
