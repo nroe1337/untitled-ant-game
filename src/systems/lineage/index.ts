@@ -75,7 +75,7 @@ export const lineage: GameSystem = {
       // first load after a flight: the new queen lands
       s.pending = false;
       ctx.res.set('lineage', s.total - spent(ctx));
-      ctx.res.set('food', BROOD.startFood);
+      ctx.res.set('food', BROOD.flightStartFood);
       const swarm = LINEAGE.perks.swarm.per * P(ctx, 'swarm');
       if (swarm) { ctx.res.setCapBonus('ant', 'swarm', swarm); ctx.res.set('ant', swarm); }
       ctx.log(`The wedding flight is over. A young queen sheds her wings and digs into new earth. This is flight ${s.flights} of your line.` + (swarm ? ` ${swarm} workers came with her.` : ''));
