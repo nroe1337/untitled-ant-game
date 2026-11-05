@@ -40,7 +40,7 @@ const STEPS_PER_FRAME = 200;
 const ALERT_ROTATE_S = 5;
 
 /** Top tabs always sit in this order, whatever order they unlock in. Unlisted groups go last. */
-const GROUP_ORDER = ['Home', 'Nest', 'World', 'War', 'Lineage'];
+const GROUP_ORDER = ['Home', 'Nest', 'Research', 'World', 'War', 'Lineage'];
 function sortChildren(bar: HTMLElement) {
   const kids = Array.from(bar.children) as HTMLElement[];
   kids.sort((a, b) => Number(a.dataset.rank ?? 99) - Number(b.dataset.rank ?? 99));

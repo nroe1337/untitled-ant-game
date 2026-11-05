@@ -44,7 +44,7 @@ export const research: GameSystem = {
     let doneList: HTMLElement, empty: HTMLElement, ageEl: HTMLElement;
     return {
       title: 'Research',
-      group: 'Home',
+      group: 'Research',
       mount(root, ctx) {
         ageEl = el('p.age');
         root.append(
