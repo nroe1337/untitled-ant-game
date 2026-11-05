@@ -164,13 +164,24 @@ export class Game {
     const exportBtn = el('button.ghost', { type: 'button', onclick: () => this.openSaveBox() }, 'Export / import');
     const resetBtn = el('button.ghost', { type: 'button', onclick: () => this.confirmReset(resetBtn) }, 'Reset');
 
+    // Save, export and reset live in a small menu; pause and speed stay out in the open.
+    const menu = el('div.menu', { hidden: true, role: 'menu' }, saveBtn, exportBtn, resetBtn);
+    const menuBtn = el('button.ghost', { type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false' }, 'Menu ▾') as HTMLButtonElement;
+    const setMenu = (open: boolean) => { menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
+    menuBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(menu.hidden); });
+    menu.addEventListener('click', (e) => { if (e.target !== resetBtn) setMenu(false); }); // reset needs a second click
+    document.addEventListener('click', (e) => { if (!menuWrap.contains(e.target as Node)) setMenu(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+    const menuWrap = el('div.menuwrap', {}, menuBtn, menu);
+
     root.append(
       el('header.top', {},
         el('div.brand', {}, el('span.mark'), el('h1', {}, 'Formicarium')),
-        el('div.tools', {}, this.pauseBtn, saveBtn, exportBtn, resetBtn, speedBtn)),
+        this.alertEl,
+        el('div.tools', {}, this.pauseBtn, speedBtn, menuWrap)),
       this.layoutEl = el('div.layout', {},
         el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList),
-        el('main.main', {}, this.alertEl, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
+        el('main.main', {}, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
         el('aside.story', {}, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
   }
