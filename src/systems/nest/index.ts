@@ -111,7 +111,17 @@ export const nest: GameSystem = {
           grid.append(wrap);
           buttons.set(id, { btn, wrap, count: cnt });
         }
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, grid);
+        canvas.addEventListener('click', (ev) => {
+          const r = canvas.getBoundingClientRect();
+          const x = (ev.clientX - r.left) * (canvas.width / r.width), y = (ev.clientY - r.top) * (canvas.height / r.height);
+          const i = hitSpots.findIndex((p) => Math.abs(p.x - x) <= 20 && Math.abs(p.y - y) <= 8);
+          const order = S(ctx).order;
+          if (i < 0 || i === picked) { picked = null; return; }
+          if (picked === null) { picked = i; return; }
+          [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
+          picked = null;
+        });
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap their places.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, grid);
       },
       update(_root, ctx) {
         for (const id of IDS) {
@@ -146,6 +156,9 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const ROW_H = 22;
 
 let seenOnce = false;
+/** Where each chamber was last drawn (by build-order index), for clicking; and the one picked to swap. */
+let hitSpots: { x: number; y: number }[] = [];
+let picked: number | null = null;
 
 /** How far the queen has come: she fattens as this colony grows, and changes for good with each
  *  flight and, from the Age of Settlement on, each new age (Orbit is the last form). */
@@ -290,6 +303,12 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     }
   });
   seenOnce = true;
+  hitSpots = spots;
+  if (picked !== null && spots[picked]) { // a blinking frame round the chamber picked to swap
+    const p = spots[picked], col = Math.floor(t * 3) % 2 ? PAL.seed : PAL.bone;
+    rect(c, p.x - 22, p.y - 8, 44, 1, col); rect(c, p.x - 22, p.y + 7, 44, 1, col);
+    rect(c, p.x - 22, p.y - 8, 1, 16, col); rect(c, p.x + 21, p.y - 8, 1, 16, col);
+  } else picked = null;
 
   drawQueen(c, shaftX, qy, look, t);
 

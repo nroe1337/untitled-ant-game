@@ -122,6 +122,7 @@ select { background: var(--raise); color: var(--fg); border: 1px solid var(--lin
 .caption { display: grid; gap: 3px; font-size: 13px; }
 .mono { font-variant-numeric: tabular-nums; }
 canvas.map { cursor: crosshair; max-width: 720px; }
+canvas.nestview { cursor: pointer; }
 input[type=checkbox] { accent-color: var(--accent); }
 .buildrow .count { white-space: nowrap; color: var(--muted); font-size: 13px; }
 
