@@ -5,7 +5,7 @@
 // when food runs low. Reads ctx.state.map.tiles, ctx.state.nest.order, jobs.assigned.herder.
 // Publishes milked (for the archive) and reads the 'herdYield' mod.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, type ActionButton } from '../../core/ui';
+import { actionButton, el, tileButton, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, rect, setup } from '../../core/pixel';
@@ -104,7 +104,7 @@ export const husbandry: GameSystem = {
 
   panel: (() => {
     let milk: ActionButton, drive: ActionButton, ledger: HTMLElement, list: HTMLElement, cv: HTMLCanvasElement, ups: ReturnType<typeof upgradeList>;
-    const caps: { id: string; btn: ActionButton }[] = [];
+    const caps: { id: string; btn: ReturnType<typeof tileButton> }[] = [];
     let frame = 0;
     return {
       title: 'Herds',
@@ -127,16 +127,19 @@ export const husbandry: GameSystem = {
         });
         cv = el('canvas.nestview', { width: 320, height: 40, 'aria-label': 'Your pasture' }) as HTMLCanvasElement;
         ledger = el('div.ledger');
-        list = el('div.build');
+        list = el('div.tiles');
         for (const id of IDS) {
           const d = SP[id];
-          const btn = actionButton({
-            ctx, label: `Bring in ${d.name.toLowerCase()}`, costs: () => d.capture, desc: d.desc,
+          const btn = tileButton({
+            ctx, label: `Bring in ${d.name.toLowerCase()}`, costs: () => d.capture,
+            effect: () => unlocked(ctx, id) ? `${d.desc} Two at a time.` : `${d.desc} Opens at ${d.unlock} honeydew milked.`,
+            count: () => `${Math.floor(S(ctx).herds[id] ?? 0)}${d.max ? '/' + d.max : ''}`,
             enabled: (c) => unlocked(c, id) && used(c, d.room) + 2 <= room(c, d.room) && (S(c).herds[id] ?? 0) + 2 <= (d.max ?? Infinity),
             onBuy: (c) => { const s = S(c); const first = !(s.herds[id] ?? 0); s.herds[id] = (s.herds[id] ?? 0) + 2; if (first) c.log(`Two ${d.name.toLowerCase()} join the herds.`, 'info'); },
           });
           caps.push({ id, btn });
-          list.append(el('div.buildrow', { 'data-sp': id }, btn.root, el('span.muted', {}, d.desc), el('span.count')));
+          btn.root.dataset.sp = id;
+          list.append(btn.root);
         }
         ups = upgradeList(ctx, () => S(ctx).ups, UPS);
         root.append(
@@ -153,11 +156,7 @@ export const husbandry: GameSystem = {
         drive.root.hidden = !s.pred;
         for (const c of caps) {
           c.btn.update(ctx);
-          const row = list.querySelector<HTMLElement>(`[data-sp="${c.id}"]`)!;
-          const d = SP[c.id];
-          row.hidden = !unlocked(ctx, c.id) && S(ctx).milked < d.unlock * 0.5;
-          const n = Math.floor(s.herds[c.id] ?? 0);
-          (row.lastChild as HTMLElement).textContent = unlocked(ctx, c.id) ? `${n}${d.max ? '/' + d.max : ''}` : `opens at ${d.unlock} honeydew milked`;
+          c.btn.root.hidden = !unlocked(ctx, c.id) && s.milked < SP[c.id].unlock * 0.5;
         }
         const r = rates(ctx);
         ledger.replaceChildren(...([

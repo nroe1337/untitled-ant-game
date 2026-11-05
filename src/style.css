@@ -218,3 +218,24 @@ input[type=checkbox] { accent-color: var(--accent); }
 .menu button { text-align: left; width: 100%; }
 @media (max-width: 900px) { .top .alerts { order: 3; flex-basis: 100%; max-width: none; } }
 @media (max-width: 520px) { .top .alerts { height: auto; min-height: 36px; } .top .alerts p { padding: 8px 12px; } }
+
+/* Evolve-style building tiles: name and a count badge; details in the hover tooltip */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 720px; }
+@media (max-width: 420px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tilewrap { display: flex; }
+.action.tile { min-width: 0; width: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px 30px; min-height: 46px; }
+.action.tile .cost { display: none; }
+.action.tile .badge { position: absolute; top: 0; right: 0; min-width: 22px; padding: 1px 5px; font-size: 12px; line-height: 16px; text-align: center;
+  background: var(--bg); color: var(--good); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.action.tile:disabled .badge { color: var(--muted); }
+.tip { position: fixed; z-index: 50; max-width: 280px; padding: 8px 12px; background: #24201c; border: 1px solid var(--line); border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.5); font-size: 14px; text-align: center; pointer-events: none; }
+.tip > div + div { border-top: 1px solid var(--line); margin-top: 5px; padding-top: 5px; }
+.tip .tcost .short { color: #d98a5f; }
+.tip .tcost .over { color: #e0533a; font-weight: 600; }
+.tip .teffect { color: var(--good); }
+/* no hover on touch screens: show the cost on the tile itself */
+@media (hover: none) { .action.tile { flex-direction: column; padding: 10px 26px 8px; } .action.tile .cost { display: block; font-size: 11px; } }
+.tile.done { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--muted); font-weight: 600; cursor: default; }
+.tile.done:hover, .tile.done:focus-visible { color: var(--fg); border-color: #5a4c3e; }

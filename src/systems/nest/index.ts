@@ -1,7 +1,7 @@
 // Nest building: spend resources on chambers that raise caps and add bonuses.
 // Ten chambers break the surface. Each chamber type draws differently in the nest view.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, type ActionButton } from '../../core/ui';
+import { el, tileButton } from '../../core/ui';
 import type { Costs } from '../../core/resources';
 import { NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
@@ -9,7 +9,7 @@ import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
 type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
-  name: string; base: Costs; desc: string; needs?: string; max?: number;
+  name: string; base: Costs; desc: string; needs?: string; max?: number; growth?: number;
   antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
   soilCap?: number; matCap?: Record<string, number>;
   foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
@@ -23,7 +23,7 @@ const S = (ctx: Context) => ctx.state.nest as NestState;
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
 const costOf = (ctx: Context, id: ChamberId): Costs => {
   const cheaper = Math.max(0.5, 1 + ctx.mods.get('chamberCost'));
-  return Object.fromEntries(Object.entries(DEFS[id].base).map(([r, v]) => [r, Math.ceil(v * Math.pow(NEST.costGrowth, count(ctx, id)) * cheaper)]));
+  return Object.fromEntries(Object.entries(DEFS[id].base).map(([r, v]) => [r, Math.ceil(v * Math.pow(DEFS[id].growth ?? NEST.costGrowth, count(ctx, id)) * cheaper)]));
 };
 const totalChambers = (ctx: Context) => Object.values(S(ctx).built).reduce((a, b) => a + b, 0);
 
@@ -37,13 +37,15 @@ function visible(ctx: Context, id: ChamberId) {
 }
 
 function applyEffects(ctx: Context) {
-  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id), 0);
+  const mult = (id: ChamberId) => 1 + Object.entries(NEST.storageTechs)
+    .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
+  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id) * (k.endsWith('Cap') ? mult(id) : 1), 0);
   ctx.res.setCapBonus('ant', 'nest', sum('antCap'));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
   for (const r of Object.keys(NEST.baseMaterialCap)) {
-    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * count(ctx, id), 0));
+    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * count(ctx, id) * mult(id), 0));
   }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
   ctx.mods.set('defence', 'nest', sum('defence'));
@@ -79,7 +81,7 @@ export const nest: GameSystem = {
   },
 
   panel: (() => {
-    const buttons = new Map<ChamberId, { btn: ActionButton; wrap: HTMLElement; count: HTMLElement }>();
+    const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
     return {
       title: 'Nest',
@@ -88,12 +90,11 @@ export const nest: GameSystem = {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
         progress = el('p.muted');
         extra = el('p.muted');
-        const grid = el('div.build');
+        const grid = el('div.tiles');
         for (const id of IDS) {
           const def = DEFS[id];
-          const cnt = el('span.count');
-          const btn = actionButton({
-            ctx, label: def.name, desc: def.desc,
+          const btn = tileButton({
+            ctx, label: def.name, effect: def.desc, count: () => count(ctx, id),
             costs: () => costOf(ctx, id),
             enabled: (c) => !def.max || count(c, id) < def.max,
             onBuy: (c) => {
@@ -107,9 +108,9 @@ export const nest: GameSystem = {
               applyEffects(c);
             },
           });
-          const wrap = el('div.buildrow', { hidden: true }, btn.root, el('span.muted', {}, def.desc), cnt);
-          grid.append(wrap);
-          buttons.set(id, { btn, wrap, count: cnt });
+          btn.root.hidden = true;
+          grid.append(btn.root);
+          buttons.set(id, btn);
         }
         canvas.addEventListener('click', (ev) => {
           const r = canvas.getBoundingClientRect();
@@ -126,9 +127,8 @@ export const nest: GameSystem = {
       update(_root, ctx) {
         for (const id of IDS) {
           const b = buttons.get(id)!;
-          b.wrap.hidden = !visible(ctx, id);
-          b.btn.update(ctx);
-          b.count.textContent = `×${count(ctx, id)}`;
+          b.root.hidden = !visible(ctx, id);
+          b.update(ctx);
         }
         const n = totalChambers(ctx);
         progress.textContent = ctx.flags.has('surface')
@@ -147,7 +147,8 @@ export const nest: GameSystem = {
 };
 
 // ---- the cross-section view: flat placeholder art drawn in code ----
-const LANES = [-1, 1, -2, 2];        // left near, right near, left far, right far
+const LANES = [-1, 1, -2, 2, -3, 3];  // three chambers each side, nearest first
+const LANE_X = [0, 36, 86, 134];      // distance from the shaft for lanes 1..3
 /** When each chamber (by build order) first appeared on screen, so new ones can fade in. */
 const bornAt: number[] = [];
 const FADE_MS = 1400;
@@ -209,7 +210,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
     const lane = LANES[i % LANES.length];
     const y = top + 24 + Math.floor(i / LANES.length) * ROW_H + (i % 3);
-    const cx = shaftX + lane * 62 + (lane > 0 ? 6 : -6);
+    const cx = shaftX + Math.sign(lane) * LANE_X[Math.abs(lane)];
     rect(c, Math.min(shaftX, cx), y - 1, Math.abs(cx - shaftX), 3, PAL.hole); // connecting tunnel
     spots.push({ x: cx, y });
 
