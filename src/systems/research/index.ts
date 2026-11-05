@@ -1,7 +1,7 @@
 // Research: spend Knowledge (from Elders) to unlock technology, Evolve / Civ style.
 // Each tech sets the flag "tech:<id>". Other systems gate jobs, chambers, upgrades and tabs on those flags.
 import type { GameSystem, Context } from '../../core/types';
-import { el, tileButton } from '../../core/ui';
+import { el, hoverTip, tileButton } from '../../core/ui';
 import { RESEARCH } from '../../data/balance';
 
 const TECHS = RESEARCH.techs;
@@ -119,7 +119,7 @@ export const researchDone: GameSystem = {
         box.dataset.n = String(known.length);
         box.replaceChildren(...RESEARCH.ages.flatMap((age) => {
           const ids = known.filter((id) => TECHS[id].age === age.id);
-          return ids.length ? [el('h3', {}, age.name), el('div.tiles', {}, ...ids.map((id) => el('div.tile.done', { title: TECHS[id].desc, tabindex: 0 }, TECHS[id].name)))] : [];
+          return ids.length ? [el('h3', {}, age.name), el('div.tiles', {}, ...ids.map((id) => { const t = el('div.tile.done', { tabindex: 0 }, TECHS[id].name); hoverTip(t, () => [el('div.teffect', {}, TECHS[id].desc)]); return t; }))] : [];
         }));
       },
     };
