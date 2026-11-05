@@ -266,6 +266,10 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         blob(c, cx, y, 15, 5, PAL.hole);
         for (let r = 0; r < 5; r++) rect(c, cx - 2 - r * 2, y - 2 + r, 4 + r * 4, 1, PAL.waste);
         break;
+      case 'silkroom': // a silk loft: pale threads hung from the roof
+        blob(c, cx, y, 15, 5, PAL.hole);
+        for (let e = 0; e < 6; e++) rect(c, cx - 11 + e * 4, y - 4, 1, 3 + ((e + k) % 3) + (Math.sin(t + e) > 0.7 ? 1 : 0), PAL.bone);
+        break;
       case 'storeroom': { // stacked stores: twig bundles, a seed heap and a bead of resin
         rect(c, cx - 17, y - 5, 34, 10, PAL.hole);
         for (let e = 0; e < 3; e++) rect(c, cx - 15, y + 2 - e * 2, 12, 1, PAL.dirt);
