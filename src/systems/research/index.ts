@@ -41,7 +41,7 @@ export const research: GameSystem = {
   panel: (() => {
     const rows = new Map<string, ReturnType<typeof tileButton>>();
     const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
-    let doneList: HTMLElement, empty: HTMLElement, ageEl: HTMLElement;
+    let empty: HTMLElement, ageEl: HTMLElement;
     return {
       title: 'Research',
       group: 'Research',
@@ -76,8 +76,7 @@ export const research: GameSystem = {
           rows.set(id, btn);
         }
         empty = el('p.muted', {}, 'Nothing to research right now. New ideas come as the colony grows.');
-        doneList = el('div.known');
-        root.append(empty, el('h3', {}, 'Known'), doneList);
+        root.append(empty);
       },
       update(_root, ctx) {
         let any = false;
@@ -95,14 +94,33 @@ export const research: GameSystem = {
         empty.hidden = any;
         const age = currentAge(ctx);
         ageEl.textContent = `${age.name}. ${age.note}`;
-        // known techs: the same tiles as research buttons, but compact and without costs; hover for what they do
+      },
+    };
+  })(),
+};
+
+/** Completed research gets its own sub-tab, grouped by age; hover a tile for what it did. */
+export const researchDone: GameSystem = {
+  id: 'researchDone',
+  init() {},
+  isUnlocked: (ctx) => IDS.some((id) => done(ctx, id)),
+  panel: (() => {
+    let box: HTMLElement;
+    return {
+      title: 'Completed',
+      group: 'Research',
+      mount(root) {
+        box = el('div');
+        root.append(el('p.flavor', {}, 'What the colony knows.'), box);
+      },
+      update(_root, ctx) {
         const known = IDS.filter((id) => done(ctx, id));
-        if (doneList.dataset.n !== String(known.length)) {
-          doneList.dataset.n = String(known.length);
-          doneList.replaceChildren(...(known.length
-            ? known.map((id) => el('span.chip', { title: TECHS[id].desc, tabindex: 0 }, TECHS[id].name))
-            : [el('p.muted', {}, 'Nothing yet.')]));
-        }
+        if (box.dataset.n === String(known.length)) return;
+        box.dataset.n = String(known.length);
+        box.replaceChildren(...RESEARCH.ages.flatMap((age) => {
+          const ids = known.filter((id) => TECHS[id].age === age.id);
+          return ids.length ? [el('h3', {}, age.name), el('div.tiles', {}, ...ids.map((id) => el('div.tile.done', { title: TECHS[id].desc, tabindex: 0 }, TECHS[id].name)))] : [];
+        }));
       },
     };
   })(),

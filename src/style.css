@@ -236,3 +236,6 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tip .teffect { color: var(--good); }
 /* no hover on touch screens: show the cost on the tile itself */
 @media (hover: none) { .action.tile { flex-direction: column; padding: 10px 26px 8px; } .action.tile .cost { display: block; font-size: 11px; } }
+.tile.done { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 46px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--muted); font-weight: 600; cursor: default; }
+.tile.done:hover, .tile.done:focus-visible { color: var(--fg); border-color: #5a4c3e; }
