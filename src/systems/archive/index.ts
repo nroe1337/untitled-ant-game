@@ -39,6 +39,7 @@ const START_TECHS: Record<string, string[]> = {
   basics: ['digging', 'storage', 'brood'],
   elders: ['elders', 'royal', 'teaching'],
   surface: ['surface', 'scouting'],
+  garden: ['seeds', 'fungus'],
 };
 
 export const archive: GameSystem = {

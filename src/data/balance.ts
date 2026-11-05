@@ -198,8 +198,8 @@ export const RESEARCH = {
     martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 180, food: 80 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
     fortify:    { name: 'Fortification',     age: 'forage', cost: { knowledge: 260, twig: 15 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      age: 'forage', cost: { knowledge: 280, chitin: 8 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
-    fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 220, seed: 5 },           needs: ['seeds'],               desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab.' },
-    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 300, fungus: 30 },       needs: ['fungus', 'royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
+    fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 220, seed: 5 },           needs: ['seeds'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
+    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 300, food: 150 },        needs: ['royal', 'seeds'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 420, leaf: 20, twig: 8 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 300, jelly: 10 },         needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Swarm Spire for its first flight.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 60, food: 40 },          needs: ['scouting'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
@@ -246,7 +246,7 @@ export const GARDEN = {
 /** Castes: royal jelly turns larvae into new kinds of ant, each a new job. */
 export const CASTES = {
   jellyCap: 20,
-  chew: { cost: { fungus: 8, food: 10 }, cooldown: 4 },  // manual: make 1 royal jelly
+  chew: { cost: { food: 25 }, cooldown: 4 },  // manual: make 1 royal jelly from food (fungus-fed Jelly glands come with the Garden, after the first flight)
   replete: 12,               // food storage per replete
   major: { hp: 3, atk: 3 },  // a major has this many times a soldier's hp and bite
   types: {
@@ -276,9 +276,9 @@ export const LINEAGE = {
     stages: [
       { id: 'footing',    name: 'Foundation',        cost: { soil: 350 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
       { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 25, resin: 6 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
-      { id: 'nursery',    name: 'Royal nursery',     cost: { fungus: 150, food: 400, jelly: 15 }, time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
-      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 40, food: 300 },              time: 1200, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 30, resin: 6, silk: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+      { id: 'nursery',    name: 'Royal nursery',     cost: { food: 500, seed: 30, jelly: 15 },    time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
+      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 25, food: 300 },              time: 1200, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 35, resin: 8, seed: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
@@ -351,6 +351,7 @@ export const ARCHIVE = {
     { id: 'elders',   track: 'lore',   n: 60,   cost: 5, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
     { id: 'call',     track: 'hunt',   n: 1500, cost: 5, name: 'The champion\'s call', desc: 'Your champion challenges a boss by itself once it reaches it.' },
     { id: 'relaunch', track: 'tide',   n: 10,   cost: 5, name: 'Boats know the way',  desc: 'Boats set out again on their own when they come home.' },
+    { id: 'garden',   track: 'wings',  n: 4,    cost: 5,  name: 'Old gardens',         desc: 'New colonies start knowing Leaf culture, with the Garden tab open from the first hour.' },
     { id: 'haul',     track: 'wings',  n: 5,    cost: 6, name: 'Many hands',          desc: 'Builders carry twice as much to the Swarm Spire.' },
     { id: 'founders', track: 'brood',  n: 8000, cost: 8, name: 'Seasoned founders',   desc: 'New colonies start with full food stores and three tunnels\' worth of soil.' },
   ],
