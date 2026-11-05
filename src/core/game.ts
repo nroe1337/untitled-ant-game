@@ -135,6 +135,11 @@ export class Game {
     this.resList = el('div.res-list');
     this.tabBar = el('nav.tabs');
     this.groupBar = el('nav.groups', { hidden: true });
+    // On phones the Stores list is its own top tab (CSS hides this button on wide screens).
+    this.storesBtn = el('button.gtab.stores-tab', { type: 'button' }, 'Stores') as HTMLButtonElement;
+    this.storesBtn.dataset.rank = '-1';
+    this.storesBtn.addEventListener('click', () => { this.storesOpen = true; this.refreshBars(); });
+    this.groupBar.append(this.storesBtn);
     this.panelHost = el('div.panels');
     this.logEl = el('div.log');
     this.alertEl = el('div.alerts', { role: 'status' });
@@ -163,7 +168,7 @@ export class Game {
       el('header.top', {},
         el('div.brand', {}, el('span.mark'), el('h1', {}, 'Formicarium')),
         el('div.tools', {}, this.pauseBtn, saveBtn, exportBtn, resetBtn, speedBtn)),
-      el('div.layout', {},
+      this.layoutEl = el('div.layout', {},
         el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList),
         el('main.main', {}, this.alertEl, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
         el('aside.story', {}, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
@@ -336,11 +341,14 @@ export class Game {
       t.btn.hidden = t.group !== activeGroup;
       if (!t.btn.hidden) inGroup++;
     }
+    this.layoutEl?.classList.toggle('stores-open', this.storesOpen);
+    this.storesBtn.classList.toggle('on', this.storesOpen);
     for (const [name, g] of this.groups) {
-      g.btn.classList.toggle('on', name === activeGroup);
+      g.btn.classList.toggle('on', name === activeGroup && !this.storesOpen);
       g.btn.classList.toggle('new', name !== activeGroup && [...this.tabs.values()].some((t) => t.group === name && t.btn.classList.contains('new')));
     }
-    this.groupBar.hidden = this.groups.size < 2;
+    this.groupBar.hidden = false;
+    this.groupBar.classList.toggle('solo', this.groups.size < 2); // phones still show it for the Stores tab
     this.tabBar.hidden = inGroup < 2;
   }
 
@@ -361,9 +369,13 @@ export class Game {
     this.fanfareTimer = window.setTimeout(() => { this.fanfareEl.hidden = true; }, 9000);
   }
   private fanfareTimer = 0;
+  private storesBtn!: HTMLButtonElement;
+  private storesOpen = false;
+  private layoutEl!: HTMLElement;
 
   private show(id: string) {
     this.active = id;
+    this.storesOpen = false;
     const g = this.groups.get(this.tabs.get(id)?.group ?? '');
     if (g) g.last = id;
     for (const [tid, t] of this.tabs) {

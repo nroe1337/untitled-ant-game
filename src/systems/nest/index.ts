@@ -156,6 +156,7 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const ROW_H = 22;
 
 let seenOnce = false;
+let animT = 0, animLast = performance.now();
 /** Where each chamber was last drawn (by build-order index), for clicking; and the one picked to swap. */
 let hitSpots: { x: number; y: number }[] = [];
 let picked: number | null = null;
@@ -178,7 +179,11 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   if (cv.height !== H) cv.height = H;
   const c = setup(cv);
   const W = cv.width;
-  const t = performance.now() / 1000;
+  // animation clock that stops while the game is paused
+  const now0 = performance.now();
+  if (!ctx.paused) animT += Math.min(0.25, (now0 - animLast) / 1000);
+  animLast = now0;
+  const t = animT;
   const surface = ctx.flags.has('surface');
   const top = surface ? 14 : 0;
 

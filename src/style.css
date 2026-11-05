@@ -199,3 +199,14 @@ input[type=checkbox] { accent-color: var(--accent); }
 .feat { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel); opacity: .55; }
 .feat.got { opacity: 1; border-left: 3px solid var(--good); }
 .feat .muted { font-size: 0.85em; }
+/* Phones: Stores becomes its own top tab instead of sitting above everything. */
+.stores-tab { display: none; }
+.groups.solo { display: none; }
+@media (max-width: 900px) {
+  .stores-tab { display: inline-block; }
+  .groups.solo { display: flex; }
+  .layout .side { display: none; order: 2; }
+  .layout .main { order: 1; }
+  .layout.stores-open .side { display: block; }
+  .layout.stores-open .tabs, .layout.stores-open .panels { display: none; }
+}
