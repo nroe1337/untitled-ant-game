@@ -320,9 +320,10 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   // workers walk real paths: down the shaft, along a side tunnel to a chamber, and back
   const ants = Math.min(48, Math.floor(ctx.res.amt('ant')));
   const y0 = surface ? 2 : 18;
+  const stops = [...spots, { x: shaftX, y: qy - Math.ceil(qs.h / 2) - 1 }]; // every chamber, plus a visit to the queen
   for (let i = 0; i < ants; i++) {
     const speed = 6 + (i % 5);
-    const spot = spots.length ? spots[i % spots.length] : { x: shaftX, y: bottom };
+    const spot = stops[i % stops.length];
     const down = spot.y - y0, side = Math.abs(spot.x - shaftX);
     const len = down + side;
     let d = (i * 37 + t * speed) % (2 * len);
