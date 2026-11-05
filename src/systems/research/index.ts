@@ -109,6 +109,7 @@ export const researchDone: GameSystem = {
     return {
       title: 'Completed',
       group: 'Research',
+      quiet: true,
       mount(root) {
         box = el('div');
         root.append(el('p.flavor', {}, 'What the colony knows.'), box);
