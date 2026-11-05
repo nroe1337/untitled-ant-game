@@ -54,7 +54,7 @@ export const JOBS = {
 export const NEST = {
   costGrowth: 1.3,          // default; each chamber can set its own growth
   /** Techs that make storage chambers hold more (Evolve-style shelving): tech id -> chambers it boosts by +50%. */
-  storageTechs: { shelving: ['store', 'storeroom'], songs: ['library'], lining: ['store', 'storeroom', 'library'] } as Record<string, string[]>,
+  storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
   storageBoost: 0.5,
   surfaceAtChambers: 10,
   baseFoodCap: 40,
@@ -66,7 +66,8 @@ export const NEST = {
     tunnel:   { name: 'Tunnel',          base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3 },
     brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 }, growth: 1.28,           desc: '+4 brood space, +1 living space. Unlocks nurses.', broodCap: 4, antCap: 1, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
-    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil, +25 twig, +15 seed, +10 resin and +15 silk storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10, silk: 15 }, needs: 'tech:storage' },
+    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil, +25 twig, +15 seed and +10 resin storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10 }, needs: 'tech:storage' },
+    silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: 'Sprouting seeds give +0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, needs: 'tech:resin' },
     gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 }, growth: 1.3,       desc: 'Scouts +5% each, +15 pheromone storage',  pheroCap: 15, scout: 0.05, needs: 'tech:scouting' },
@@ -193,14 +194,14 @@ export const RESEARCH = {
    */
   techs: {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
-    storage:    { name: 'Food caching',      age: 'dirt', cost: { knowledge: 12, soil: 10 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Storeroom.' },
+    storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 10 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Storeroom.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 15 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
     royal:      { name: 'Royal court',       age: 'forage', cost: { knowledge: 300, food: 100 },       needs: ['seeds'],               desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 20 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores and speeds up knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 40, soil: 30 },          needs: ['storage', 'brood'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
-    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 120 },        needs: ['storage', 'surface'],  desc: 'Food stores and Storerooms hold 50% more.' },
+    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 120 },        needs: ['storage', 'surface'],  desc: 'Food stores, Storerooms and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 80 },         needs: ['teaching', 'surface'], desc: 'Halls of elders hold 50% more knowledge.' },
-    lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 10 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Storerooms and Halls of elders hold another 50% more.' },
+    lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 10 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Storerooms, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'],              desc: 'Unlocks Colony techniques.' },
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 40 },          needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 3 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
@@ -357,7 +358,7 @@ export const ARCHIVE = {
    */
   accords: [
     { id: 'habit',    track: 'wings',  n: 1,    cost: 2,  name: 'The queen\'s habit',  desc: 'The queen lays an egg on her own every 20 seconds.' },
-    { id: 'basics',   track: 'earth',  n: 120,  cost: 3, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Food caching and Brood care.' },
+    { id: 'basics',   track: 'earth',  n: 120,  cost: 3, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Storage chambers and Brood care.' },
     { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
     { id: 'surface',  track: 'trails', n: 80,   cost: 4, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
     { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Colony tab, and new workers take jobs to match it.' },
