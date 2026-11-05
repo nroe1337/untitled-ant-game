@@ -322,7 +322,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const y0 = surface ? 2 : 18;
   for (let i = 0; i < ants; i++) {
     const speed = 6 + (i % 5);
-    const spot = spots.length ? spots[(i * 7) % spots.length] : { x: shaftX, y: bottom };
+    const spot = spots.length ? spots[i % spots.length] : { x: shaftX, y: bottom };
     const down = spot.y - y0, side = Math.abs(spot.x - shaftX);
     const len = down + side;
     let d = (i * 37 + t * speed) % (2 * len);
