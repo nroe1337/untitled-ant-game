@@ -114,7 +114,7 @@ export const husbandry: GameSystem = {
           ctx, label: 'Stroke the herd', cooldown: H.milk.cooldown,
           desc: `Coax out ${H.milk.seconds} seconds' worth of honeydew and wax by hand.`,
           enabled: (c) => animals(c) >= 1,
-          onBuy: (c) => { for (const [r, v] of Object.entries(rates(c))) if (c.res.has(r)) { c.res.add(r, v * H.milk.seconds); if (r === 'honeydew') S(c).milked += v * H.milk.seconds; } },
+          onBuy: (c) => { for (const [r, v] of Object.entries(rates(c))) if (c.res.has(r)) { c.res.lump(r, v * H.milk.seconds); if (r === 'honeydew') S(c).milked += v * H.milk.seconds; } },
         });
         drive = actionButton({
           ctx, label: 'Drive it off', cooldown: H.driveCooldown, desc: 'Rush the predator. It may not leave on the first try.',

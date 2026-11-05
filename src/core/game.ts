@@ -208,17 +208,25 @@ export class Game {
     const { ctx } = this;
     // alerts: a strip of fixed height that shows one banner at a time and cycles through them,
     // so warnings coming and going never push the rest of the screen up and down
-    const txt = [...(ctx.paused ? ['Paused. Nothing in the colony moves until you resume (P).'] : []), ...this.alerts.values()];
+    const list: [string, string][] = [...(ctx.paused ? [['paused', 'Paused. Nothing in the colony moves until you resume (P).'] as [string, string]] : []), ...this.alerts.entries()];
+    const txt = list.map(([, m]) => m);
     const now = performance.now() / 1000;
     if (now - this.alertSince > ALERT_ROTATE_S) { this.alertIdx++; this.alertSince = now; }
     const i = txt.length ? this.alertIdx % txt.length : 0;
-    const key = txt.length ? `${i}/${txt.length}|${txt[i]}` : 'quiet';
+    // rebuild (and play the entrance animation) only when a different alert comes up;
+    // a countdown ticking inside the same alert just updates its words quietly
+    const key = txt.length ? `${i}/${txt.length}|${list[i][0]}` : 'quiet';
     if (this.alertEl.dataset.v !== key) {
       this.alertEl.dataset.v = key;
       this.alertEl.classList.toggle('on', txt.length > 0);
       this.alertEl.replaceChildren(txt.length
         ? el('p.alert', { title: txt.join('\n') }, el('span.msg', {}, txt[i]), txt.length > 1 ? el('span.more', {}, `${i + 1} of ${txt.length}`) : null)
         : el('p.quiet', {}, 'All is quiet in the nest.'));
+    } else if (txt.length) {
+      const msg = this.alertEl.querySelector('.msg');
+      if (msg && msg.textContent !== txt[i]) msg.textContent = txt[i];
+      const p = this.alertEl.firstElementChild as HTMLElement | null;
+      if (p) p.title = txt.join('\n');
     }
     // resources
     for (const r of ctx.res.all()) {

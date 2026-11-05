@@ -128,7 +128,7 @@ export const brood: GameSystem = {
         forage = actionButton({
           ctx, label: 'Forage near the entrance', cooldown: BROOD.forageCooldown,
           desc: 'Scrape together a little food.',
-          onBuy: (c) => c.res.add('food', BROOD.forageClick),
+          onBuy: (c) => c.res.lump('food', BROOD.forageClick),
         });
         eggTxt = el('span'); larvaTxt = el('span'); pupaTxt = el('span'); hint = el('p.muted');
         ledger = el('div.ledger');

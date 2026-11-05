@@ -130,7 +130,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .alerts p { margin: 0; height: 100%; display: flex; align-items: center; gap: 10px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
 .alerts .msg { overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .alerts .more { font-size: 12px; color: var(--muted); font-weight: 400; flex: none; }
-.alert { border: 1px solid var(--warn); color: var(--warn); background: var(--panel); font-weight: 600; animation: appear .4s ease-out; }
+.alert { border: 1px solid var(--line); border-left: 3px solid var(--warn); color: var(--fg); background: var(--panel); font-weight: 500; animation: appear .4s ease-out; }
 .quiet { border: 1px dashed var(--line); color: var(--line); font-size: 13px; }
 
 /* A new age: a calm band over the top of the panel that draws a line, then fades away. */
