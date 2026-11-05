@@ -1,7 +1,7 @@
 // Research: spend Knowledge (from Elders) to unlock technology, Evolve / Civ style.
 // Each tech sets the flag "tech:<id>". Other systems gate jobs, chambers, upgrades and tabs on those flags.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, type ActionButton } from '../../core/ui';
+import { el, tileButton } from '../../core/ui';
 import { RESEARCH } from '../../data/balance';
 
 const TECHS = RESEARCH.techs;
@@ -39,7 +39,7 @@ export const research: GameSystem = {
   },
 
   panel: (() => {
-    const rows = new Map<string, { wrap: HTMLElement; btn: ActionButton; note: HTMLElement }>();
+    const rows = new Map<string, ReturnType<typeof tileButton>>();
     const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
     let doneList: HTMLElement, empty: HTMLElement, ageEl: HTMLElement;
     return {
@@ -55,15 +55,15 @@ export const research: GameSystem = {
         // one group per age, in order
         for (const age of RESEARCH.ages) {
           const head = el('h3', { hidden: true }, age.name);
-          const list = el('div.build');
+          const list = el('div.tiles');
           groups.set(age.id, { head, list });
           root.append(head, list);
         }
         for (const id of IDS) {
           const t = TECHS[id];
-          const note = el('span.muted');
-          const btn = actionButton({
-            ctx, label: t.name, desc: t.desc,
+          const btn = tileButton({
+            ctx, label: t.name,
+            effect: () => t.desc + ((t.cost.knowledge ?? 0) > ctx.res.cap('knowledge') ? ' Needs more knowledge storage: build Halls of elders.' : ''),
             costs: () => t.cost,
             enabled: (c) => available(c, id),
             onBuy: (c) => {
@@ -71,9 +71,9 @@ export const research: GameSystem = {
               c.log(`Researched ${t.name}. ${t.desc}`, 'info');
             },
           });
-          const wrap = el('div.buildrow', { hidden: true }, btn.root, note, el('span'));
-          (groups.get(t.age) ?? groups.get('dirt')!).list.append(wrap);
-          rows.set(id, { wrap, btn, note });
+          btn.root.hidden = true;
+          (groups.get(t.age) ?? groups.get('dirt')!).list.append(btn.root);
+          rows.set(id, btn);
         }
         empty = el('p.muted', {}, 'Nothing to research right now. New ideas come as the colony grows.');
         doneList = el('div.known');
@@ -85,13 +85,11 @@ export const research: GameSystem = {
         for (const id of IDS) {
           const r = rows.get(id)!;
           const show = available(ctx, id);
-          r.wrap.hidden = !show;
+          r.root.hidden = !show;
           if (!show) continue;
           any = true;
           shown.add(TECHS[id].age);
-          r.btn.update(ctx);
-          const k = TECHS[id].cost.knowledge ?? 0;
-          r.note.textContent = TECHS[id].desc + (k > ctx.res.cap('knowledge') ? ` Needs ${k} knowledge storage: build a Hall of elders.` : '');
+          r.update(ctx);
         }
         for (const [age, g] of groups) g.head.hidden = !shown.has(age);
         empty.hidden = any;

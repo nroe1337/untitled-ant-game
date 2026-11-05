@@ -5,7 +5,7 @@
 // Pavement ants hold some sites until soldiers clear them. Satellite nests in walls and drains add room.
 // Reads jobs.assigned (townforager, taster, soldier, major). Publishes mods; reads the 'attention' mod.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
+import { actionButton, el, progressBar, tileButton, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, rect, setup } from '../../core/pixel';
@@ -114,7 +114,7 @@ export const town: GameSystem = {
     let cv: HTMLCanvasElement, clockEl: HTMLElement, schedRow: HTMLElement, ledger: HTMLElement, siteBox: HTMLElement, satBox: HTMLElement;
     let purge: ActionButton, ups: ReturnType<typeof upgradeList>;
     const attBar = progressBar();
-    const sats: { id: string; btn: ActionButton; count: HTMLElement }[] = [];
+    const sats: { id: string; btn: ReturnType<typeof tileButton> }[] = [];
     let sig = '';
     return {
       title: 'Town',
@@ -135,16 +135,16 @@ export const town: GameSystem = {
         });
         ledger = el('div.ledger');
         siteBox = el('div.ledger');
-        satBox = el('div.build');
+        satBox = el('div.tiles');
         for (const [id, d] of Object.entries(T.satellites)) {
-          const count = el('span.count');
-          const btn = actionButton({
-            ctx, label: `Build a ${d.name.toLowerCase()}`, costs: () => d.cost, desc: d.desc,
+          const btn = tileButton({
+            ctx, label: d.name, costs: () => d.cost, effect: d.desc,
+            count: () => `${S(ctx).sats[id] ?? 0}/${d.max}`,
             enabled: (c) => (S(c).sats[id] ?? 0) < d.max,
             onBuy: (c) => { const s = S(c); s.sats[id] = (s.sats[id] ?? 0) + 1; c.log(`A ${d.name.toLowerCase()} is dug out. More room for the colony.`, 'info'); },
           });
-          sats.push({ id, btn, count });
-          satBox.append(el('div.buildrow', {}, btn.root, el('span.muted', {}, d.desc), count));
+          sats.push({ id, btn });
+          satBox.append(btn.root);
         }
         ups = upgradeList(ctx, () => S(ctx).ups, UPS);
         root.append(

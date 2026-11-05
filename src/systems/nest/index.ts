@@ -1,7 +1,7 @@
 // Nest building: spend resources on chambers that raise caps and add bonuses.
 // Ten chambers break the surface. Each chamber type draws differently in the nest view.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, type ActionButton } from '../../core/ui';
+import { el, tileButton } from '../../core/ui';
 import type { Costs } from '../../core/resources';
 import { NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
@@ -81,7 +81,7 @@ export const nest: GameSystem = {
   },
 
   panel: (() => {
-    const buttons = new Map<ChamberId, { btn: ActionButton; wrap: HTMLElement; count: HTMLElement }>();
+    const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
     return {
       title: 'Nest',
@@ -90,12 +90,11 @@ export const nest: GameSystem = {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
         progress = el('p.muted');
         extra = el('p.muted');
-        const grid = el('div.build');
+        const grid = el('div.tiles');
         for (const id of IDS) {
           const def = DEFS[id];
-          const cnt = el('span.count');
-          const btn = actionButton({
-            ctx, label: def.name, desc: def.desc,
+          const btn = tileButton({
+            ctx, label: def.name, effect: def.desc, count: () => count(ctx, id),
             costs: () => costOf(ctx, id),
             enabled: (c) => !def.max || count(c, id) < def.max,
             onBuy: (c) => {
@@ -109,9 +108,9 @@ export const nest: GameSystem = {
               applyEffects(c);
             },
           });
-          const wrap = el('div.buildrow', { hidden: true }, btn.root, el('span.muted', {}, def.desc), cnt);
-          grid.append(wrap);
-          buttons.set(id, { btn, wrap, count: cnt });
+          btn.root.hidden = true;
+          grid.append(btn.root);
+          buttons.set(id, btn);
         }
         canvas.addEventListener('click', (ev) => {
           const r = canvas.getBoundingClientRect();
@@ -128,9 +127,8 @@ export const nest: GameSystem = {
       update(_root, ctx) {
         for (const id of IDS) {
           const b = buttons.get(id)!;
-          b.wrap.hidden = !visible(ctx, id);
-          b.btn.update(ctx);
-          b.count.textContent = `×${count(ctx, id)}`;
+          b.root.hidden = !visible(ctx, id);
+          b.update(ctx);
         }
         const n = totalChambers(ctx);
         progress.textContent = ctx.flags.has('surface')

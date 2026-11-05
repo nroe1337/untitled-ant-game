@@ -2,7 +2,7 @@
 // and reads them with lvl(); this file only draws the buttons and charges costs.
 import type { Context } from './types';
 import type { Costs } from './resources';
-import { actionButton, el, type ActionButton } from './ui';
+import { el, tileButton } from './ui';
 
 export interface UpgradeDef {
   id: string;
@@ -42,23 +42,25 @@ export const scaled = (base: Costs, growth: number) => (level: number): Costs =>
   Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.ceil(v * Math.pow(growth, level))]));
 
 export function upgradeList(ctx: Context, levels: () => Record<string, number>, defs: UpgradeDef[]) {
-  const root = el('div.build');
-  const rows: { def: UpgradeDef; wrap: HTMLElement; btn: ActionButton; lv: HTMLElement }[] = [];
+  const root = el('div.tiles');
+  const rows: { def: UpgradeDef; tile: ReturnType<typeof tileButton> }[] = [];
+  const lvl = (def: UpgradeDef) => levels()[def.id] ?? 0;
   for (const def of defs) {
-    const lv = el('span.count');
-    const btn = actionButton({
-      ctx, label: def.name, desc: def.desc,
-      costs: () => def.cost(levels()[def.id] ?? 0),
-      enabled: () => (levels()[def.id] ?? 0) < def.max,
+    const tile = tileButton({
+      ctx, label: def.name,
+      effect: () => { const e = def.effect?.(lvl(def)); return def.desc + (e ? `. Now ${e}` : ''); },
+      count: () => (lvl(def) >= def.max ? 'max' : `${lvl(def)}/${def.max}`),
+      costs: () => def.cost(lvl(def)),
+      enabled: () => lvl(def) < def.max,
       onBuy: (c) => {
         const L = levels();
         L[def.id] = (L[def.id] ?? 0) + 1;
         def.onBuy?.(c, L[def.id]);
       },
     });
-    const wrap = el('div.buildrow', { hidden: true }, btn.root, el('span.muted', {}, def.desc), lv);
-    root.append(wrap);
-    rows.push({ def, wrap, btn, lv });
+    tile.root.hidden = true;
+    root.append(tile.root);
+    rows.push({ def, tile });
   }
   return {
     root,
@@ -66,13 +68,10 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
       let any = false;
       for (const r of rows) {
         const show = !r.def.requires || r.def.requires(c);
-        r.wrap.hidden = !show;
+        r.tile.root.hidden = !show;
         if (!show) continue;
         any = true;
-        r.btn.update(c);
-        const L = levels()[r.def.id] ?? 0;
-        const eff = r.def.effect?.(L);
-        r.lv.textContent = (eff ? eff + '  ' : '') + (L >= r.def.max ? 'max' : `${L}/${r.def.max}`);
+        r.tile.update(c);
       }
       root.hidden = !any;
       return any;

@@ -165,9 +165,9 @@ export const stats: GameSystem = {
           featList.dataset.sig = sig;
           featList.replaceChildren(...FEATS.map((f) => {
             const when = s.feats[f.id];
-            return el(when !== undefined ? 'div.feat.got' : 'div.feat', { title: f.desc },
+            return el(when !== undefined ? 'div.feat.got' : 'div.feat', { title: when !== undefined ? `Earned ${hms(when)} into your line.` : '' },
               el('strong', {}, when !== undefined ? f.name : '???'),
-              el('span.muted', {}, f.desc + (when !== undefined ? ` Earned ${hms(when)} into your line.` : '')));
+              el('span.muted', {}, f.desc));
           }));
         }
       },

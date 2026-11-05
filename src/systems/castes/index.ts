@@ -3,7 +3,7 @@
 // Also: repletes raise food storage (reads ctx.state.jobs.assigned.replete),
 // and Jelly glands let nurses make jelly on their own (automation).
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, type ActionButton } from '../../core/ui';
+import { actionButton, el, tileButton, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { CASTES, NEST } from '../../data/balance';
@@ -38,7 +38,7 @@ export const castes: GameSystem = {
 
   panel: (() => {
     let chew: ActionButton, list: HTMLElement, ledger: HTMLElement, ups: ReturnType<typeof upgradeList>;
-    const rows = new Map<string, { wrap: HTMLElement; btn: ActionButton; state: HTMLElement }>();
+    const rows = new Map<string, ReturnType<typeof tileButton>>();
     return {
       title: 'Castes',
       group: 'Home',
@@ -48,18 +48,17 @@ export const castes: GameSystem = {
           desc: 'Nurses chew food into one drop of royal jelly.',
           onBuy: (c) => { c.res.lump('jelly', 1); S(c).chewed++; },
         });
-        list = el('div.build');
+        list = el('div.tiles');
         for (const id of IDS) {
           const t = CASTES.types[id];
-          const state = el('span.count');
-          const btn = actionButton({
-            ctx, label: `Breed ${t.name.toLowerCase()}`, desc: t.desc, costs: () => t.cost,
+          const btn = tileButton({
+            ctx, label: `Breed ${t.name.toLowerCase()}`, effect: t.desc, costs: () => t.cost,
+            count: () => (ctx.flags.has('caste:' + id) ? 'bred' : ''),
             enabled: (c) => !c.flags.has('caste:' + id),
             onBuy: (c) => { c.flags.add('caste:' + id); c.log(`The first ${t.name.toLowerCase()} crawl out of the brood chamber. ${t.desc}`, 'info'); },
           });
-          const wrap = el('div.buildrow', {}, btn.root, el('span.muted', {}, t.desc), state);
-          list.append(wrap);
-          rows.set(id, { wrap, btn, state });
+          list.append(btn.root);
+          rows.set(id, btn);
         }
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPS);
@@ -76,9 +75,7 @@ export const castes: GameSystem = {
       update(_root, ctx) {
         chew.update(ctx);
         for (const id of IDS) {
-          const r = rows.get(id)!;
-          r.btn.update(ctx);
-          r.state.textContent = ctx.flags.has('caste:' + id) ? 'bred' : '';
+          rows.get(id)!.update(ctx);
         }
         const rate = glandRate(ctx);
         ledger.replaceChildren(...[
