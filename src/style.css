@@ -30,7 +30,7 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
 .layout { display: grid; grid-template-columns: 270px minmax(0, 1fr) 280px; gap: 24px;
   padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px));
   max-width: 1280px; margin: 0 auto; }
-@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .story { order: 3; } }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .story { order: 3; } }
 
 .kicker { font: 400 20px/1.2 var(--display); color: var(--muted); margin: 0 0 10px; }
 
@@ -89,6 +89,7 @@ button { font: inherit; color: inherit; }
 .build { display: grid; gap: 8px; }
 .buildrow { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
 @media (max-width: 520px) { .buildrow { grid-template-columns: 1fr auto; } .buildrow .muted { grid-column: 1 / -1; grid-row: 2; } }
+@media (max-width: 520px) { .alerts .alert, .alerts .msg { white-space: normal; } }
 
 canvas { image-rendering: pixelated; width: 100%; max-width: 640px; height: auto; border: 1px solid var(--line); display: block; }
 .viewerwrap { display: grid; gap: 0; max-width: 640px; }
