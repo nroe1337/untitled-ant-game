@@ -152,6 +152,7 @@ export const jobs: GameSystem = {
   panel: (() => {
     const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement }>();
     let idleEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
+    let techs: ReturnType<typeof upgradeList>, techBox: HTMLElement;
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
@@ -182,6 +183,9 @@ export const jobs: GameSystem = {
           decreeBox,
           list, upkeepEl, census,
         );
+        techs = upgradeList(ctx, () => S(ctx).tech, TECHS);
+        techBox = el('div', { hidden: true }, el('h3', {}, 'Techniques'), el('p.flavor', {}, 'What the elders teach, the colony keeps.'), techs.root);
+        root.append(techBox);
         for (const j of JOB_DEFS) {
           const count = el('span.count'), out = el('span.muted');
           const btn = (label: string, d: number) => el('button.small', { type: 'button', title: 'Shift-click: 10, Ctrl-click: all', onclick: (e: MouseEvent) => change(ctx, j.id, e.ctrlKey || e.metaKey ? d * 9999 : e.shiftKey ? d * 10 : d) }, label);
@@ -193,6 +197,8 @@ export const jobs: GameSystem = {
       },
       update(_root, ctx) {
         const s = S(ctx);
+        techBox.hidden = !ctx.flags.has('tech:teaching');
+        if (!techBox.hidden) techs.update(ctx);
         idleEl.textContent = String(idleAnts(ctx));
         decreeBox.hidden = !ctx.flags.has('accord:decree');
         if (!decreeBox.hidden) {
@@ -227,25 +233,6 @@ export const jobs: GameSystem = {
         census.replaceChildren(...[['Total workers', String(totalAnts(ctx))], ...away].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         census.hidden = !busy;
       },
-    };
-  })(),
-};
-
-/** Techniques get their own sub-tab under Home: with steep chamber costs they are part of the core loop. */
-export const techniques: GameSystem = {
-  id: 'techniques',
-  init() {},
-  isUnlocked: (ctx) => ctx.flags.has('tech:teaching'),
-  panel: (() => {
-    let techs: ReturnType<typeof upgradeList>;
-    return {
-      title: 'Techniques',
-      group: 'Home',
-      mount(root, ctx) {
-        techs = upgradeList(ctx, () => S(ctx).tech, TECHS);
-        root.append(el('p.flavor', {}, 'What the elders teach, the colony keeps.'), techs.root);
-      },
-      update(_root, ctx) { techs.update(ctx); },
     };
   })(),
 };
