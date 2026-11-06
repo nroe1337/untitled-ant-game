@@ -242,3 +242,10 @@ input[type=checkbox] { accent-color: var(--accent); }
 /* action buttons show only their name; the cost is in the info window (touch screens keep it on the button) */
 .action.evo .cost { display: none; }
 @media (hover: none) { .action.evo .cost { display: block; } }
+/* Wide screens: the header uses the same columns as the layout below, so the alert lines up with the main column. */
+@media (min-width: 901px) {
+  .top { display: grid; grid-template-columns: 270px minmax(0, 1fr) 280px; gap: 24px;
+    padding-left: max(16px, calc((100% - 1280px) / 2 + 16px)); padding-right: max(16px, calc((100% - 1280px) / 2 + 16px)); }
+  .top .alerts { max-width: none; }
+  .top .tools { justify-self: end; }
+}
