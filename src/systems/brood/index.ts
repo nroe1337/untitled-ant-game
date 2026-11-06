@@ -142,7 +142,7 @@ export const brood: GameSystem = {
           costs: () => ({ food: BROOD.eggFoodCost * clutch(ctx) }),
           desc: 'The queen lays. Eggs hatch into larvae.',
           enabled: (c) => broodUsed(c) < broodCap(c),
-          onBuy: (c) => addEggs(c, clutch(c)),
+          onBuy: (c) => { addEggs(c, clutch(c)); c.bus.emit('queen:lay'); },
         });
         forage = actionButton({
           ctx, label: 'Forage near the entrance', cooldown: BROOD.forageCooldown,

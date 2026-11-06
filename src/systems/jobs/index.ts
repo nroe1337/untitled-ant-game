@@ -162,6 +162,7 @@ export const jobs: GameSystem = {
       if (d > 0) d = Math.min(d, idleAnts(ctx));
       else d = -Math.min(-d, s.assigned[id]);
       s.assigned[id] += d;
+      if (d) ctx.bus.emit('jobs:change');
     };
     return {
       title: 'Colony',

@@ -172,7 +172,7 @@ function win(ctx: Context) {
     ctx.log(`${s.name} reaches level ${s.level}.` + (unlocked ? ` It learns ${unlocked.name}.` : ''), unlocked ? 'story' : 'info');
   }
   if (ctx.res.has('food')) ctx.res.add('food', C.foodPerKill * (1 + f.lvl / 10));
-  ctx.bus.emit('champion:kill', { foe: f.id, boss: f.boss });
+  ctx.bus.emit('champion:kill', { foe: f.id, boss: f.boss, lvl: f.lvl, level: s.level });
   // loot
   const deep = deepBonus(L);
   if (f.boss) {
