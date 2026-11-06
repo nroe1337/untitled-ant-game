@@ -99,7 +99,7 @@ export const EXPEDITIONS = {
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
   lossChance: 0.25,         // chance to lose one ant per run, before upgrades
-  wipeChance: 0.0125,       // rare: the whole party is lost (Homing instinct and Scouts ahead lower it)
+  wipeChance: 0.05,         // rare: the whole party is lost (Homing instinct and Scouts ahead lower it)
   rareChance: 0.05,         // chance of a rare find (amber)
   markTrailCost: { pheromone: 5 },  // spend to make the next trip 30% shorter
   markTrailCut: 0.3,
