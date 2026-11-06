@@ -27,6 +27,8 @@ interface ExpState {
   autoMark?: boolean;
   /** Workers who never came back, this colony. */
   perished?: number;
+  /** Where the last party came back from: the quiet trail shows that place. */
+  lastDest?: string;
   reserved?: number;
   rare: number;
   /** legacy single-party saves */
@@ -150,6 +152,7 @@ function befall(ctx: Context, p: Party) {
 function finish(ctx: Context, p: Party) {
   const s = S(ctx);
   const d = X.destinations.find((x) => x.id === p.dest)!;
+  s.lastDest = p.dest;
   // a party lost on the trail still holds its column until its time is up
   if (p.ants <= 0) { s.runs += 1; return; }
   const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
@@ -343,7 +346,7 @@ export const expeditions: GameSystem = {
           ['Rare finds', String(s.rare)],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         upsHead.hidden = !ups.update(ctx);
-        drawTrail(viewer, s.parties);
+        drawTrail(viewer, s.parties, s.lastDest);
       },
     };
   })(),
@@ -406,7 +409,7 @@ const SCENES: Record<string, Scene> = {
   } },
 };
 
-function drawTrail(cv: HTMLCanvasElement, parties: Party[]) {
+function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
   const LANE = 40;
   const H = LANE * Math.max(1, parties.length);
   if (cv.height !== H) cv.height = H;
@@ -425,7 +428,7 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[]) {
     const wrapX = (x: number) => ((x % (W + 40)) + W + 40) % (W + 40) - 20;
     const near = (i: number, gap: number) => wrapX(i * gap + li * 17 - scroll);
     const far = (i: number, gap: number) => wrapX(i * gap + li * 11 - Math.floor(scroll / 2)); // background drifts slower
-    const scene = SCENES[p?.dest ?? 'grass'] ?? SCENES.grass;
+    const scene = SCENES[p?.dest ?? lastDest ?? 'grass'] ?? SCENES.grass;
     rect(c, 0, y0, W, LANE, scene.sky);
     rect(c, 0, y0 + GROUND, W, LANE - GROUND, scene.ground);
     scene.draw(c, y0, W, near, far);
