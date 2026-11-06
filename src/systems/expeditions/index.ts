@@ -67,7 +67,9 @@ const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= 
 const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && idle(ctx) >= S(ctx).party;
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
-const wipeOf = (ctx: Context) => X.wipeChance * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
+type Dest = (typeof X.destinations)[number];
+const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx);
+const wipeOf = (ctx: Context, d: Dest) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
 
 const WIPEOUTS = [
   'A bird found the column.',
@@ -90,8 +92,7 @@ function send(ctx: Context) {
 function finish(ctx: Context, p: Party) {
   const s = S(ctx);
   const d = X.destinations.find((x) => x.id === p.dest)!;
-  const safety = safetyOf(ctx);
-  if (Math.random() < wipeOf(ctx)) {
+  if (Math.random() < wipeOf(ctx, d)) {
     // Very rare: the whole party is lost, with nothing brought home.
     ctx.res.add('ant', -p.ants);
     s.runs += 1;
@@ -115,7 +116,7 @@ function finish(ctx: Context, p: Party) {
     ctx.log('Among the haul: a bead of amber with something tiny trapped inside.');
   }
   let lost = 0;
-  if (Math.random() < X.lossChance * safety) { lost = 1; ctx.res.add('ant', -1); }
+  if (Math.random() < lossOf(ctx, d)) { lost = 1; ctx.res.add('ant', -1); }
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
   if (lost) ctx.log(`One worker did not come back from ${d.name.toLowerCase()}.`, 'warn');
@@ -184,7 +185,8 @@ export const expeditions: GameSystem = {
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
           desc: () => 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.\n' +
-            `Risk each trip: ${fmt(X.lossChance * safetyOf(ctx) * 100)}% to lose a worker, ${fmt(wipeOf(ctx) * 100)}% to lose the whole party.`,
+            (() => { const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
+              return `Risk each trip to ${d.name.toLowerCase()}: ${fmt(lossOf(ctx, d) * 100)}% to lose a worker, ${fmt(wipeOf(ctx, d) * 100)}% to lose the whole party. Farther places are more dangerous.`; })(),
           enabled: canSend, onBuy: (c) => send(c),
         });
         markBtn = actionButton({

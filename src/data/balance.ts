@@ -86,20 +86,19 @@ export const NEST = {
 
 export const EXPEDITIONS = {
   minParty: 3,
-  /** tile: where on the map this place is, as an offset from the nest. */
+  /** tile: where on the map this place is, as an offset from the nest.
+   *  loss: chance a trip loses one worker; wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
   destinations: [
-    { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loot: { food: [4, 8], twig: [1, 2] } },
-    { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 3,   tile: [3, 3],  loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
-    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 10,  tile: [6, -3], loot: { twig: [3, 6], resin: [1, 2], seed: [1, 2] } },
-    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 25, tile: [10, 1], loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
-    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 50, tile: [12, -2], loot: { food: [20, 35], resin: [2, 4] } },
-    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 90, tile: [20, -6], loot: { twig: [8, 14], seed: [5, 9] } },
+    { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.15, wipe: 0.0125, loot: { food: [4, 8], twig: [1, 2] } },
+    { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 3,   tile: [3, 3],  loss: 0.2, wipe: 0.025, loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
+    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 10,  tile: [6, -3], loss: 0.25, wipe: 0.04, loot: { twig: [3, 6], resin: [1, 2], seed: [1, 2] } },
+    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 25, tile: [10, 1], loss: 0.3, wipe: 0.06, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
+    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 50, tile: [12, -2], loss: 0.35, wipe: 0.08, loot: { food: [20, 35], resin: [2, 4] } },
+    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 90, tile: [20, -6], loss: 0.4, wipe: 0.12, loot: { twig: [8, 14], seed: [5, 9] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
-  lossChance: 0.25,         // chance to lose one ant per run, before upgrades
-  wipeChance: 0.05,         // rare: the whole party is lost (Homing instinct and Scouts ahead lower it)
   rareChance: 0.05,         // chance of a rare find (amber)
   markTrailCost: { pheromone: 5 },  // spend to make the next trip 30% shorter
   markTrailCut: 0.3,
