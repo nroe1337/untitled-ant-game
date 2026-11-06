@@ -96,6 +96,7 @@ function send(ctx: Context) {
   const marked = st.marked === true || st.marked === d.id;
   if (st.reserve) st.reserved = Math.max(0, (st.reserved ?? 0) - st.party); // reserve goes first, idle workers top it up
   st.parties.push({ dest: d.id, ants: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0 });
+  ctx.bus.emit('expedition:send', { dest: d.id, marked, ants: st.party });
   if (marked) { if (!st.autoMark) ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
   ctx.busy.expeditions = away(ctx);
 }
@@ -109,6 +110,7 @@ function finish(ctx: Context, p: Party) {
     s.runs += 1;
     const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
     ctx.log(`The party to ${d.name.toLowerCase()} never comes back. ${why} ${p.ants} workers lost.`, 'warn');
+    ctx.bus.emit('expedition:wipe', { dest: d.id, ants: p.ants });
     return;
   }
   const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
@@ -133,7 +135,7 @@ function finish(ctx: Context, p: Party) {
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
   if (lost) ctx.log(`${lost === 1 ? 'One worker' : `${lost} workers`} did not come back from ${d.name.toLowerCase()}.`, 'warn');
-  ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile });
+  ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: p.ants, lost });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
   if (s.runs === X.rivalAfterRuns && !ctx.flags.has('rival')) {

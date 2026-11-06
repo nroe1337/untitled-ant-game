@@ -424,7 +424,7 @@ export class Game {
 
   /** A short, calm fanfare across the top of the main column, for milestones like a new age. */
   private announce(title: string, text: string) {
-    this.fanfareEl.replaceChildren(el('span.rule'), el('p.kicker', {}, 'A new age'), el('p.title', {}, title), el('p.muted', {}, text));
+    this.fanfareEl.replaceChildren(el('span.rule'), el('p.kicker', {}, 'Welcome to the new age'), el('p.title', {}, title), el('p.note', {}, text));
     this.fanfareEl.hidden = false;
     this.fanfareEl.classList.remove('play');
     void this.fanfareEl.offsetWidth; // restart the animation
