@@ -42,10 +42,10 @@ export const brood: GameSystem = {
   id: 'brood',
 
   init(ctx) {
-    ctx.res.define({ id: 'ant', name: 'Workers', cap: COLONY.baseAntCap, order: 0, integer: true });
+    ctx.res.define({ id: 'ant', name: 'Workers', cap: COLONY.baseAntCap, order: 0, integer: true, stepped: true });
     ctx.res.define({ id: 'food', name: 'Food', cap: NEST.baseFoodCap, order: 1 });
-    ctx.res.define({ id: 'egg', name: 'Eggs', cap: BROOD.baseBroodCap, order: 10, integer: true, group: 'Brood' });
-    ctx.res.define({ id: 'larva', name: 'Larvae', cap: BROOD.baseBroodCap, order: 11, integer: true, group: 'Brood' });
+    ctx.res.define({ id: 'egg', name: 'Eggs', cap: BROOD.baseBroodCap, order: 10, integer: true, stepped: true, group: 'Brood' });
+    ctx.res.define({ id: 'larva', name: 'Larvae', cap: BROOD.baseBroodCap, order: 11, integer: true, stepped: true, group: 'Brood' });
     // used by royal upgrades; other systems fill them
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });

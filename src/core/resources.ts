@@ -9,6 +9,8 @@ export interface ResourceDef {
   integer?: boolean;
   /** Group label in the sidebar. */
   group?: string;
+  /** Changes in whole steps (eggs, workers): the sidebar flashes +1/−1 instead of a per-second rate. */
+  stepped?: boolean;
 }
 
 export interface Resource extends Required<ResourceDef> {
@@ -39,7 +41,7 @@ export class Resources {
   define(def: ResourceDef) {
     if (this.map.has(def.id)) return this.map.get(def.id)!;
     const r: Resource = {
-      cap: Infinity, order: 100, integer: false, group: 'Colony',
+      cap: Infinity, order: 100, integer: false, group: 'Colony', stepped: false,
       ...def, amount: 0, seen: false, rate: 0, sources: [],
     } as Resource;
     this.map.set(def.id, r);
