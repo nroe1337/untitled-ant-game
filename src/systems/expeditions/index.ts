@@ -23,6 +23,8 @@ interface ExpState {
   reserve?: boolean;
   /** Mark the trail automatically before each trip, when there is pheromone for it. */
   autoMark?: boolean;
+  /** Workers who never came back, this colony. */
+  perished?: number;
   reserved?: number;
   rare: number;
   /** legacy single-party saves */
@@ -107,6 +109,7 @@ function finish(ctx: Context, p: Party) {
   if (Math.random() < wipeOf(ctx, d)) {
     // Very rare: the whole party is lost, with nothing brought home.
     ctx.res.add('ant', -p.ants);
+    s.perished = (s.perished ?? 0) + p.ants;
     s.runs += 1;
     const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
     ctx.log(`The party to ${d.name.toLowerCase()} never comes back. ${why} ${p.ants} workers lost.`, 'warn');
@@ -131,7 +134,7 @@ function finish(ctx: Context, p: Party) {
   // Above 100% the party always loses one, with the remainder as the chance of losing a second.
   const risk = lossOf(ctx, d);
   let lost = Math.min(p.ants, Math.floor(risk) + (Math.random() < risk % 1 ? 1 : 0));
-  if (lost) ctx.res.add('ant', -lost);
+  if (lost) { ctx.res.add('ant', -lost); s.perished = (s.perished ?? 0) + lost; }
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
   if (lost) ctx.log(`${lost === 1 ? 'One worker' : `${lost} workers`} did not come back from ${d.name.toLowerCase()}.`, 'warn');
@@ -297,6 +300,7 @@ export const expeditions: GameSystem = {
           : s.parties.length >= maxParties(ctx) ? 'Every column is out on the trail.' : '';
         ledger.replaceChildren(...[
           ['Expeditions so far', String(s.runs)],
+          ['Workers lost on the trail', String(s.perished ?? 0)],
           ['Columns', `${s.parties.length} of ${maxParties(ctx)} out`],
           ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * partyMult(s.party) - 1) * 100)}%`],
           ['Trail marks earned', String(earned(ctx))],
