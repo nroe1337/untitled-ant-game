@@ -15,6 +15,8 @@ interface BroodState {
   firstAnt: boolean;
   starvingWarned: boolean;
   born: number;
+  /** Larvae that finished growing and wait, as pupae, for living space. They no longer eat. */
+  pupae?: number;
   royal: Record<string, number>;
 }
 
@@ -96,34 +98,35 @@ export const brood: GameSystem = {
       }
     } else s.eggProgress = 0;
 
-    // larvae eat and grow into workers, if there is food and room
-    const larvae = res.amt('larva');
-    // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
-    const full = larvae >= 1 && res.amt('ant') >= res.cap('ant');
-    noroomFor = full ? noroomFor + dt : 0;
-    ctx.alert('noroom', full && noroomFor < NOROOM_SHOW ? 'No living space. Larvae wait until you dig more tunnels.' : null);
-    if (larvae >= 1) {
-      const room = res.amt('ant') < res.cap('ant');
-      const need = larvae * larvaFood(ctx) * dt;
-      if (room && res.amt('food') >= need) {
+    // Larvae eat and grow whether or not there is room. A grown larva becomes a pupa, stops eating,
+    // and opens into a worker as soon as there is living space. This keeps food use steady: a death
+    // doesn't wake every waiting larva at once, and a pupa fills the gap straight away.
+    s.pupae = Math.min(s.pupae ?? 0, Math.floor(res.amt('larva')));
+    const growing = Math.floor(res.amt('larva')) - s.pupae;
+    if (growing >= 1) {
+      const need = growing * larvaFood(ctx) * dt;
+      if (res.amt('food') >= need) {
         res.source = 'Larvae eating';
         res.add('food', -need);
         res.source = 'Brood';
-        s.larvaProgress += (dt / growTime(ctx)) * larvae * tendSpeed(ctx);
-        while (s.larvaProgress >= 1 && res.amt('larva') >= 1) {
-          res.add('larva', -1); res.add('ant', 1); s.larvaProgress -= 1; s.born += 1;
-          ctx.bus.emit('ant:born');
-          if (!s.firstAnt) { s.firstAnt = true; ctx.log('The first worker pulls free of its cocoon. The colony has begun.'); }
-          if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
-          if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
-        }
+        s.larvaProgress += (dt / growTime(ctx)) * growing * tendSpeed(ctx);
+        while (s.larvaProgress >= 1 && s.pupae < Math.floor(res.amt('larva'))) { s.pupae++; s.larvaProgress -= 1; }
         s.starvingWarned = false;
-      } else if (!room) {
-        // shown as a standing banner instead of a log line, so it doesn't repeat every time a worker dies and is replaced
       } else if (!s.starvingWarned) {
         ctx.log('The larvae are starving. They will not grow without food.', 'warn'); s.starvingWarned = true;
       }
+    } else s.larvaProgress = 0;
+    while (s.pupae >= 1 && res.amt('ant') < res.cap('ant')) {
+      res.add('larva', -1); res.add('ant', 1); s.pupae--; s.born += 1;
+      ctx.bus.emit('ant:born');
+      if (!s.firstAnt) { s.firstAnt = true; ctx.log('The first worker pulls free of its cocoon. The colony has begun.'); }
+      if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
+      if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
     }
+    // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
+    const full = s.pupae >= 1 && res.amt('ant') >= res.cap('ant');
+    noroomFor = full ? noroomFor + dt : 0;
+    ctx.alert('noroom', full && noroomFor < NOROOM_SHOW ? 'No living space. Pupae wait until you dig more tunnels.' : null);
   },
 
   panel: (() => {
@@ -173,10 +176,11 @@ export const brood: GameSystem = {
         if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
         layWrap.hidden = !ctx.flags.has('queen:lays');
         eggTxt.textContent = `Eggs hatching: ${Math.floor(ctx.res.amt('egg'))}`;
-        larvaTxt.textContent = `Larvae growing: ${Math.floor(ctx.res.amt('larva'))}`;
+        const pupae = s.pupae ?? 0, growingNow = Math.max(0, Math.floor(ctx.res.amt('larva')) - pupae);
+        larvaTxt.textContent = `Larvae growing: ${growingNow}`;
         eggBar.set(ctx.res.amt('egg') >= 1 ? s.eggProgress % 1 : 0);
-        larvaBar.set(ctx.res.amt('larva') >= 1 ? s.larvaProgress % 1 : 0);
-        pupaTxt.textContent = s.larvaProgress % 1 > 0.6 && ctx.res.amt('larva') >= 1 ? 'A pupa is about to open.' : 'No pupae yet.';
+        larvaBar.set(growingNow >= 1 ? s.larvaProgress % 1 : 0);
+        pupaTxt.textContent = pupae >= 1 ? `Pupae waiting for room: ${pupae}` : 'No pupae yet.';
         hint.textContent = broodUsed(ctx) >= broodCap(ctx)
           ? 'The brood cell is full. Research Brood care, then build a Brood chamber in the Nest.' : '';
         const lines = [
