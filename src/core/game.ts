@@ -70,7 +70,7 @@ export class Game {
   private systems: GameSystem[];
   private tabs = new Map<string, Tab>();
   private active = '';
-  private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement }>();
+  private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement; last?: number; step?: number; until?: number }>();
   private logEl!: HTMLElement;
   private tabBar!: HTMLElement;
   private groupBar!: HTMLElement;
@@ -291,12 +291,25 @@ export class Game {
       }
       const cap = ctx.res.cap(r.id);
       row.amt.textContent = fmt(r.amount, r.integer) + (isFinite(cap) ? ` / ${fmt(cap, true)}` : '');
-      const flat = Math.abs(r.rate) < 0.005;
-      row.rate.textContent = flat ? '0/s' : (r.rate > 0 ? '+' : '') + fmt(r.rate) + '/s';
-      row.rate.className = 'rate ' + (flat ? 'flat' : r.rate < 0 ? 'neg' : 'pos');
+      if (r.stepped) {
+        // Whole-step stores (eggs, larvae, workers) have no steady rate: flash the change for a moment instead.
+        const now = performance.now(), whole = Math.floor(r.amount);
+        if (row.last !== undefined && whole !== row.last) {
+          row.step = (row.until && now < row.until ? row.step ?? 0 : 0) + whole - row.last;
+          row.until = now + 2000;
+        }
+        row.last = whole;
+        const on = !!row.until && now < row.until && !!row.step;
+        row.rate.textContent = on ? (row.step! > 0 ? '+' : '−') + Math.abs(row.step!) : '';
+        row.rate.className = 'rate step ' + (on ? (row.step! < 0 ? 'neg' : 'pos') : 'flat');
+      } else {
+        const flat = Math.abs(r.rate) < 0.005;
+        row.rate.textContent = flat ? '0/s' : (r.rate > 0 ? '+' : '') + fmt(r.rate) + '/s';
+        row.rate.className = 'rate ' + (flat ? 'flat' : r.rate < 0 ? 'neg' : 'pos');
+      }
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
       const held = ctx.res.held(r.id);
-      const rtip = r.sources.length ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
+      const rtip = r.sources.length && !r.stepped ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
       if ((row.rate.dataset.tip ?? '') !== rtip) row.rate.dataset.tip = rtip;
       const tip = held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : '';
       if ((row.row.dataset.tip ?? '') !== tip) { row.row.dataset.tip = tip; row.row.classList.toggle('held', held > 0); }
