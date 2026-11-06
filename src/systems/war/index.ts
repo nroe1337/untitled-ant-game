@@ -8,6 +8,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, rect, setup } from '../../core/pixel';
 import { WAR, MAP, CASTES } from '../../data/balance';
+import { idleAnts } from '../jobs';
 
 const B = WAR.battle;
 const F = WAR.fortifications;
@@ -30,6 +31,9 @@ interface WarState {
   rivalDefeated: boolean;
   spiderDefeated: boolean;
   lastReport: string;
+  /** Refill dead soldiers and majors from idle workers. */
+  replenish?: boolean;
+  refill?: { soldier: number; major: number };
 }
 const S = (ctx: Context) => ctx.state.war as WarState;
 const fl = (ctx: Context, id: keyof typeof F) => S(ctx).forts[id] ?? 0;
@@ -54,6 +58,32 @@ function freeWorkers(ctx: Context) {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
   const busy = Object.values(ctx.busy).reduce((a, b) => a + b, 0);
   return Math.max(0, Math.floor(ctx.res.amt('ant')) - assigned - busy);
+}
+
+/** Fighters died: take them off their jobs, and queue them for refilling from idle if that's on. */
+function loseFighters(ctx: Context, n: number) {
+  const a = ctx.state.jobs?.assigned as Record<string, number> | undefined;
+  if (!a || n <= 0) return;
+  const plain = Math.min(n, a.soldier ?? 0);
+  const big = Math.min(n - plain, a.major ?? 0);
+  a.soldier = (a.soldier ?? 0) - plain;
+  if (big) a.major -= big;
+  const s = S(ctx);
+  if (s.replenish) {
+    s.refill ??= { soldier: 0, major: 0 };
+    s.refill.soldier += plain; s.refill.major += big;
+    refill(ctx);
+  }
+}
+/** Move idle workers back into the soldier and major jobs, up to the number that died. */
+function refill(ctx: Context) {
+  const s = S(ctx), r = s.refill, a = ctx.state.jobs?.assigned as Record<string, number> | undefined;
+  if (!s.replenish || !r || !a) return;
+  for (const job of ['soldier', 'major'] as const) {
+    const n = Math.max(0, Math.min(r[job], Math.floor(idleAnts(ctx))));
+    a[job] = (a[job] ?? 0) + n;
+    r[job] -= n;
+  }
 }
 
 // ---- the entrance battle ----
@@ -129,7 +159,7 @@ function endBattle(ctx: Context) {
   const soldierLoss = Math.min(b.soldiersLost, Math.ceil(b.soldiersAtStart * B.maxSoldierLoss));
   const workerLoss = Math.min(b.workersLost, 2);
   const lost = soldierLoss + workerLoss;
-  if (lost) ctx.res.add('ant', -lost);
+  if (lost) { ctx.res.add('ant', -lost); loseFighters(ctx, soldierLoss); }
   const stealShare = Math.min(B.maxSteal, b.breaches * B.stealPerBreach) * Math.max(0.2, 1 + F.plug.per * fl(ctx, 'plug'));
   const stolen = ctx.res.amt('food') * stealShare;
   ctx.res.add('food', -stolen);
@@ -176,6 +206,7 @@ function finishCampaign(ctx: Context) {
   const win = ours >= enemy;
   const lost = Math.min(c.army, Math.ceil(c.army * WAR.campaignLoss * (win ? 1 : 2)));
   ctx.res.add('ant', -lost);
+  loseFighters(ctx, lost);
   if (!win) { ctx.log(`The campaign fails. ${lost} soldiers do not return.`, 'warn'); return; }
   const owner = t.o!;
   const loot = WAR.loot[owner] ?? {};
@@ -206,6 +237,7 @@ export const war: GameSystem = {
     const s = S(ctx);
     ctx.mods.set('soldierPower', 'plating', F.plating.per * fl(ctx, 'plating'));
     s.rallyCd = Math.max(0, s.rallyCd - dt);
+    refill(ctx);
     if (!s.rivalDefeated) {
       s.rivalArmy = Math.min(rivalTiles(ctx) * WAR.rivalArmyPerTile, s.rivalArmy + WAR.rivalGrowthPerSecond * dt);
       if (s.battle) stepBattle(ctx, dt);
@@ -218,7 +250,7 @@ export const war: GameSystem = {
 
   panel: (() => {
     let fortSection: HTMLElement, campSection: HTMLElement;
-    let cv: HTMLCanvasElement, status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, campBtn: ActionButton, campInfo: HTMLElement, provokeBtn: ActionButton;
+    let cv: HTMLCanvasElement, status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, refillBox: HTMLInputElement, campBtn: ActionButton, campInfo: HTMLElement, provokeBtn: ActionButton;
     let forts: ReturnType<typeof upgradeList>;
     const campBar = progressBar();
     return {
@@ -238,6 +270,9 @@ export const war: GameSystem = {
           ctx, label: 'Rally the workers', desc: `Up to ${B.rallyMax} idle workers and foragers join the fight.`,
           enabled: (c) => !!S(c).battle && S(c).rallyCd <= 0, onBuy: (c) => rally(c),
         });
+        refillBox = el('input', { type: 'checkbox', id: 'war-refill' }) as HTMLInputElement;
+        refillBox.addEventListener('change', () => { const s = S(ctx); s.replenish = refillBox.checked; if (!s.replenish) s.refill = undefined; });
+        const refillWrap = el('label', { for: 'war-refill', style: 'white-space: nowrap', title: 'When soldiers or majors die, idle workers take their place.' }, refillBox, ' Refill from idle');
         campInfo = el('div.ledger');
         campBtn = actionButton({
           ctx, label: 'Launch campaign', desc: 'All soldiers march on the tile selected on the Map.',
@@ -251,7 +286,7 @@ export const war: GameSystem = {
         forts = upgradeList(ctx, () => S(ctx).forts, FORTS);
         root.append(
           el('p.flavor', {}, 'They know where we are now. Hold the entrance, then take the fight to them.'),
-          cv, status, el('div.row', {}, provokeBtn.root, rallyBtn.root), ledger,
+          cv, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap), ledger,
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
           campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Select an enemy tile next to your territory on the Map, then launch.'),
             campInfo, el('div.row', {}, campBtn.root), campBar.root),
@@ -262,6 +297,7 @@ export const war: GameSystem = {
         drawEntrance(cv, s.battle);
         fortSection.hidden = !ctx.flags.has('tech:fortify');
         campSection.hidden = !ctx.flags.has('tech:campaigns');
+        refillBox.checked = !!s.replenish;
         provokeBtn.update(ctx); rallyBtn.update(ctx); campBtn.update(ctx); forts.update(ctx);
         if (s.rivalDefeated) status.textContent = 'The rival is gone. The entrance is quiet.';
         else if (s.battle) {
