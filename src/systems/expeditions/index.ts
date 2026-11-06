@@ -287,7 +287,7 @@ export const expeditions: GameSystem = {
           ['Columns', `${s.parties.length} of ${maxParties(ctx)} out`],
           ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * partyMult(s.party) - 1) * 100)}%`],
           ['Trail marks earned', String(earned(ctx))],
-          ['Next new place', (() => { const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)); return n ? `at ${n.unlockMarks} marks earned` : 'all found'; })()],
+          ['Next destination', (() => { const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)); return n ? `${earned(ctx)}/${n.unlockMarks} marks` : 'all found'; })()],
           ['Rare finds', String(s.rare)],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         upsHead.hidden = !ups.update(ctx);
