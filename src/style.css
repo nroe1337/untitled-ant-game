@@ -142,12 +142,13 @@ input[type=checkbox] { accent-color: var(--accent); }
 /* A new age: a calm band over the top of the panel that draws a line, then fades away. */
 .main { position: relative; }
 .fanfare { position: absolute; left: 0; right: 0; top: 0; z-index: 5; background: var(--panel); border: 1px solid var(--warn);
-  padding: 16px 20px 18px; text-align: center; cursor: pointer; display: grid; gap: 2px; justify-items: center; }
+  padding: 28px 24px 30px; text-align: center; cursor: pointer; display: grid; gap: 6px; justify-items: center; }
 .fanfare.play { animation: fanfare 9s ease-in-out both; }
 .fanfare .rule { display: block; height: 2px; background: var(--warn); width: 0; margin-bottom: 8px; }
 .fanfare.play .rule { animation: rule 1.4s .2s ease-out forwards; }
-.fanfare .kicker { margin: 0; font-size: 15px; }
-.fanfare .title { font: 400 30px/1.15 var(--display); color: var(--warn); margin: 0; }
+.fanfare .kicker { margin: 0; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.fanfare .note { margin: 4px 0 0; font-size: 17px; color: var(--muted); max-width: 46ch; }
+.fanfare .title { font: 400 46px/1.1 var(--display); color: var(--warn); margin: 0; }
 @keyframes fanfare { 0% { opacity: 0; transform: translateY(-6px); } 6%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @keyframes rule { to { width: 60%; } }
 
