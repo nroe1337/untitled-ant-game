@@ -208,7 +208,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
 
   const placed = order.slice(0, rows * LANES.length);
   const where = (i: number) => ({
-    y: top + 24 + Math.floor(i / LANES.length) * ROW_H + (i % 3),
+    y: top + 24 + Math.floor(i / LANES.length) * ROW_H,
     cx: shaftX + Math.sign(LANES[i % LANES.length]) * LANE_X[Math.abs(LANES[i % LANES.length])],
   });
   // every connecting tunnel first, so a far chamber's tunnel never paints over a near chamber
@@ -226,7 +226,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         break;
       case 'brood': { // eggs in rows, more as the brood grows
         blob(c, cx, y, 16, 5, PAL.hole);
-        const n = Math.min(10, Math.ceil(broodCount / Math.max(1, counts.brood)) || 1);
+        const n = Math.min(10, Math.ceil(broodCount / Math.max(1, count(ctx, 'brood'))) || 1);
         for (let e = 0; e < n; e++) rect(c, cx - 12 + (e % 5) * 5, y - 2 + Math.floor(e / 5) * 3, 2, 2, PAL.bone);
         break;
       }
@@ -256,7 +256,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       case 'barracks': { // a guard post with soldiers standing in line
         rect(c, cx - 16, y - 5, 32, 10, PAL.hole);
         rect(c, cx - 16, y - 6, 32, 1, PAL.dirt);
-        const n = Math.min(6, Math.ceil(soldiers / Math.max(1, counts.barracks)));
+        const n = Math.min(6, Math.ceil(soldiers / Math.max(1, count(ctx, 'barracks'))));
         for (let e = 0; e < n; e++) rect(c, cx - 13 + e * 5, y - 2, 2, 4, PAL.you);
         break;
       }
