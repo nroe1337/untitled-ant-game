@@ -13,6 +13,9 @@ export const BROOD = {
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
   baseBroodCap: 4,          // max eggs + larvae before chambers
   nurseEggsPerSecond: 0.03, // each nurse lays this many eggs
+  nurseTends: 3,            // eggs or larvae each nurse looks after
+  queenTends: 4,            // the queen looks after this many herself
+  untendedSpeed: 0.5,       // brood nobody looks after grows this fast
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {

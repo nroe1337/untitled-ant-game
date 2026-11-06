@@ -29,6 +29,13 @@ const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.jelly.per * R(c
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseEggsPerSecond * (1 + RB.devotion.per * R(ctx, 'devotion'));
+/** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
+export const tendSpeed = (ctx: Context) => {
+  const brood = ctx.res.amt('egg') + ctx.res.amt('larva');
+  if (brood <= 0) return 1;
+  const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends);
+  return (tended + (brood - tended) * BROOD.untendedSpeed) / brood;
+};
 const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
 
 const ROYAL = fromBalance(RB, (ctx, needs) => ctx.flags.has('tech:royal') && (!needs || ctx.flags.has(needs)));
@@ -75,7 +82,7 @@ export const brood: GameSystem = {
     // eggs hatch into larvae
     const eggs = res.amt('egg');
     if (eggs >= 1) {
-      s.eggProgress += (dt / hatchTime(ctx)) * eggs;
+      s.eggProgress += (dt / hatchTime(ctx)) * eggs * tendSpeed(ctx);
       while (s.eggProgress >= 1 && res.amt('egg') >= 1) {
         res.add('egg', -1); res.add('larva', 1); s.eggProgress -= 1;
         if (!s.firstLarva) { s.firstLarva = true; ctx.flags.add('hungry'); ctx.log('An egg splits. A pale larva wriggles, and it is hungry.'); }
@@ -93,7 +100,7 @@ export const brood: GameSystem = {
         res.source = 'Larvae eating';
         res.add('food', -need);
         res.source = 'Brood';
-        s.larvaProgress += (dt / growTime(ctx)) * larvae;
+        s.larvaProgress += (dt / growTime(ctx)) * larvae * tendSpeed(ctx);
         while (s.larvaProgress >= 1 && res.amt('larva') >= 1) {
           res.add('larva', -1); res.add('ant', 1); s.larvaProgress -= 1; s.born += 1;
           ctx.bus.emit('ant:born');
@@ -168,6 +175,9 @@ export const brood: GameSystem = {
           ['Egg hatches in', `${fmt(hatchTime(ctx))}s`],
           ['Larva grows in', `${fmt(growTime(ctx))}s, eating ${larvaFood(ctx).toFixed(2)} food/s`],
         ];
+        const brood = Math.floor(broodUsed(ctx));
+        const care = BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends;
+        if (brood > BROOD.queenTends || care > BROOD.queenTends) lines.push(['Brood looked after', `${Math.min(brood, care)} of ${brood}` + (brood > care ? ' (the rest grow at half speed)' : '')]);
         const auto = nurseRate(ctx) + queenRate(ctx);
         if (auto) lines.push(['Eggs laid without you', `${auto.toFixed(3)}/s`]);
         ledger.replaceChildren(...lines.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
