@@ -67,6 +67,7 @@ export const NEST = {
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
   storageBoost: 0.5,
   /** Research that adds a share to all living space from chambers (a colony of thousands needs these). */
+  wideTunnels: 1,           // extra living space per tunnel once Wider tunnels is researched
   housingTechs: { deepgalleries: 0.25, vaults: 0.25, partitions: 0.5 } as Record<string, number>,
   surfaceAtChambers: 10,
   baseFoodCap: 40,
@@ -214,6 +215,7 @@ export const RESEARCH = {
     royal:      { name: 'Royal court',       age: 'forage', cost: { knowledge: 300, food: 250 },       pop: 0.2, needs: ['seeds'],               desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores and speeds up knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 40, soil: 45 },          needs: ['storage', 'brood'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
+    widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Tunnel gives +1 more living space.' },
     shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['storage', 'surface'],  desc: 'Food stores, Storerooms and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['teaching', 'surface'], desc: 'Halls of elders hold 50% more knowledge.' },
     lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Storerooms, Silk lofts and Halls of elders hold another 50% more.' },

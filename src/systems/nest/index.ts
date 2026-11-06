@@ -79,7 +79,8 @@ function applyEffects(ctx: Context) {
     .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
   const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id) * (k.endsWith('Cap') ? mult(id) : 1), 0);
   const roomier = 1 + Object.entries(NEST.housingTechs).reduce((t, [tech, b]) => t + (ctx.flags.has('tech:' + tech) ? b : 0), 0) + ctx.mods.get('livingSpace');
-  ctx.res.setCapBonus('ant', 'nest', Math.floor(sum('antCap') * roomier));
+  const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') : 0;
+  ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide) * roomier));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
