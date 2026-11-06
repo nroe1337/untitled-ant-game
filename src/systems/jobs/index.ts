@@ -4,7 +4,8 @@ import { el } from '../../core/ui';
 import { icon } from '../../core/sprites';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { COLONY, JOBS, NEST } from '../../data/balance';
+import { BROOD, COLONY, JOBS, NEST } from '../../data/balance';
+import { nurseEggsEach } from '../brood';
 
 interface JobDef {
   id: string;
@@ -22,7 +23,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'forager', name: 'Forager', desc: 'Gathers food from the soil and roots.', produces: JOBS.forager },
   { id: 'elder', name: 'Elder', desc: 'Remembers and thinks. Makes knowledge for research.', produces: JOBS.elder, requires: 'research' },
   { id: 'digger', name: 'Digger', desc: 'Moves soil to make room for chambers.', produces: JOBS.digger, requires: 'tech:digging' },
-  { id: 'nurse', name: 'Nurse', desc: 'Lays eggs and looks after 3 eggs or larvae. Brood nobody looks after grows at half speed.', produces: {}, requires: 'chamber:brood' },
+  { id: 'nurse', name: 'Nurse', desc: 'Lays eggs and looks after the brood.', produces: {}, requires: 'chamber:brood' },
   { id: 'scout', name: 'Scout', desc: 'Marks trails on the surface. Makes pheromone.', produces: JOBS.scout, requires: 'tech:scouting' },
   { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns.', produces: {}, requires: 'tech:martial' },
   { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
@@ -232,7 +233,15 @@ export const jobs: GameSystem = {
             `${n} × ${fmtEach(e.per)} = ${tot(e.per * n)} ${e.name}/s`,
           ]);
           r.row.dataset.tip = j.desc + (math.length ? '\n' + math.join('\n') : '');
-          if (j.id === 'nurse' && s.assigned.nurse) parts.push('laying eggs');
+          if (j.id === 'nurse') {
+            const egg = nurseEggsEach(ctx);
+            const brood = Math.floor(ctx.res.amt('egg') + ctx.res.amt('larva'));
+            const care = BROOD.queenTends + n * BROOD.nurseTends;
+            parts.push(`+${tot(egg * n)} eggs/s`);
+            r.row.dataset.tip = j.desc +
+              `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +
+              `\nLooked after now: ${Math.min(brood, care)} of ${brood}.`;
+          }
           if (j.id === 'soldier' && s.assigned.soldier) parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
           r.out.textContent = parts.join(', ');
         }

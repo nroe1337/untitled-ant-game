@@ -28,7 +28,8 @@ const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.jelly.per * R(ctx, 'jelly') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
-const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseEggsPerSecond * (1 + RB.devotion.per * R(ctx, 'devotion'));
+export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + RB.devotion.per * R(ctx, 'devotion'));
+const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
   const brood = ctx.res.amt('egg') + ctx.res.amt('larva');
