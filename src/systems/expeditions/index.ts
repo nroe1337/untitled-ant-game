@@ -19,6 +19,9 @@ interface ExpState {
   /** The place whose trail is marked (true in older saves: any place). */
   marked: boolean | string;
   auto: boolean;
+  /** Keep workers back for expeditions between trips, so jobs don't take them. */
+  reserve?: boolean;
+  reserved?: number;
   rare: number;
   /** legacy single-party saves */
   active?: Party | null;
@@ -49,7 +52,10 @@ const EVENTS = [
   'Two workers argue over the way and both are right.',
 ];
 
-const away = (ctx: Context) => S(ctx).parties.reduce((a, p) => a + p.ants, 0);
+const onTrail = (ctx: Context) => S(ctx).parties.reduce((a, p) => a + p.ants, 0);
+/** Workers away on trails plus any kept in reserve between trips. */
+const away = (ctx: Context) => onTrail(ctx) + (S(ctx).reserve ? S(ctx).reserved ?? 0 : 0);
+const ready = (ctx: Context) => idle(ctx) + (S(ctx).reserve ? S(ctx).reserved ?? 0 : 0);
 const idle = (ctx: Context) => {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
   const busy = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions').reduce((a, [, b]) => a + b, 0);
@@ -64,7 +70,7 @@ const markCost = (ctx: Context) => {
   return Object.fromEntries(Object.entries(X.markTrailCost).map(([r, n]) => [r, Math.ceil(n * Math.sqrt(d.time / X.destinations[0].time))]));
 };
 const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
-const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && idle(ctx) >= S(ctx).party;
+const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
 type Dest = (typeof X.destinations)[number];
@@ -84,6 +90,7 @@ function send(ctx: Context) {
   const st = S(ctx);
   const d = X.destinations.find((x) => x.id === st.dest) ?? X.destinations[0];
   const marked = st.marked === true || st.marked === d.id;
+  if (st.reserve) st.reserved = Math.max(0, (st.reserved ?? 0) - st.party); // reserve goes first, idle workers top it up
   st.parties.push({ dest: d.id, ants: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0 });
   if (marked) { ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
   ctx.busy.expeditions = away(ctx);
@@ -157,16 +164,25 @@ export const expeditions: GameSystem = {
       if (quarter > p.told && quarter < 4) { p.told = quarter; p.event = EVENTS[Math.floor(Math.random() * EVENTS.length)]; }
       if (p.elapsed >= p.duration) {
         s.parties.splice(s.parties.indexOf(p), 1);
+        const before = Math.floor(ctx.res.amt('ant'));
         finish(ctx, p);
+        if (s.reserve) s.reserved = (s.reserved ?? 0) + Math.max(0, p.ants - (before - Math.floor(ctx.res.amt('ant'))));
         if (lvl(ctx, 'memory') && s.auto && canSend(ctx)) send(ctx);
       }
     }
+    if (s.reserve) {
+      // starvation or raids can leave fewer workers than are held back
+      const others = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions').reduce((a, [, b]) => a + b, 0);
+      const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
+      s.reserved = Math.max(0, Math.min(s.reserved ?? 0, Math.floor(ctx.res.amt('ant')) - onTrail(ctx) - others - assigned));
+    } else s.reserved = 0;
     ctx.busy.expeditions = away(ctx);
   },
 
   panel: (() => {
     let sendBtn: ActionButton, markBtn: ActionButton, partyEl: HTMLElement, destSel: HTMLSelectElement, statusEl: HTMLElement;
     let viewer: HTMLCanvasElement, captions: HTMLElement, autoBox: HTMLInputElement, autoWrap: HTMLElement, ledger: HTMLElement;
+    let reserveBox: HTMLInputElement, reserveWrap: HTMLElement, reserveCount: HTMLElement;
     let lootEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
     const bars: ReturnType<typeof progressBar>[] = [];
@@ -180,7 +196,7 @@ export const expeditions: GameSystem = {
         destSel.addEventListener('change', () => { s.dest = destSel.value; });
         const party = (d: number) => el('button.small', { type: 'button', onclick: (e: MouseEvent) => {
           const step = e.shiftKey ? d * 5 : d;
-          s.party = Math.max(X.minParty, Math.min(s.party + step, Math.max(X.minParty, idle(ctx))));
+          s.party = Math.max(X.minParty, Math.min(s.party + step, Math.max(X.minParty, ready(ctx))));
         } }, d > 0 ? '+' : '−');
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
@@ -204,6 +220,10 @@ export const expeditions: GameSystem = {
         autoBox = el('input', { type: 'checkbox', id: 'exp-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { s.auto = autoBox.checked; });
         autoWrap = el('label.row', { for: 'exp-auto' }, autoBox, 'Send parties again when they return');
+        reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
+        reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) s.reserved = 0; });
+        reserveWrap = el('label', { for: 'exp-reserve', title: 'Returning workers stay with the expeditions instead of going back to the idle pool, so jobs never take them. Losses are made up from idle workers.' },
+          reserveBox, ' Reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES);
         lootEl = el('p.muted');
@@ -214,7 +234,7 @@ export const expeditions: GameSystem = {
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           lootEl,
-          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl)),
+          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
           el('div.row', {}, sendBtn.root, markBtn.root),
           partyHint,
           autoWrap,
@@ -245,6 +265,8 @@ export const expeditions: GameSystem = {
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
+        reserveBox.checked = !!s.reserve;
+        reserveCount.textContent = s.reserve ? ` (${s.reserved ?? 0} waiting)` : '';
 
         // one caption + bar per party
         while (bars.length < s.parties.length) bars.push(progressBar());
