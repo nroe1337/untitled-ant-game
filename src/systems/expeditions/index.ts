@@ -21,6 +21,8 @@ interface ExpState {
   auto: boolean;
   /** Keep workers back for expeditions between trips, so jobs don't take them. */
   reserve?: boolean;
+  /** Mark the trail automatically before each trip, when there is pheromone for it. */
+  autoMark?: boolean;
   reserved?: number;
   rare: number;
   /** legacy single-party saves */
@@ -90,10 +92,11 @@ const WIPEOUTS = [
 function send(ctx: Context) {
   const st = S(ctx);
   const d = X.destinations.find((x) => x.id === st.dest) ?? X.destinations[0];
+  if (st.autoMark && st.marked !== true && st.marked !== d.id && ctx.res.spend(markCost(ctx))) st.marked = d.id;
   const marked = st.marked === true || st.marked === d.id;
   if (st.reserve) st.reserved = Math.max(0, (st.reserved ?? 0) - st.party); // reserve goes first, idle workers top it up
   st.parties.push({ dest: d.id, ants: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0 });
-  if (marked) { ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
+  if (marked) { if (!st.autoMark) ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
   ctx.busy.expeditions = away(ctx);
 }
 
@@ -185,6 +188,7 @@ export const expeditions: GameSystem = {
   panel: (() => {
     let sendBtn: ActionButton, markBtn: ActionButton, partyEl: HTMLElement, destSel: HTMLSelectElement, statusEl: HTMLElement;
     let viewer: HTMLCanvasElement, captions: HTMLElement, autoBox: HTMLInputElement, autoWrap: HTMLElement, ledger: HTMLElement;
+    let markBox: HTMLInputElement, markWrap: HTMLElement;
     let reserveBox: HTMLInputElement, reserveWrap: HTMLElement, reserveCount: HTMLElement;
     let lootEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
@@ -223,6 +227,9 @@ export const expeditions: GameSystem = {
         autoBox = el('input', { type: 'checkbox', id: 'exp-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { s.auto = autoBox.checked; });
         autoWrap = el('label.row', { for: 'exp-auto' }, autoBox, 'Send parties again when they return');
+        markBox = el('input', { type: 'checkbox', id: 'exp-automark' }) as HTMLInputElement;
+        markBox.addEventListener('change', () => { s.autoMark = markBox.checked; });
+        markWrap = el('label', { for: 'exp-automark', title: 'Mark the trail before every trip, whenever you have the pheromone for it.' }, markBox, ' Mark every trip');
         reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
         reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) s.reserved = 0; });
         reserveWrap = el('label', { for: 'exp-reserve', title: 'Returning workers stay with the expeditions instead of going back to the idle pool, so jobs never take them. Losses are made up from idle workers.' },
@@ -238,7 +245,7 @@ export const expeditions: GameSystem = {
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           lootEl,
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
-          el('div.row', {}, sendBtn.root, markBtn.root),
+          el('div.row', {}, sendBtn.root, markBtn.root, markWrap),
           partyHint,
           autoWrap,
           el('div.viewerwrap', {}, viewer, captions),
@@ -269,6 +276,7 @@ export const expeditions: GameSystem = {
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
         reserveBox.checked = !!s.reserve;
+        markBox.checked = !!s.autoMark;
         reserveCount.textContent = s.reserve ? ` (${s.reserved ?? 0} waiting)` : '';
 
         // one caption + bar per party
