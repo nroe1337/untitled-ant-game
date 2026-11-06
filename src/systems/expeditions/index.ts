@@ -7,7 +7,9 @@ import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, blob, rect, setup } from '../../core/pixel';
 import { EXPEDITIONS as X, NEST } from '../../data/balance';
 
-interface Party { dest: string; ants: number; elapsed: number; duration: number; told: number; event?: string }
+/** What happens to a party on the trail, rolled when it leaves and played out partway (at = share of the trip). */
+interface Fate { at: number; lost: number; wipe: boolean; done?: boolean }
+interface Party { dest: string; ants: number; elapsed: number; duration: number; told: number; event?: string; sent?: number; fate?: Fate }
 interface ExpState {
   runs: number;
   /** Trail marks ever earned this colony. Unlocks new places and trail upgrades. */
@@ -112,25 +114,44 @@ function send(ctx: Context) {
   if (st.autoMark && st.marked !== true && st.marked !== d.id && ctx.res.spend(markCost(ctx))) st.marked = d.id;
   const marked = st.marked === true || st.marked === d.id;
   if (st.reserve) st.reserved = Math.max(0, (st.reserved ?? 0) - st.party); // reserve goes first, idle workers top it up
-  st.parties.push({ dest: d.id, ants: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0 });
+  // The trip's luck is decided as it sets out; the loss itself happens somewhere along the trail.
+  const wipe = Math.random() < wipeOf(ctx, d);
+  const lost = !wipe && Math.random() < lossOf(ctx, d) ? Math.min(st.party, 1 + Math.floor(Math.random() * maxLost(st.party))) : 0;
+  const fate: Fate = { at: 0.25 + Math.random() * 0.5, lost, wipe };
+  st.parties.push({ dest: d.id, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0, fate });
   ctx.bus.emit('expedition:send', { dest: d.id, marked, ants: st.party });
   if (marked) { if (!st.autoMark) ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
+  ctx.busy.expeditions = away(ctx);
+}
+
+/** Play out a party's fate partway along the trail: workers vanish from the column, or the whole column does. */
+function befall(ctx: Context, p: Party) {
+  const s = S(ctx), f = p.fate!;
+  f.done = true;
+  const d = X.destinations.find((x) => x.id === p.dest)!;
+  const place = d.name.toLowerCase();
+  const n = f.wipe ? p.ants : Math.min(f.lost, p.ants);
+  if (!n) return;
+  ctx.res.add('ant', -n);
+  s.perished = (s.perished ?? 0) + n;
+  p.ants -= n;
+  if (f.wipe) {
+    const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
+    ctx.log(`The party to ${place} is gone. ${why} ${n} workers lost.`, 'warn');
+    ctx.bus.emit('expedition:wipe', { dest: d.id, ants: n });
+  } else {
+    const who = n === 1 ? 'one worker' : `${n} workers`;
+    const why = LOSSES[Math.floor(Math.random() * LOSSES.length)].replace('{n}', who);
+    ctx.log(`${why} The rest of the party to ${place} presses on.`, 'warn');
+  }
   ctx.busy.expeditions = away(ctx);
 }
 
 function finish(ctx: Context, p: Party) {
   const s = S(ctx);
   const d = X.destinations.find((x) => x.id === p.dest)!;
-  if (Math.random() < wipeOf(ctx, d)) {
-    // Very rare: the whole party is lost, with nothing brought home.
-    ctx.res.add('ant', -p.ants);
-    s.perished = (s.perished ?? 0) + p.ants;
-    s.runs += 1;
-    const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
-    ctx.log(`The party to ${d.name.toLowerCase()} never comes back. ${why} ${p.ants} workers lost.`, 'warn');
-    ctx.bus.emit('expedition:wipe', { dest: d.id, ants: p.ants });
-    return;
-  }
+  // a party lost on the trail still holds its column until its time is up
+  if (p.ants <= 0) { s.runs += 1; return; }
   const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
@@ -146,17 +167,10 @@ function finish(ctx: Context, p: Party) {
     ctx.res.add('amber', 1); s.rare += 1;
     ctx.log('Among the haul: a bead of amber with something tiny trapped inside.');
   }
-  // A bad trip costs from one worker up to a share of the party, at random.
-  const lost = Math.random() < lossOf(ctx, d) ? Math.min(p.ants, 1 + Math.floor(Math.random() * maxLost(p.ants))) : 0;
-  if (lost) { ctx.res.add('ant', -lost); s.perished = (s.perished ?? 0) + lost; }
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
-  if (lost) {
-    const who = lost === 1 ? 'one worker' : `${lost} workers`;
-    const why = LOSSES[Math.floor(Math.random() * LOSSES.length)].replace('{n}', who);
-    ctx.log(`${why} The rest come home from ${d.name.toLowerCase()}.`, 'warn');
-  }
-  ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: p.ants, lost });
+  const sent = p.sent ?? p.ants;
+  ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: sent, lost: sent - p.ants });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
   if (s.runs === X.rivalAfterRuns && !ctx.flags.has('rival')) {
@@ -191,6 +205,7 @@ export const expeditions: GameSystem = {
       p.elapsed += dt;
       const quarter = Math.floor((p.elapsed / p.duration) * 4);
       if (quarter > p.told && quarter < 4) { p.told = quarter; p.event = EVENTS[Math.floor(Math.random() * EVENTS.length)]; }
+      if (p.fate && !p.fate.done && p.elapsed >= p.fate.at * p.duration) befall(ctx, p);
       if (p.elapsed >= p.duration) {
         s.parties.splice(s.parties.indexOf(p), 1);
         const before = Math.floor(ctx.res.amt('ant'));
@@ -308,7 +323,9 @@ export const expeditions: GameSystem = {
           const d = X.destinations.find((x) => x.id === p.dest)!;
           bars[i].set(p.elapsed / p.duration);
           return el('div.caption', {},
-            el('span', {}, `${p.ants} workers to ${d.name.toLowerCase()}, ${p.elapsed / p.duration < 0.5 ? 'outbound' : 'returning'}. ${fmtTime((p.duration - p.elapsed) / ctx.speed)} left.`),
+            el('span', {}, p.ants <= 0
+              ? `No word from the party to ${d.name.toLowerCase()}. The column clears in ${fmtTime((p.duration - p.elapsed) / ctx.speed)}.`
+              : `${p.ants} workers to ${d.name.toLowerCase()}, ${p.elapsed / p.duration < 0.5 ? 'outbound' : 'returning'}. ${fmtTime((p.duration - p.elapsed) / ctx.speed)} left.`),
             bars[i].root,
             p.event ? el('span.muted', {}, p.event) : null);
         }) : [el('div.caption', {}, el('span.muted', {}, 'The trail is quiet.'))]));
