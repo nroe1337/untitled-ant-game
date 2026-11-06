@@ -1,5 +1,6 @@
 // The world map: a flat-colour tile grid. Expeditions reveal fog; adjacent tiles can be
-// claimed as outposts that produce by terrain. Other systems change ownership via events:
+// claimed by a party of workers who go out, take it, and come home. Held tiles produce by terrain,
+// and an outpost can be built on one (resources only) for living space, defence and double yield. Other systems change ownership via events:
 //   emit 'map:capture' { x, y }   -> tile becomes yours
 // and read ctx.state.map (tiles, selected) to know what is where.
 import type { GameSystem, Context } from '../../core/types';
@@ -12,7 +13,8 @@ import { fromBalance, upgradeList } from '../../core/upgrades';
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
-interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number> }
+interface Claim { i: number; elapsed: number; duration: number; ants: number }
+interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
 const yieldMult = (ctx: Context) => 1 + MAP.upgrades.lines.per * (S(ctx).ups?.lines ?? 0);
 
@@ -78,20 +80,51 @@ const adjacentToYou = (ctx: Context, i: number) => {
   const [x, y] = xy(i);
   return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => inside(x + dx, y + dy) && S(ctx).tiles[idx(x + dx, y + dy)].o === 'you');
 };
-/** Priced by the outposts you hold right now, so the 10th outpost costs the same in every colony. */
-const heldOutposts = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you' && t.outpost).length;
-const claimCost = (ctx: Context): Costs =>
-  Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * Math.pow(MAP.claimGrowth, heldOutposts(ctx)))]));
+const outposts = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you' && t.outpost).length;
+/** Claims get dearer in a straight line with the land you hold, so the whole map is reachable in the end. */
+const claimCost = (ctx: Context): Costs => {
+  const extra = Math.max(0, owned(ctx).length - MAP.startTiles);
+  return Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.claimStep * extra))]));
+};
+const outpostCost = (ctx: Context): Costs =>
+  Object.fromEntries(Object.entries(MAP.outpost.cost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.outpost.step * outposts(ctx)))]));
+const claimTime = (i: number) => { const [x, y] = xy(i), [nx, ny] = MAP.nest; return Math.round(MAP.claimTime + MAP.claimTimePerTile * Math.hypot(x - nx, y - ny)); };
+/** Stream tiles open with Leaf rafts; patio slabs once soldiers can clear the pavement ants (Street fighting). */
+const openGround = (ctx: Context, t: Tile) =>
+  t.o === null ? t.t !== 'water' || ctx.flags.has('tech:rafts') : t.o === 'humans' && !t.core && ctx.flags.has('tech:pavement');
 export const canClaim = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = S(ctx).tiles[i];
-  return t.seen && t.o === null && t.t !== 'water' && adjacentToYou(ctx, i);
+  return t.seen && openGround(ctx, t) && adjacentToYou(ctx, i);
 };
+const canSend = (ctx: Context) => !S(ctx).claiming && freeWorkers(ctx) >= MAP.claimParty;
+function sendClaim(ctx: Context, i: number) {
+  S(ctx).claiming = { i, elapsed: 0, duration: claimTime(i), ants: MAP.claimParty };
+}
+function finishClaim(ctx: Context) {
+  const s = S(ctx), c = s.claiming!;
+  s.claiming = null;
+  const t = s.tiles[c.i];
+  if (!canClaim(ctx, c.i)) { ctx.log('The claiming party comes home. Someone else holds that ground now.', 'warn'); return; }
+  t.o = 'you'; s.claims += 1;
+  const [x, y] = xy(c.i); reveal(ctx, x, y, 1);
+  if (!s.auto) ctx.log(`The party marks a ${TERRAIN_NAME[t.t].toLowerCase()} tile as ours and comes home.`, 'info');
+}
+/** Expand on its own: send a party to the claimable tile nearest the nest, when workers and food allow. */
+function autoExpand(ctx: Context) {
+  const s = S(ctx);
+  if (!canSend(ctx) || !ctx.res.canAfford(claimCost(ctx))) return;
+  const [nx, ny] = MAP.nest;
+  let best = -1, dist = Infinity;
+  s.tiles.forEach((_, i) => { if (!canClaim(ctx, i)) return; const [x, y] = xy(i); const d = Math.hypot(x - nx, y - ny); if (d < dist) { dist = d; best = i; } });
+  if (best < 0 || !ctx.res.spend(claimCost(ctx))) return;
+  sendClaim(ctx, best);
+}
 const owned = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you');
 const freeWorkers = (ctx: Context) => {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-  const busy = Object.entries(ctx.busy).filter(([k]) => k !== 'outposts').reduce((a, [, b]) => a + b, 0);
-  return Math.floor(ctx.res.amt('ant')) - assigned - busy - (ctx.busy.outposts ?? 0);
+  const busy = Object.values(ctx.busy).reduce((a, b) => a + b, 0);
+  return Math.floor(ctx.res.amt('ant')) - assigned - busy;
 };
 
 export const map: GameSystem = {
@@ -99,8 +132,13 @@ export const map: GameSystem = {
 
   init(ctx) {
     const seed = Math.floor(Math.random() * 1e9);
-    ctx.state.map = { seed, tiles: generate(seed), selected: null, claims: 0 } satisfies MapState;
-    ctx.bus.on('loaded', () => { if (!S(ctx).tiles?.length) S(ctx).tiles = generate(S(ctx).seed); });
+    ctx.state.map = { seed, tiles: generate(seed), selected: null, claims: 0, v2: true } satisfies MapState;
+    ctx.bus.on('loaded', () => {
+      const s = S(ctx);
+      if (!s.tiles?.length) s.tiles = generate(s.seed);
+      // older saves: "outposts" were staffed claims. Outposts are buildings now, so those tiles are plain territory.
+      if (!s.v2) { s.tiles.forEach((t) => { t.outpost = false; }); s.v2 = true; }
+    });
     ctx.bus.on('expedition:return', ({ tile }: { tile: [number, number] }) => {
       const [nx, ny] = MAP.nest;
       // reveal the destination and a corridor toward it
@@ -122,24 +160,33 @@ export const map: GameSystem = {
   isUnlocked: (ctx) => ctx.flags.has('tech:cartography'),
 
   // the map is never lost: a new colony keeps every tile you owned and everything you saw,
-  // but outposts stand empty until you claim workers for them again
+  // but outposts are left behind and must be built again
   keep(ctx) {
     const s = S(ctx);
-    return { ...s, selected: null, ups: {}, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
+    return { ...s, selected: null, ups: {}, claiming: null, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
   },
 
   tick(ctx, dt) {
     const mine = owned(ctx);
-    const outposts = mine.filter((t) => t.outpost).length;
-    ctx.busy.outposts = outposts * MAP.claimWorkers;
-    // territory pays only once the colony has mapped it; the start is fully manual
-    if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * yieldMult(ctx) * dt);
-    ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence);
+    const s = S(ctx);
+    delete ctx.busy.outposts;
+    ctx.busy.claiming = s.claiming?.ants ?? 0;
+    if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
+    if (s.auto && ctx.flags.has('tech:frontier')) {
+      s.autoCd = (s.autoCd ?? 0) - dt;
+      if (s.autoCd <= 0) { s.autoCd = MAP.expandEvery; autoExpand(ctx); }
+    }
+    // territory pays only once the colony has mapped it; an outpost doubles its tile
+    const O = MAP.outpost, n = outposts(ctx);
+    if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * yieldMult(ctx) * (t.outpost ? 1 + O.yieldBoost : 1) * dt);
+    ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence);
+    ctx.res.setCapBonus('ant', 'outposts', n * O.living);
     ctx.mods.set('tiles', 'map', mine.length);
   },
 
   panel: (() => {
-    let cv: HTMLCanvasElement, info: HTMLElement, hover: HTMLElement, claim: ActionButton, claimWrap: HTMLElement, summary: HTMLElement;
+    let autoBox: HTMLInputElement, autoWrap: HTMLElement;
+    let cv: HTMLCanvasElement, info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement;
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement;
     let hoverI: number | null = null;
     return {
@@ -159,29 +206,36 @@ export const map: GameSystem = {
         info = el('div.ledger');
         summary = el('p.muted');
         claim = actionButton({
-          ctx, label: 'Claim as outpost', costs: () => claimCost(ctx),
-          desc: `${MAP.claimWorkers} workers move out to hold the tile. It produces by terrain.`,
-          enabled: (c) => canClaim(c, S(c).selected) && freeWorkers(c) >= MAP.claimWorkers,
-          onBuy: (c) => {
-            const s = S(c), t = s.tiles[s.selected!];
-            t.o = 'you'; t.outpost = true; s.claims += 1;
-            const [x, y] = xy(s.selected!); reveal(c, x, y, 1);
-            c.log(`Workers settle a ${TERRAIN_NAME[t.t].toLowerCase()} tile and mark it as ours.`);
-          },
+          ctx, label: 'Send workers to claim', costs: () => claimCost(ctx),
+          desc: `${MAP.claimParty} workers go out, mark the tile as ours, and come home. Farther tiles take longer.`,
+          enabled: (c) => canClaim(c, S(c).selected) && canSend(c),
+          onBuy: (c) => sendClaim(c, S(c).selected!),
         });
+        build = actionButton({
+          ctx, label: 'Build an outpost', costs: () => outpostCost(ctx),
+          desc: `A walled outpost on this tile: +${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, and the tile yields double. Each one costs more than the last.`,
+          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && t.o === 'you' && !t.core && !t.outpost; },
+          onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.outpost = true; c.log(`An outpost rises on the ${TERRAIN_NAME[t.t].toLowerCase()}.`, 'info'); },
+        });
+        buildWrap = el('div.row', {}, build.root);
+        autoBox = el('input', { type: 'checkbox', id: 'map-auto' }) as HTMLInputElement;
+        autoBox.addEventListener('change', () => { S(ctx).auto = autoBox.checked; });
+        autoWrap = el('label', { for: 'map-auto', style: 'white-space: nowrap', title: 'Send a party to claim the tile nearest the nest whenever no party is out and there are idle workers and food for it.' }, autoBox, ' Expand on its own');
         claimWrap = el('div.row', {}, claim.root);
         upsHead = el('h3', {}, 'Outposts');
         ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
         root.append(
           el('p.flavor', {}, 'The garden, as far as your scouts have seen. Click a tile to inspect it.'),
-          cv, hover, summary,
-          el('h3', {}, 'Selected tile'), info, claimWrap,
+          cv, hover, summary, el('div.row', {}, autoWrap),
+          el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap,
           upsHead, ups.root,
         );
       },
       update(_root, ctx) {
         const s = S(ctx);
         drawMap(cv, s, hoverI);
+        autoWrap.hidden = !ctx.flags.has('tech:frontier');
+        autoBox.checked = !!s.auto;
         const describe = (i: number | null) => {
           if (i == null) return '';
           const [x, y] = xy(i); const t = s.tiles[i];
@@ -192,22 +246,28 @@ export const map: GameSystem = {
         const mine = owned(ctx);
         const income: Record<string, number> = {};
         for (const t of mine) for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * yieldMult(ctx);
-        summary.textContent = `You hold ${mine.length} tiles. ` +
+        const c = s.claiming;
+        summary.textContent = `You hold ${mine.length} tiles` + (outposts(ctx) ? `, with ${outposts(ctx)} outpost${outposts(ctx) > 1 ? 's' : ''}` : '') + '. ' +
+          (c ? `${c.ants} workers are out claiming ${xy(c.i).join(',')}: back in ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s. ` : '') +
           (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${v.toFixed(2)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
         const i = s.selected;
-        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; return; }
+        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; return; }
         const t = s.tiles[i];
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
         if (t.seen) {
           rows.push(['Yields if held', Object.keys(y).length ? Object.entries(y).map(([r, v]) => `+${v} ${r}/s`).join(', ') : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
-          if (t.o === null && t.t !== 'water') rows.push(['Can claim?', canClaim(ctx, i) ? (freeWorkers(ctx) >= MAP.claimWorkers ? 'Yes' : `Needs ${MAP.claimWorkers} idle workers`) : 'Only tiles next to your territory']);
+          if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)
+            ? (s.claiming ? 'A party is already out claiming' : freeWorkers(ctx) >= MAP.claimParty ? `Yes. The trip takes about ${claimTime(i)}s.` : `Needs ${MAP.claimParty} idle workers`)
+            : !openGround(ctx, t) ? (t.t === 'water' ? 'Needs Leaf rafts' : t.o === 'humans' ? 'Needs Street fighting' : 'No') : 'Only tiles next to your territory']);
+          if (t.o === 'you' && t.outpost) rows.push(['Outpost', `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence, double yield`]);
           if (t.o === 'rival' || t.o === 'spider') rows.push(['Enemy ground', 'Take it with a campaign from the War tab']);
-          if (t.o === 'humans') rows.push(['Humans', 'Too big to fight. For now.']);
+          if (t.o === 'humans' && !ctx.flags.has('tech:pavement')) rows.push(['Humans', 'Too big to fight. For now.']);
         }
         info.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
-        claimWrap.hidden = !(t.seen && t.o === null && t.t !== 'water');
-        claim.update(ctx);
+        claimWrap.hidden = !(t.seen && (t.o === null || t.o === 'humans') && openGround(ctx, t));
+        buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && ctx.flags.has('tech:cartography'));
+        claim.update(ctx); build.update(ctx);
         void fmt;
       },
     };
@@ -240,6 +300,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, hoverI: number | null) {
     rect(c, x * T, y * T, T, 1, col); rect(c, x * T, y * T + T - 1, T, 1, col);
     rect(c, x * T, y * T, 1, T, col); rect(c, x * T + T - 1, y * T, 1, T, col);
   };
+  if (s.claiming && Math.floor(performance.now() / 400) % 2) mark(s.claiming.i, PAL.you);
   mark(hoverI, PAL.bone);
   mark(s.selected, PAL.bone);
 }
