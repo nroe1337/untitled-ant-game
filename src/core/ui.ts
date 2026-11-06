@@ -115,7 +115,8 @@ function costLines(ctx: Context, c: Costs) {
   return Object.entries(c).map(([r, n]) => {
     const name = ctx.res.has(r) ? ctx.res.get(r).name : r;
     const short = ctx.res.amt(r) < n, over = ctx.res.has(r) && ctx.res.cap(r) < n;
-    return el(`div.${over ? 'over' : short ? 'short' : 'ok'}`, {}, `${name}: ${fmt(n, true)}`);
+    const why = over ? ` (you can only store ${fmt(ctx.res.cap(r), true)})` : short ? ` (you have ${fmt(Math.floor(ctx.res.amt(r)), true)})` : '';
+    return el(`div.${over ? 'over' : short ? 'short' : 'ok'}`, {}, `${name}: ${fmt(n, true)}${why}`);
   });
 }
 
@@ -175,6 +176,8 @@ export function tileButton(opts: {
   ctx: Context; label: string; desc?: string; effect?: string | (() => string);
   /** An orange line under the effect: why it can't be bought yet. */
   warn?: () => string;
+  /** A quieter line under the effect, e.g. the current level. */
+  note?: () => string;
   costs: () => Costs; count?: () => number | string;
   enabled?: (ctx: Context) => boolean; onBuy: (ctx: Context) => void;
   /** Building queue: return true if the click queued it. Called on shift-click, or any click while unaffordable. */
@@ -199,6 +202,7 @@ export function tileButton(opts: {
       ...(opts.desc ? [el('div.tdesc', {}, opts.desc)] : []),
       ...(lines.length ? [el('div.tcost', {}, ...lines)] : []),
       ...(opts.effect ? [el('div.teffect', {}, typeof opts.effect === 'function' ? opts.effect() : opts.effect)] : []),
+      ...(opts.note?.() ? [el('div.tnote', {}, opts.note())] : []),
       ...(opts.warn?.() ? [el('div.short', {}, opts.warn())] : []),
     );
   };

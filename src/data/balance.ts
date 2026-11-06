@@ -21,13 +21,13 @@ export const BROOD = {
   forageCooldown: 2,
   royal: {
     // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
-    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster per level',               per: 0.01, base: { food: 20 },           growth: 1.18, max: 25 },
-    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster per level',              per: 0.01, base: { food: 30 },           growth: 1.18, max: 25 },
-    devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay {p} faster per level',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
-    clutch:    { name: 'Larger clutch',   desc: 'The queen lays {p} more egg per lay, per level', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
-    plates:    { name: 'Chitin plates',   desc: 'Plate the queen in raider chitin: eggs hatch {p} faster per level', per: 0.02, base: { chitin: 5 }, growth: 1.15, max: 50, needs: 'rival' },
-    wounds:    { name: 'Wound care',      desc: 'Each nurse cuts the chance of losing a worker on expeditions by {p} per level, up to half. Wounded champions heal faster too', per: 0.004, base: { food: 80, resin: 2 }, growth: 1.3, max: 10, needs: 'surface' },
-    longevity: { name: 'Royal rhythm',    desc: 'The queen lays {p} eggs/s on her own, per level', per: 0.005, base: { seed: 6, resin: 1 }, growth: 1.3, max: 20, unit: 'flat' as const, needs: 'surface' },
+    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster each level.',               per: 0.01, base: { food: 20 },           growth: 1.18, max: 25 },
+    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster each level.',              per: 0.01, base: { food: 30 },           growth: 1.18, max: 25 },
+    devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay eggs {p} faster each level.',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
+    clutch:    { name: 'Larger clutch',   desc: 'Each level adds {p} egg to every lay.', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
+    plates:    { name: 'Chitin plates',   desc: 'Raider chitin armours the queen. Eggs hatch {p} faster each level.', per: 0.02, base: { chitin: 5 }, growth: 1.15, max: 50, needs: 'rival' },
+    wounds:    { name: 'Wound care',      desc: 'Each nurse lowers the chance of losing workers on expeditions by {p} per level, down to half the base chance at most. Wounded champions also heal faster.', per: 0.004, base: { food: 80, resin: 2 }, growth: 1.3, max: 10, needs: 'surface' },
+    longevity: { name: 'Royal rhythm',    desc: 'Each level, the queen lays {p} more eggs per second on her own.', per: 0.005, base: { seed: 6, resin: 1 }, growth: 1.3, max: 20, unit: 'flat' as const, needs: 'surface' },
   },
 };
 
@@ -41,14 +41,14 @@ export const COLONY = {
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
   // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
   techniques: {
-    trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.01,  base: { pheromone: 12 },          growth: 1.25, max: 40, needs: 'surface' },
-    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 12 },               growth: 1.25, max: 40, needs: 'tech:sharedlabour' },
-    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.005, base: { seed: 12, food: 90 },     growth: 1.25, max: 30, needs: 'tech:sharedlabour' },
-    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.01,  base: { pheromone: 24, twig: 9 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
-    lore:     { name: 'Oral tradition',      desc: 'Elders +{p} per level',          per: 0.01,  base: { knowledge: 45, food: 30 }, growth: 1.25, max: 30 },
-    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less per level', per: -0.01, base: { knowledge: 60, soil: 60 }, growth: 1.25, max: 25 },
-    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.01,  base: { knowledge: 75, twig: 12 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
-    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder per level', per: 0.01, base: { chitin: 6, food: 150 }, growth: 1.25, max: 40, needs: 'rival' },
+    trails:   { name: 'Scent trails',        desc: 'Foragers gather {p} more food each level.',        per: 0.01,  base: { pheromone: 12 },          growth: 1.25, max: 40, needs: 'surface' },
+    grit:     { name: 'Mandible grit',       desc: 'Diggers dig {p} more soil each level.',         per: 0.01,  base: { twig: 12 },               growth: 1.25, max: 40, needs: 'tech:sharedlabour' },
+    stomach:  { name: 'Shared stomach',      desc: 'The colony eats {p} less food each level.',   per: -0.005, base: { seed: 12, food: 90 },     growth: 1.25, max: 30, needs: 'tech:sharedlabour' },
+    marching: { name: 'Marching songs',      desc: 'Scouts make {p} more pheromone each level.',          per: 0.01,  base: { pheromone: 24, twig: 9 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
+    lore:     { name: 'Oral tradition',      desc: 'Elders gather {p} more knowledge each level.',          per: 0.01,  base: { knowledge: 45, food: 30 }, growth: 1.25, max: 30 },
+    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less each level.', per: -0.01, base: { knowledge: 60, soil: 60 }, growth: 1.25, max: 25 },
+    carrying: { name: 'Load bearing',        desc: 'Expeditions bring back {p} more loot each level.', per: 0.01,  base: { knowledge: 75, twig: 12 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
+    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder each level.', per: 0.01, base: { chitin: 6, food: 150 }, growth: 1.25, max: 40, needs: 'rival' },
   },
 };
 
@@ -81,17 +81,17 @@ export const NEST = {
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
     storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil, +25 twig, +15 seed and +10 resin storage', soilCap: 40, matCap: { twig: 25, seed: 15, resin: 10 }, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
-    granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: 'Sprouting seeds give +0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
+    granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: 'Makes 0.05 food/s from sprouting seeds',       foodRate: 0.05, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, needs: 'tech:resin' },
-    gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 }, growth: 1.3,       desc: 'Scouts +5% each, +15 pheromone storage',  pheroCap: 15, scout: 0.05, needs: 'tech:scouting' },
+    gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 }, growth: 1.3,       desc: '+15 pheromone storage. Each one makes scouts 5% faster',  pheroCap: 15, scout: 0.05, needs: 'tech:scouting' },
     barracks: { name: 'Guard post',      base: { soil: 60, twig: 10 }, growth: 1.3,           desc: '+2 nest defence, +3 living space',        defence: 2, antCap: 3, needs: 'tech:martial' },
-    husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 }, growth: 1.3,          desc: 'Raider shells shore up the walls: +6 living space, +2 defence', antCap: 6, defence: 2, needs: 'tech:husks' },
-    library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 }, growth: 1.32,           desc: '+40 knowledge storage, elders +5% each', knowCap: 40, elder: 0.05, needs: 'tech:elders' },
-    fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 }, growth: 1.3,           desc: 'One fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
+    husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 }, growth: 1.3,          desc: 'Raider shells shore up the walls: +6 living space, +2 nest defence', antCap: 6, defence: 2, needs: 'tech:husks' },
+    library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 }, growth: 1.32,           desc: '+40 knowledge storage. Each one makes elders 5% faster', knowCap: 40, elder: 0.05, needs: 'tech:elders' },
+    fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 }, growth: 1.3,           desc: 'Adds one fungus bed and +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
     harbour:  { name: 'Harbour',         base: { soil: 80, twig: 20, resin: 6 }, growth: 1.6,  desc: 'A sheltered landing: +1 boat at a time (max 3)', boats: 1, max: 3, needs: 'tech:rafts' },
     waxworks: { name: 'Wax store',       base: { soil: 40, wax: 5 }, growth: 1.3,             desc: '+40 wax storage',                         waxCap: 40, needs: 'tech:husbandry' },
     hall:     { name: 'Worker hall',     base: { soil: 120, twig: 15 }, growth: 1.3,           desc: 'A long sleeping hall: +12 living space',  antCap: 12, needs: 'tech:halls' },
-    midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: 'Waste heap. Upkeep −2% each (max 15)',    upkeep: 0.02, max: 15, needs: 'tech:sanitation' },
+    midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: 'A waste heap. Each one cuts food upkeep by 2% (max 15)',    upkeep: 0.02, max: 15, needs: 'tech:sanitation' },
   },
 };
 
@@ -116,13 +116,13 @@ export const EXPEDITIONS = {
   markTrailCut: 0.3,
   revealRadius: 2,
   upgrades: {
-    mandibles: { name: 'Stronger mandibles', desc: 'Expedition loot +{p} per level',     per: 0.03,  base: { trailmark: 6 },  growth: 1.25, max: 40, needs: 'marks:7' },
-    feet:      { name: 'Sure feet',          desc: 'Expedition time −{p} per level',     per: -0.02, base: { trailmark: 9 },  growth: 1.25, max: 25, needs: 'marks:10' },
-    instinct:  { name: 'Homing instinct',    desc: 'Chance of losing workers −{p} per level', per: -0.03, base: { trailmark: 6 }, growth: 1.25, max: 20, needs: 'marks:7' },
-    scouts:    { name: 'Scouts ahead',       desc: 'Chance of losing the whole party −{p} per level', per: -0.0625, base: { trailmark: 15 }, growth: 1.3, max: 8, needs: 'marks:17' },
-    eyes:      { name: 'Keen antennae',      desc: 'Rare finds +{p} more likely per level', per: 0.05, base: { trailmark: 15 }, growth: 1.25, max: 20, needs: 'marks:17' },
+    mandibles: { name: 'Stronger mandibles', desc: 'Expeditions bring back {p} more loot each level.',     per: 0.03,  base: { trailmark: 6 },  growth: 1.25, max: 40, needs: 'marks:7' },
+    feet:      { name: 'Sure feet',          desc: 'Expeditions take {p} less time each level.',     per: -0.02, base: { trailmark: 9 },  growth: 1.25, max: 25, needs: 'marks:10' },
+    instinct:  { name: 'Homing instinct',    desc: 'The chance of losing workers on a trip drops by {p} each level.', per: -0.03, base: { trailmark: 6 }, growth: 1.25, max: 20, needs: 'marks:7' },
+    scouts:    { name: 'Scouts ahead',       desc: 'The chance of losing a whole party drops by {p} each level.', per: -0.0625, base: { trailmark: 15 }, growth: 1.3, max: 8, needs: 'marks:17' },
+    eyes:      { name: 'Keen antennae',      desc: 'Rare finds are {p} more likely each level.', per: 0.05, base: { trailmark: 15 }, growth: 1.25, max: 20, needs: 'marks:17' },
     memory:    { name: 'Trail memory',       desc: 'Parties set out again by themselves', per: 1,     base: { trailmark: 75 }, growth: 1,    max: 1, unit: 'flat' as const, needs: 'marks:69' },
-    columns:   { name: 'Second column',      desc: '{p} more expedition at a time',      per: 1,     base: { trailmark: 120 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'marks:115' },
+    columns:   { name: 'Second column',      desc: 'Each level lets {p} more party be out at the same time.',      per: 1,     base: { trailmark: 120 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'marks:115' },
   },
   rivalAfterRuns: 6,
 };
@@ -139,7 +139,7 @@ export const MAP = {
   claimWorkers: 2,          // workers who stay at each outpost
   /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
   upgrades: {
-    lines: { name: 'Silk lines', desc: 'Silk guy-lines and nets at every outpost: they yield {p} more per level', per: 0.05, base: { silk: 5 }, growth: 1.2, max: 20, needs: 'res:silk' },
+    lines: { name: 'Silk lines', desc: 'Silk lines and nets at every outpost. Outposts yield {p} more each level.', per: 0.05, base: { silk: 5 }, growth: 1.2, max: 20, needs: 'res:silk' },
   },
   /** Per-second output of each owned tile by terrain. */
   yield: {
@@ -179,14 +179,15 @@ export const WAR = {
     chitinPerKill: 1,
     stealPerBreach: 0.04,            // fraction of food stolen per raider that gets in
     maxSteal: 0.2,                   // never more than this per raid
+    offDuty: 0.5,                    // between fights, soldiers and majors hunt: this share of a forager's food each
     maxSoldierLoss: 0.25,            // never lose more than this share of soldiers per raid
   },
   fortifications: {
-    thorns:  { name: 'Thorn barricade', desc: 'Raiders move {p} slower per level',          per: 0.04, base: { twig: 10 },             growth: 1.2,  max: 15 },
-    spitters:{ name: 'Acid spitters',   desc: 'Guard posts deal {p} more damage per level', per: 0.05, base: { chitin: 3, resin: 1 },  growth: 1.2,  max: 30 },
-    carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health per level',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
-    plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less per level', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },
-    plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder per level. Keep adding plates.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
+    thorns:  { name: 'Thorn barricade', desc: 'Raiders move {p} slower each level.',          per: 0.04, base: { twig: 10 },             growth: 1.2,  max: 15 },
+    spitters:{ name: 'Acid spitters',   desc: 'Guard posts deal {p} more damage each level.', per: 0.05, base: { chitin: 3, resin: 1 },  growth: 1.2,  max: 30 },
+    carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health each level.',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
+    plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less food each level.', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },
+    plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder each level.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
     alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
   // campaigns on the map
@@ -226,10 +227,10 @@ export const RESEARCH = {
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 120 },          pop: 0.06, needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 12 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
     resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 260, resin: 8 },          needs: ['seeds'],               desc: 'Unlocks the Resin gallery.' },
-    deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['shelving'],            desc: 'Living space from chambers +25%.' },
+    deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['shelving'],            desc: 'Chambers give 25% more living space.' },
     halls:      { name: 'Sleeping halls',    age: 'forage', cost: { knowledge: 360, twig: 40 },          pop: 0.27, needs: ['resin', 'deepgalleries'], desc: 'Unlocks the Worker hall: +12 living space each.' },
-    vaults:     { name: 'Vaulted roofs',     age: 'forage', cost: { knowledge: 480, resin: 30, twig: 30 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Living space from chambers +25%.' },
-    partitions: { name: 'Paper partitions',  age: 'settlement', cost: { knowledge: 500, paper: 45 },     pop: 1.0, needs: ['papercraft'],          desc: 'Living space from chambers +50%.' },
+    vaults:     { name: 'Vaulted roofs',     age: 'forage', cost: { knowledge: 480, resin: 30, twig: 30 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Chambers give 25% more living space.' },
+    partitions: { name: 'Paper partitions',  age: 'settlement', cost: { knowledge: 500, paper: 45 },     pop: 1.0, needs: ['papercraft'],          desc: 'Chambers give 50% more living space.' },
     plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 200 },          needs: ['surface'],             desc: 'A building queue with 2 slots. Queued chambers are dug as soon as you can afford them.' },
     studyplans: { name: 'Study plans',       age: 'forage', cost: { knowledge: 420, food: 300 },          needs: ['plans', 'songs'],      desc: 'A research queue with 2 slots. Queued research is learned as soon as you can afford it.' },
     ledgers:    { name: 'Work ledgers',      age: 'settlement', cost: { knowledge: 650, paper: 60 },    needs: ['papercraft', 'studyplans'], desc: 'An upgrade queue with 2 slots. Queued upgrades are bought as soon as you can afford them.' },
@@ -278,8 +279,8 @@ export const GARDEN = {
   larvaReserve: 0.5,         // larvae only eat fungus above this share of fungus storage, so jelly can be saved for
   larvaBoost: 0.5,           // larvae fed fungus grow this much faster
   upgrades: {
-    compost: { name: 'Leaf mulch',   desc: 'Beds make {p} more fungus per level',  per: 0.03, base: { leaf: 30, fungus: 10 }, growth: 1.18, max: 30 },
-    spores:  { name: 'Clean spores', desc: 'Mould strikes {p} less often per level', per: 0.03, base: { fungus: 25, knowledge: 20 }, growth: 1.2, max: 25 },
+    compost: { name: 'Leaf mulch',   desc: 'Fungus beds grow {p} more fungus each level.',  per: 0.03, base: { leaf: 30, fungus: 10 }, growth: 1.18, max: 30 },
+    spores:  { name: 'Clean spores', desc: 'Mould strikes {p} less often each level.', per: 0.03, base: { fungus: 25, knowledge: 20 }, growth: 1.2, max: 25 },
   },
 };
 
@@ -296,7 +297,7 @@ export const CASTES = {
     weaver:  { name: 'Weavers',  cost: { jelly: 6, leaf: 30 },    desc: 'Larvae spin silk while weavers hold them. Unlocks the Weaver job and Silk.' },
   } as Record<string, { name: string; cost: Record<string, number>; desc: string }>,
   upgrades: {
-    glands: { name: 'Jelly glands', desc: 'Each nurse chews {p} royal jelly/s per level, using fungus', per: 0.001, base: { jelly: 4, fungus: 30 }, growth: 1.25, max: 20, unit: 'flat' as const },
+    glands: { name: 'Jelly glands', desc: 'Each level, every nurse makes {p} royal jelly per second from fungus.', per: 0.001, base: { jelly: 4, fungus: 30 }, growth: 1.25, max: 20, unit: 'flat' as const },
   },
 };
 
@@ -325,14 +326,14 @@ export const LINEAGE = {
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
   perks: {
-    blood:   { name: 'Royal blood',    desc: 'Eggs hatch and larvae grow {p} faster per level', per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
-    trails:  { name: 'Old trails',     desc: 'Foragers +{p} per level',     per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
-    memory:  { name: 'Deep memory',    desc: 'Elders +{p} per level',       per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
-    digging: { name: 'Strong backs',   desc: 'Diggers +{p} per level',      per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
-    line:    { name: 'Warrior line',   desc: 'Soldiers fight {p} harder per level', per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
-    halls:   { name: 'Wide halls',     desc: 'Living space +{p} per level', per: 0.04, base: { lineage: 3 }, growth: 1.2, max: 25 },
-    plans:   { name: 'Master plans',   desc: 'Building and research queues +{p} slot per level', per: 1, base: { lineage: 4 }, growth: 1.35, max: 10, unit: 'flat' as const },
-    swarm:   { name: 'Founding swarm', desc: 'Start each colony with {p} more workers per level', per: 2, base: { lineage: 5 }, growth: 1.5, max: 10, unit: 'flat' as const },
+    blood:   { name: 'Royal blood',    desc: 'Eggs hatch and larvae grow {p} faster each level.', per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
+    trails:  { name: 'Old trails',     desc: 'Foragers gather {p} more food each level.',     per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
+    memory:  { name: 'Deep memory',    desc: 'Elders gather {p} more knowledge each level.',       per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
+    digging: { name: 'Strong backs',   desc: 'Diggers dig {p} more soil each level.',      per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
+    line:    { name: 'Warrior line',   desc: 'Soldiers fight {p} harder each level.', per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
+    halls:   { name: 'Wide halls',     desc: 'Chambers give {p} more living space each level.', per: 0.04, base: { lineage: 3 }, growth: 1.2, max: 25 },
+    plans:   { name: 'Master plans',   desc: 'Each level adds {p} slot to the building and research queues.', per: 1, base: { lineage: 4 }, growth: 1.35, max: 10, unit: 'flat' as const },
+    swarm:   { name: 'Founding swarm', desc: 'Each new colony starts with {p} more workers per level.', per: 2, base: { lineage: 5 }, growth: 1.5, max: 10, unit: 'flat' as const },
   },
 };
 
@@ -459,9 +460,9 @@ export const HUSBANDRY = {
     blue:   { name: 'Blue caterpillars', room: 'cellar',  capture: { honeydew: 150, jelly: 10 }, yields: { jelly: 0.002 },                  unlock: 5000, desc: 'A butterfly caterpillar that sings like a queen. It makes a kind of royal jelly. At most 6.', max: 6 },
   } as Record<string, { name: string; room: 'pasture' | 'cellar'; capture: Record<string, number>; yields: Record<string, number>; unlock: number; desc: string; max?: number }>,
   upgrades: {
-    sweet:  { name: 'Sweeter lines',  desc: 'Herds yield {p} more per level',           per: 0.03,  base: { honeydew: 20, food: 20 },  growth: 1.2,  max: 30 },
-    docile: { name: 'Docile lines',   desc: 'Each herder tends {p} more animals per level', per: 1, base: { honeydew: 30, knowledge: 30 }, growth: 1.3, max: 10, unit: 'flat' as const },
-    fences: { name: 'Thorn fences',   desc: 'Predators come {p} less often per level',   per: 0.04,  base: { twig: 10, honeydew: 15 }, growth: 1.25, max: 15 },
-    litters:{ name: 'Big litters',    desc: 'Herds breed {p} faster per level',          per: 0.05,  base: { honeydew: 25 },           growth: 1.2,  max: 20 },
+    sweet:  { name: 'Sweeter lines',  desc: 'Herds yield {p} more each level.',           per: 0.03,  base: { honeydew: 20, food: 20 },  growth: 1.2,  max: 30 },
+    docile: { name: 'Docile lines',   desc: 'Each herder tends {p} more animals per level.', per: 1, base: { honeydew: 30, knowledge: 30 }, growth: 1.3, max: 10, unit: 'flat' as const },
+    fences: { name: 'Thorn fences',   desc: 'Predators come {p} less often each level.',   per: 0.04,  base: { twig: 10, honeydew: 15 }, growth: 1.25, max: 15 },
+    litters:{ name: 'Big litters',    desc: 'Herds breed {p} faster each level.',          per: 0.05,  base: { honeydew: 25 },           growth: 1.2,  max: 20 },
   },
 };

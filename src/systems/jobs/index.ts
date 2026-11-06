@@ -4,7 +4,7 @@ import { el } from '../../core/ui';
 import { icon } from '../../core/sprites';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { BROOD, COLONY, JOBS, NEST } from '../../data/balance';
+import { BROOD, COLONY, JOBS, NEST, WAR } from '../../data/balance';
 import { nurseEggsEach } from '../brood';
 
 interface JobDef {
@@ -25,11 +25,11 @@ const JOB_DEFS: JobDef[] = [
   { id: 'digger', name: 'Digger', desc: 'Moves soil to make room for chambers.', produces: JOBS.digger, requires: 'tech:digging' },
   { id: 'nurse', name: 'Nurse', desc: 'Lays eggs and looks after the brood.', produces: {}, requires: 'chamber:brood' },
   { id: 'scout', name: 'Scout', desc: 'Marks trails on the surface. Makes pheromone.', produces: JOBS.scout, requires: 'tech:scouting' },
-  { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns.', produces: {}, requires: 'tech:martial' },
+  { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns. Between fights, hunts near the nest for half as much food as a forager.', produces: {}, requires: 'tech:martial' },
   { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
   { id: 'gardener', name: 'Gardener', desc: 'A minim. Keeps fungus beds free of mould (2 beds each).', produces: {}, requires: 'caste:minim' },
   { id: 'replete', name: 'Replete', desc: 'A living food jar. Each holds +12 food.', produces: {}, requires: 'caste:replete' },
-  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate.', produces: {}, requires: 'caste:major' },
+  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate. Between fights, hunts like a soldier.', produces: {}, requires: 'caste:major' },
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
   { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
@@ -58,6 +58,12 @@ const fmtEach = (n: number) => (Math.abs(n) < 1 && n !== 0 ? String(Number(n.toP
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
 const busySum = (ctx: Context) => Object.values(ctx.busy).reduce((a, b) => a + b, 0);
+/** Soldiers and majors at home with no raid on: they hunt. A campaign takes all of them away. */
+const offDutyFighters = (ctx: Context) => {
+  const w = ctx.state.war as { battle?: unknown; campaign?: unknown } | undefined;
+  if (w?.battle || w?.campaign) return 0;
+  return (S(ctx).assigned.soldier ?? 0) + (S(ctx).assigned.major ?? 0);
+};
 export const idleAnts = (ctx: Context) => totalAnts(ctx) - assignedSum(ctx) - busySum(ctx);
 const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
 const jobMult = (ctx: Context, id: string) => 1 + ctx.mods.get('job:' + id);
@@ -150,6 +156,12 @@ export const jobs: GameSystem = {
       ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
     }
+    // Off duty, soldiers and majors hunt near the nest, so they never sit idle between fights.
+    const hunters = offDutyFighters(ctx);
+    if (hunters) {
+      ctx.res.source = 'Soldiers hunting';
+      ctx.res.add('food', JOBS.forager.food * WAR.battle.offDuty * hunters * mult * jobMult(ctx, 'forager') * dt);
+    }
   },
 
   panel: (() => {
@@ -173,7 +185,7 @@ export const jobs: GameSystem = {
         census = el('div.ledger');
         list = el('div.jobs');
         decreeText = el('span.muted');
-        decreeSet = el('button.small', { type: 'button', title: 'New workers will be sent to keep the jobs in these proportions.', onclick: () => {
+        decreeSet = el('button.small', { type: 'button', title: 'Idle workers are sent to these jobs, keeping them in these proportions.', onclick: () => {
           const s = S(ctx);
           s.decree = Object.fromEntries(Object.entries(s.assigned).filter(([, n]) => n > 0));
           s.decreeOn = true;
@@ -192,7 +204,7 @@ export const jobs: GameSystem = {
         root.append(techBox);
         for (const j of JOB_DEFS) {
           const count = el('span.count'), out = el('span.muted');
-          const btn = (label: string, d: number) => el('button.small', { type: 'button', title: 'Shift-click: 10, Ctrl-click: all', onclick: (e: MouseEvent) => change(ctx, j.id, e.ctrlKey || e.metaKey ? d * 9999 : e.shiftKey ? d * 10 : d) }, label);
+          const btn = (label: string, d: number) => el('button.small', { type: 'button', title: 'Shift-click to move 10 workers. Ctrl-click to move all of them.', onclick: (e: MouseEvent) => change(ctx, j.id, e.ctrlKey || e.metaKey ? d * 9999 : e.shiftKey ? d * 10 : d) }, label);
           const row = el('div.job', { title: j.desc, hidden: true },
             el('span.jname', {}, icon(j.id), j.name), btn('−', -1), count, btn('+', 1), out);
           list.append(row);
@@ -243,7 +255,10 @@ export const jobs: GameSystem = {
               `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +
               `\nLooked after now: ${Math.min(brood, care)} of ${brood}.`;
           }
-          if (j.id === 'soldier' && s.assigned.soldier) parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
+          if (j.id === 'soldier' && s.assigned.soldier) {
+            parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
+            if (offDutyFighters(ctx)) parts.push(`+${tot(JOBS.forager.food * WAR.battle.offDuty * s.assigned.soldier * jobMult(ctx, 'forager'))} food/s hunting`);
+          }
           r.out.textContent = parts.join(', ');
         }
         const busy = busySum(ctx);

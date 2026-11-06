@@ -76,7 +76,13 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
     registry.set(keyOf(def), { def, levels });
     const tile = tileButton({
       ctx, label: def.name,
-      effect: () => { const e = def.effect?.(lvl(def)); return def.desc + (e ? `. Now ${e}` : ''); },
+      effect: () => def.desc,
+      note: () => {
+        const L = lvl(def), now = def.effect?.(L), next = def.effect?.(L + 1);
+        if (!def.effect) return L >= def.max ? 'Fully upgraded.' : '';
+        if (L >= def.max) return `Level ${L} of ${def.max} (max): ${now} in total.`;
+        return L ? `Level ${L} of ${def.max}: ${now} now, ${next} after this level.` : `Level 0 of ${def.max}. The first level gives ${next}.`;
+      },
       count: () => (lvl(def) >= def.max ? 'max' : `${lvl(def)}/${def.max}` + (queuedOf(ctx, keyOf(def)) ? ` +${queuedOf(ctx, keyOf(def))}` : '')),
       costs: () => def.cost(lvl(def)),
       enabled: () => lvl(def) < def.max,

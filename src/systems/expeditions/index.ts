@@ -273,7 +273,7 @@ export const expeditions: GameSystem = {
         markWrap = el('label', { for: 'exp-automark', title: 'Mark the trail before every trip, whenever you have the pheromone for it.' }, markBox, ' Mark every trip');
         reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
         reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) s.reserved = 0; });
-        reserveWrap = el('label', { for: 'exp-reserve', title: 'Returning workers stay with the expeditions instead of going back to the idle pool, so jobs never take them. Losses are made up from idle workers.' },
+        reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced from idle workers." },
           reserveBox, ' Reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES);

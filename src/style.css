@@ -276,3 +276,5 @@ input[type=checkbox] { accent-color: var(--accent); }
 .warresult.loss .rtitle { color: var(--muted); }
 .warresult ul { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
 .warresult .small { width: auto; padding: 0 14px; }
+.tip .tnote { color: var(--muted); font-size: 12px; }
+.tip .teffect + .tnote { border-top: 0; margin-top: 3px; padding-top: 0; }
