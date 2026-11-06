@@ -151,7 +151,7 @@ export const jobs: GameSystem = {
 
   panel: (() => {
     const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement }>();
-    let idleEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
+    let idleEl: HTMLElement, reservedEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
     let techs: ReturnType<typeof upgradeList>, techBox: HTMLElement;
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
@@ -179,7 +179,7 @@ export const jobs: GameSystem = {
         decreeBox = el('div.decree', { hidden: true }, el('strong', {}, 'The queen\'s decree'), decreeText, el('div.row', {}, decreeSet, decreeToggle));
         root.append(
           el('p.flavor', {}, 'Every worker waits for a purpose. Idle ants still eat.'),
-          el('p', {}, 'Idle workers: ', idleEl),
+          el('p', {}, 'Idle workers: ', idleEl, reservedEl = el('span.muted')),
           decreeBox,
           list, upkeepEl, census,
         );
@@ -200,6 +200,8 @@ export const jobs: GameSystem = {
         techBox.hidden = !ctx.flags.has('tech:teaching');
         if (!techBox.hidden) techs.update(ctx);
         idleEl.textContent = String(idleAnts(ctx));
+        { const e = ctx.state.expeditions as { reserve?: boolean; reserved?: number } | undefined;
+          reservedEl.textContent = e?.reserve ? `  ·  Reserved for expeditions: ${e.reserved ?? 0}` : ''; }
         decreeBox.hidden = !ctx.flags.has('accord:decree');
         if (!decreeBox.hidden) {
           const d = s.decree ?? {};
