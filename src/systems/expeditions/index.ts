@@ -10,6 +10,8 @@ import { EXPEDITIONS as X, NEST } from '../../data/balance';
 interface Party { dest: string; ants: number; elapsed: number; duration: number; told: number; event?: string }
 interface ExpState {
   runs: number;
+  /** Trail marks ever earned this colony. Unlocks new places and trail upgrades. */
+  earned?: number;
   party: number;
   dest: string;
   parties: Party[];
@@ -23,9 +25,13 @@ interface ExpState {
 const S = (ctx: Context) => ctx.state.expeditions as ExpState;
 const U = X.upgrades;
 const lvl = (ctx: Context, id: keyof typeof U) => S(ctx).ups[id] ?? 0;
-// Trail upgrades unfold one by one as parties come home ("runs:N" = after N expeditions).
+/** Marks earned so far. Older saves only counted trips, which were one mark each. */
+const earned = (ctx: Context) => S(ctx).earned ?? S(ctx).runs;
+/** Marks a trip pays: one per secondsPerMark of the place's base time, so Sure feet and marked trails don't cut it. */
+const marksFor = (time: number) => Math.max(1, Math.round(time / X.secondsPerMark));
+// Trail upgrades unfold one by one as marks come in ("marks:N" = after N marks earned).
 const UPGRADES = fromBalance(U, (ctx, needs) =>
-  !needs || (needs.startsWith('runs:') ? S(ctx).runs >= Number(needs.slice(5)) : ctx.flags.has(needs)));
+  !needs || (needs.startsWith('marks:') ? earned(ctx) >= Number(needs.slice(6)) : ctx.flags.has(needs)));
 /** Loot multiplier from party size: each worker past the minimum adds lootPerAnt. */
 const partyMult = (n: number) => 1 + (n - X.minParty) * X.lootPerAnt;
 
@@ -51,8 +57,20 @@ const idle = (ctx: Context) => {
 const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns');
 const durationOf = (ctx: Context, time: number, marked = false) =>
   time * Math.max(0.4, 1 + U.feet.per * lvl(ctx, 'feet')) * (marked ? 1 - X.markTrailCut : 1);
-const available = (ctx: Context) => X.destinations.filter((d) => S(ctx).runs >= d.unlockRuns);
+const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
 const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && idle(ctx) >= S(ctx).party;
+
+const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
+const wipeOf = (ctx: Context) => X.wipeChance * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
+
+const WIPEOUTS = [
+  'A bird found the column.',
+  'Rain flooded the trail.',
+  'A spider was waiting.',
+  'Scouts found only their scent, then nothing.',
+  'Another colony took them.',
+  'A footstep came down on the trail.',
+];
 
 function send(ctx: Context) {
   const st = S(ctx);
@@ -66,24 +84,36 @@ function send(ctx: Context) {
 function finish(ctx: Context, p: Party) {
   const s = S(ctx);
   const d = X.destinations.find((x) => x.id === p.dest)!;
+  const safety = safetyOf(ctx);
+  if (Math.random() < wipeOf(ctx)) {
+    // Very rare: the whole party is lost, with nothing brought home.
+    ctx.res.add('ant', -p.ants);
+    s.runs += 1;
+    const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
+    ctx.log(`The party to ${d.name.toLowerCase()} never comes back. ${why} ${p.ants} workers lost.`, 'warn');
+    return;
+  }
   const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
     const n = Math.round((lo + Math.random() * (hi - lo)) * mult);
     if (n > 0) { ctx.res.lump(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
   }
-  ctx.res.lump('trailmark', X.trailMarksPerRun);
-  got.push(`${X.trailMarksPerRun} trail mark`);
+  const marks = marksFor(d.time);
+  const before = earned(ctx);
+  s.earned = before + marks;
+  ctx.res.lump('trailmark', marks);
+  got.push(`${marks} trail mark${marks === 1 ? '' : 's'}`);
   if (Math.random() < X.rareChance * (1 + U.eyes.per * lvl(ctx, 'eyes'))) {
     ctx.res.add('amber', 1); s.rare += 1;
     ctx.log('Among the haul: a bead of amber with something tiny trapped inside.');
   }
   let lost = 0;
-  if (Math.random() < X.lossChance * Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'))) { lost = 1; ctx.res.add('ant', -1); }
+  if (Math.random() < X.lossChance * safety) { lost = 1; ctx.res.add('ant', -1); }
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.` + (lost ? ' One worker did not come back.' : ''));
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile });
-  const next = X.destinations.find((x) => x.unlockRuns === s.runs);
+  const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
   if (s.runs === X.rivalAfterRuns && !ctx.flags.has('rival')) {
     ctx.flags.add('rival');
@@ -146,7 +176,7 @@ export const expeditions: GameSystem = {
         } }, d > 0 ? '+' : '−');
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
-          desc: 'Idle workers leave the nest and come back with whatever they find.',
+          desc: 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.',
           enabled: canSend, onBuy: (c) => send(c),
         });
         markBtn = actionButton({
@@ -195,9 +225,10 @@ export const expeditions: GameSystem = {
         const m = partyMult(s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
         lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
-          ', and a trail mark. Trips can be repeated as often as you like.';
+          `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}. Trips can be repeated as often as you like.`;
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
-          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5.`;
+          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5. ` +
+          `Risk each trip: ${fmt(X.lossChance * safetyOf(ctx) * 100)}% to lose a worker, ${fmt(wipeOf(ctx) * 100)}% to lose the whole party.`;
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
@@ -220,7 +251,8 @@ export const expeditions: GameSystem = {
           ['Expeditions so far', String(s.runs)],
           ['Columns', `${s.parties.length} of ${maxParties(ctx)} out`],
           ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * partyMult(s.party) - 1) * 100)}%`],
-          ['Next new place', (() => { const n = X.destinations.find((d) => d.unlockRuns > s.runs); return n ? `after ${n.unlockRuns} expeditions` : 'all found'; })()],
+          ['Trail marks earned', String(earned(ctx))],
+          ['Next new place', (() => { const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)); return n ? `at ${n.unlockMarks} marks earned` : 'all found'; })()],
           ['Rare finds', String(s.rare)],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         upsHead.hidden = !ups.update(ctx);
