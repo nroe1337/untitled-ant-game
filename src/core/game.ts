@@ -186,7 +186,7 @@ export class Game {
     // Save, export and reset live in a small menu; pause and speed stay out in the open.
     // Building queue order: dig strictly in order, or whatever queued chamber is cheapest and affordable.
     const queueLabel = () => (queueOrder() === 'cheapest' ? 'Queue: cheapest first' : 'Queue: in order');
-    const queueBtn = el('button.ghost', { type: 'button', title: 'In order: the queue waits for the first chamber in line.\nCheapest first: digs whichever queued chamber you can afford that costs least.', onclick: () => {
+    const queueBtn = el('button.ghost', { type: 'button', title: 'How the building, research and upgrade queues pick what to buy next.\nIn order: wait for the first item in line.\nCheapest first: buy the cheapest queued item you can afford.', onclick: () => {
       setQueueOrder(queueOrder() === 'cheapest' ? 'order' : 'cheapest');
       queueBtn.textContent = queueLabel();
     } }, queueLabel()) as HTMLButtonElement;

@@ -353,7 +353,7 @@ export const champion: GameSystem = {
         }
         const step = (label: string, d: number, title: string) => el('button.small.step', { type: 'button', title, onclick: () => { const s = S(ctx); s.auto = false; setLevel(ctx, (s.lvl ?? 1) + d); } }, label);
         levelEl = el('strong.fightlvl');
-        autoBtn = el('button.ghost', { type: 'button', title: 'Auto climbs after a few clean wins and steps back after a loss, so the champion stays at the best level it can hold.', onclick: () => { const s = S(ctx); s.auto = !s.auto; s.streak = 0; s.hold = 0; } }) as HTMLButtonElement;
+        autoBtn = el('button.ghost', { type: 'button', title: 'Auto moves the champion up a level after a few clean wins and back down after a loss, so it keeps fighting the hardest prey it can beat.', onclick: () => { const s = S(ctx); s.auto = !s.auto; s.streak = 0; s.hold = 0; } }) as HTMLButtonElement;
         groundNote = el('p.muted');
         dropsNote = el('p.drops');
         bossBtn = el('button.action', { type: 'button' }) as HTMLButtonElement;
