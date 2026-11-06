@@ -206,12 +206,17 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const counts: Record<string, number> = {};
   const spots: { x: number; y: number }[] = []; // where each chamber is, for the walking ants
 
-  order.slice(0, rows * LANES.length).forEach((id, i) => {
+  const placed = order.slice(0, rows * LANES.length);
+  const where = (i: number) => ({
+    y: top + 24 + Math.floor(i / LANES.length) * ROW_H + (i % 3),
+    cx: shaftX + Math.sign(LANES[i % LANES.length]) * LANE_X[Math.abs(LANES[i % LANES.length])],
+  });
+  // every connecting tunnel first, so a far chamber's tunnel never paints over a near chamber
+  placed.forEach((_, i) => { const { y, cx } = where(i); rect(c, Math.min(shaftX, cx), y - 1, Math.abs(cx - shaftX), 3, PAL.hole); });
+  placed.forEach((id, i) => {
     const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
     const lane = LANES[i % LANES.length];
-    const y = top + 24 + Math.floor(i / LANES.length) * ROW_H + (i % 3);
-    const cx = shaftX + Math.sign(lane) * LANE_X[Math.abs(lane)];
-    rect(c, Math.min(shaftX, cx), y - 1, Math.abs(cx - shaftX), 3, PAL.hole); // connecting tunnel
+    const { y, cx } = where(i);
     spots.push({ x: cx, y });
 
     switch (id) {
