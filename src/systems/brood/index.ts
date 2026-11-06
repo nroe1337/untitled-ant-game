@@ -46,6 +46,10 @@ function addEggs(ctx: Context, n: number) {
   ctx.res.add('egg', Math.max(0, Math.min(n, room)));
 }
 
+/** Seconds the 'no living space' banner stays up each time the nest fills. */
+const NOROOM_SHOW = 20;
+let noroomFor = 0;
+
 export const brood: GameSystem = {
   id: 'brood',
 
@@ -94,8 +98,10 @@ export const brood: GameSystem = {
 
     // larvae eat and grow into workers, if there is food and room
     const larvae = res.amt('larva');
-    ctx.alert('noroom', larvae >= 1 && res.amt('ant') >= res.cap('ant')
-      ? 'No living space. Larvae wait until you dig more tunnels.' : null);
+    // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
+    const full = larvae >= 1 && res.amt('ant') >= res.cap('ant');
+    noroomFor = full ? noroomFor + dt : 0;
+    ctx.alert('noroom', full && noroomFor < NOROOM_SHOW ? 'No living space. Larvae wait until you dig more tunnels.' : null);
     if (larvae >= 1) {
       const room = res.amt('ant') < res.cap('ant');
       const need = larvae * larvaFood(ctx) * dt;
