@@ -114,6 +114,7 @@ export const jobs: GameSystem = {
     // The queen never starves, so the colony can always rebuild from her.
     const need = totalAnts(ctx) * COLONY.antFoodPerSecond * upkeepMult(ctx) * dt;
     const have = ctx.res.amt('food');
+    ctx.res.source = 'Colony upkeep';
     ctx.res.add('food', -need);
     const unpaid = Math.max(0, need - have);
     s.hunger = unpaid ? (s.hunger ?? 0) + unpaid : 0; // fed again: hunger is forgiven
@@ -143,6 +144,7 @@ export const jobs: GameSystem = {
     for (const j of JOB_DEFS) {
       const n = s.assigned[j.id] ?? 0;
       if (!n) continue;
+      ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
     }
   },

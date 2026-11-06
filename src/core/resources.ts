@@ -17,6 +17,8 @@ export interface Resource extends Required<ResourceDef> {
   seen: boolean;
   /** Per-second change, measured, for display. */
   rate: number;
+  /** Last measured rate split by where it came from, biggest first: [label, per second]. */
+  sources: [string, number][];
 }
 
 export type Costs = Record<string, number>;
@@ -29,12 +31,16 @@ export class Resources {
   private capBonus = new Map<string, Record<string, number>>();
   /** Amounts a system has earmarked (e.g. for the Swarm Spire); purchases can't dip into them. */
   private holds = new Map<string, Record<string, number>>();
+  /** What every add() is credited to in the rate breakdown; the loop sets it per system, systems may refine it. */
+  source = 'Other';
+  private flow = new Map<string, Map<string, number>>();
+  private lumping = false;
 
   define(def: ResourceDef) {
     if (this.map.has(def.id)) return this.map.get(def.id)!;
     const r: Resource = {
       cap: Infinity, order: 100, integer: false, group: 'Colony',
-      ...def, amount: 0, seen: false, rate: 0,
+      ...def, amount: 0, seen: false, rate: 0, sources: [],
     } as Resource;
     this.map.set(def.id, r);
     return r;
@@ -63,8 +69,14 @@ export class Resources {
 
   add(id: string, n: number) {
     const r = this.get(id);
+    const before = r.amount;
     r.amount = Math.max(0, Math.min(this.cap(id), r.amount + n));
     if (r.amount > 0) r.seen = true;
+    if (!this.lumping && r.amount !== before) {
+      if (!this.flow.has(id)) this.flow.set(id, new Map());
+      const f = this.flow.get(id)!;
+      f.set(this.source, (f.get(this.source) ?? 0) + r.amount - before);
+    }
     return r.amount;
   }
   set(id: string, n: number) { this.get(id).amount = 0; this.add(id, n); }
@@ -98,7 +110,9 @@ export class Resources {
    */
   lump(id: string, n: number) {
     const before = this.amt(id);
+    this.lumping = true;
     const after = this.add(id, n);
+    this.lumping = false;
     this.lumps.set(id, (this.lumps.get(id) ?? 0) + (after - before));
     return after;
   }
@@ -110,9 +124,14 @@ export class Resources {
       const trickle = (r.amount - prev - (this.lumps.get(r.id) ?? 0)) / seconds;
       // a full store shows its flat 0, not the income it is wasting
       r.rate = r.amount >= this.cap(r.id) && trickle > 0 ? 0 : trickle;
+      r.sources = [...(this.flow.get(r.id) ?? new Map<string, number>()).entries()]
+        .map(([k, v]) => [k, v / seconds] as [string, number])
+        .filter(([, v]) => Math.abs(v) >= 0.0005)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
       this.last.set(r.id, r.amount);
     }
     this.lumps.clear();
+    this.flow.clear();
   }
 
   serialize() {
