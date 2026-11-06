@@ -210,6 +210,11 @@ const FADE_MS = 1400;
 /** 4x4 ordered-dither thresholds: a new chamber appears pixel by pixel out of the soil (no transparency). */
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const ROW_H = 22;
+/** Blend two #rrggbb colours (f = 0 gives a, 1 gives b), for glows that fade without transparency. */
+function mix(a: string, b: string, f: number) {
+  const ch = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  return '#' + [0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * Math.max(0, Math.min(1, f))).toString(16).padStart(2, '0')).join('');
+}
 
 let seenOnce = false;
 let animT = 0, animLast = performance.now();
@@ -301,11 +306,14 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         blob(c, cx, y, 22, 7, PAL.amber);
         blob(c, cx, y, 19, 5, PAL.hole);
         break;
-      case 'gland': { // a scent chamber that blinks purple
+      case 'gland': { // a scent chamber whose motes slowly glow and fade, out of step with each other
         blob(c, cx, y, 14, 5, PAL.hole);
-        const on = Math.floor(t * 2 + k) % 2 === 0;
-        rect(c, cx - 1, y - 1, 2, 2, PAL.scent);
-        if (on) { rect(c, cx - 7, y - 3, 2, 2, PAL.scent); rect(c, cx + 5, y + 1, 2, 2, PAL.scent); }
+        const glow = (phase: number) => mix(PAL.hole, PAL.scent, 0.5 - 0.5 * Math.cos((t * 0.8 + k * 0.37 + phase) * Math.PI * 2 / 2.4));
+        rect(c, cx - 1, y - 1, 2, 2, mix(PAL.hole, PAL.scent, 0.55 + 0.45 * Math.sin((t * 0.8 + k) * Math.PI * 2 / 3)));
+        rect(c, cx - 7, y - 3, 2, 2, glow(0));
+        rect(c, cx + 5, y + 1, 2, 2, glow(1.2));
+        rect(c, cx + 9, y - 2, 1, 1, glow(0.6));
+        rect(c, cx - 10, y + 1, 1, 1, glow(1.8));
         break;
       }
       case 'barracks': { // a guard post with soldiers standing in line
