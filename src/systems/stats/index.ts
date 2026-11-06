@@ -114,7 +114,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'longhall', name: 'The long hall', desc: 'Build 10 Worker halls in one colony.', test: (c) => chambers(c, 'hall') >= 10 },
   { id: 'packed', name: 'Packed tight', desc: 'Have living space for 300 workers.', test: (c) => c.res.cap('ant') >= 300 },
   // Expeditions and surface
-  { id: 'luckyfew', name: 'Lucky few', desc: 'A party of one comes home from the far hedge.', test: () => false },
+  { id: 'luckyfew', name: 'Lucky few', desc: 'Only one worker makes it home from the far hedge.', test: () => false },
   { id: 'safe10', name: 'Not one lost', desc: 'Make 10 trips in a row without losing a worker.', test: (c) => T(c).safeTrips >= 10 },
   { id: 'wipe1', name: 'Gone without a trace', desc: 'Lose a whole party.', hidden: true, test: () => false },
   { id: 'wipe3', name: 'Bad luck comes in threes', desc: 'Lose three whole parties in a row.', hidden: true, test: (c) => T(c).wipesInRow >= 3 },
@@ -171,7 +171,7 @@ function listen(ctx: Context) {
     t.safeTrips = e.lost ? 0 : t.safeTrips + 1;
     t.wipesInRow = 0;
     if (st(ctx).expeditions?.reserve) t.reserveTrips++;
-    if (e.dest === 'hedge' && e.ants === 1 && !e.lost) earn(ctx, 'luckyfew');
+    if (e.dest === 'hedge' && e.ants !== undefined && e.ants - (e.lost ?? 0) === 1) earn(ctx, 'luckyfew');
   });
   ctx.bus.on('expedition:wipe', () => {
     const t = T(ctx);
