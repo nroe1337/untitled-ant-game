@@ -43,6 +43,10 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
 .res .rate.pos { color: var(--good); }
 .res .rate.neg { color: var(--accent); }
 .res.full .amt { color: var(--warn); }
+/* lit up while a tooltip's costs name this resource */
+.res { transition: background-color 0.12s; }
+.res.costfocus { background: color-mix(in srgb, var(--fg) 9%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.res.costfocus .name, .res.costfocus .amt { font-weight: 700; }
 .res.held .name::after { content: "held"; margin-left: 6px; font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 0 4px; }
 
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
