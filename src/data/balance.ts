@@ -34,14 +34,14 @@ export const COLONY = {
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
   // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
   techniques: {
-    trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.01,  base: { pheromone: 4 },          growth: 1.16, max: 40, needs: 'surface' },
-    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 4 },               growth: 1.16, max: 40, needs: 'surface' },
-    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.005, base: { seed: 4, food: 30 },     growth: 1.18, max: 30, needs: 'surface' },
-    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.01,  base: { pheromone: 8, twig: 3 }, growth: 1.18, max: 30, needs: 'surface' },
-    lore:     { name: 'Oral tradition',      desc: 'Elders +{p} per level',          per: 0.01,  base: { knowledge: 15, food: 10 }, growth: 1.18, max: 30 },
-    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less per level', per: -0.01, base: { knowledge: 20, soil: 20 }, growth: 1.2, max: 25 },
-    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.01,  base: { knowledge: 25, twig: 4 }, growth: 1.18, max: 30, needs: 'surface' },
-    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder per level', per: 0.01, base: { chitin: 2, food: 50 }, growth: 1.18, max: 40, needs: 'rival' },
+    trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.01,  base: { pheromone: 12 },          growth: 1.25, max: 40, needs: 'surface' },
+    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 12 },               growth: 1.25, max: 40, needs: 'surface' },
+    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.005, base: { seed: 12, food: 90 },     growth: 1.25, max: 30, needs: 'surface' },
+    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.01,  base: { pheromone: 24, twig: 9 }, growth: 1.25, max: 30, needs: 'surface' },
+    lore:     { name: 'Oral tradition',      desc: 'Elders +{p} per level',          per: 0.01,  base: { knowledge: 45, food: 30 }, growth: 1.25, max: 30 },
+    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less per level', per: -0.01, base: { knowledge: 60, soil: 60 }, growth: 1.25, max: 25 },
+    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.01,  base: { knowledge: 75, twig: 12 }, growth: 1.25, max: 30, needs: 'surface' },
+    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder per level', per: 0.01, base: { chitin: 6, food: 150 }, growth: 1.25, max: 40, needs: 'rival' },
   },
 };
 
@@ -105,11 +105,11 @@ export const EXPEDITIONS = {
   markTrailCut: 0.3,
   revealRadius: 2,
   upgrades: {
-    mandibles: { name: 'Stronger mandibles', desc: 'Expedition loot +{p} per level',     per: 0.03,  base: { trailmark: 6 },  growth: 1.15, max: 40, needs: 'marks:1' },
-    feet:      { name: 'Sure feet',          desc: 'Expedition time −{p} per level',     per: -0.02, base: { trailmark: 9 },  growth: 1.18, max: 25, needs: 'marks:3' },
-    instinct:  { name: 'Homing instinct',    desc: 'Chance of losing workers −{p} per level', per: -0.04, base: { trailmark: 6 }, growth: 1.18, max: 20, needs: 'marks:3' },
+    mandibles: { name: 'Stronger mandibles', desc: 'Expedition loot +{p} per level',     per: 0.03,  base: { trailmark: 6 },  growth: 1.25, max: 40, needs: 'marks:1' },
+    feet:      { name: 'Sure feet',          desc: 'Expedition time −{p} per level',     per: -0.02, base: { trailmark: 9 },  growth: 1.25, max: 25, needs: 'marks:3' },
+    instinct:  { name: 'Homing instinct',    desc: 'Chance of losing workers −{p} per level', per: -0.04, base: { trailmark: 6 }, growth: 1.25, max: 20, needs: 'marks:3' },
     scouts:    { name: 'Scouts ahead',       desc: 'Chance of losing the whole party −{p} per level', per: -0.1, base: { trailmark: 15 }, growth: 1.3, max: 8, needs: 'marks:10' },
-    eyes:      { name: 'Keen antennae',      desc: 'Rare finds +{p} more likely per level', per: 0.05, base: { trailmark: 15 }, growth: 1.2, max: 20, needs: 'marks:12' },
+    eyes:      { name: 'Keen antennae',      desc: 'Rare finds +{p} more likely per level', per: 0.05, base: { trailmark: 15 }, growth: 1.25, max: 20, needs: 'marks:12' },
     memory:    { name: 'Trail memory',       desc: 'Parties set out again by themselves', per: 1,     base: { trailmark: 75 }, growth: 1,    max: 1, unit: 'flat' as const, needs: 'marks:20' },
     columns:   { name: 'Second column',      desc: '{p} more expedition at a time',      per: 1,     base: { trailmark: 120 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'marks:40' },
   },
