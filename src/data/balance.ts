@@ -89,12 +89,12 @@ export const EXPEDITIONS = {
   /** tile: where on the map this place is, as an offset from the nest.
    *  loss: chance a trip loses one worker; wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
   destinations: [
-    { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.15, wipe: 0.0125, loot: { food: [4, 8], twig: [1, 2] } },
-    { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 3,   tile: [3, 3],  loss: 0.2, wipe: 0.025, loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
-    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 10,  tile: [6, -3], loss: 0.25, wipe: 0.04, loot: { twig: [3, 6], resin: [1, 2], seed: [1, 2] } },
-    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 25, tile: [10, 1], loss: 0.3, wipe: 0.06, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
-    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 50, tile: [12, -2], loss: 0.35, wipe: 0.08, loot: { food: [20, 35], resin: [2, 4] } },
-    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 90, tile: [20, -6], loss: 0.4, wipe: 0.125, loot: { twig: [8, 14], seed: [5, 9] } },
+    { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.15, wipe: 0.1, loot: { food: [4, 8], twig: [1, 2] } },
+    { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 3,   tile: [3, 3],  loss: 0.2, wipe: 0.15, loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
+    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 10,  tile: [6, -3], loss: 0.25, wipe: 0.22, loot: { twig: [3, 6], resin: [1, 2], seed: [1, 2] } },
+    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 25, tile: [10, 1], loss: 0.3, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
+    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 50, tile: [12, -2], loss: 0.35, wipe: 0.38, loot: { food: [20, 35], resin: [2, 4] } },
+    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 90, tile: [20, -6], loss: 0.4, wipe: 0.48, loot: { twig: [8, 14], seed: [5, 9] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
@@ -107,7 +107,7 @@ export const EXPEDITIONS = {
     mandibles: { name: 'Stronger mandibles', desc: 'Expedition loot +{p} per level',     per: 0.03,  base: { trailmark: 6 },  growth: 1.25, max: 40, needs: 'marks:1' },
     feet:      { name: 'Sure feet',          desc: 'Expedition time −{p} per level',     per: -0.02, base: { trailmark: 9 },  growth: 1.25, max: 25, needs: 'marks:3' },
     instinct:  { name: 'Homing instinct',    desc: 'Chance of losing workers −{p} per level', per: -0.03, base: { trailmark: 6 }, growth: 1.25, max: 20, needs: 'marks:3' },
-    scouts:    { name: 'Scouts ahead',       desc: 'Chance of losing the whole party −{p} per level', per: -0.075, base: { trailmark: 15 }, growth: 1.3, max: 8, needs: 'marks:10' },
+    scouts:    { name: 'Scouts ahead',       desc: 'Chance of losing the whole party −{p} per level', per: -0.0625, base: { trailmark: 15 }, growth: 1.3, max: 8, needs: 'marks:10' },
     eyes:      { name: 'Keen antennae',      desc: 'Rare finds +{p} more likely per level', per: 0.05, base: { trailmark: 15 }, growth: 1.25, max: 20, needs: 'marks:12' },
     memory:    { name: 'Trail memory',       desc: 'Parties set out again by themselves', per: 1,     base: { trailmark: 75 }, growth: 1,    max: 1, unit: 'flat' as const, needs: 'marks:20' },
     columns:   { name: 'Second column',      desc: '{p} more expedition at a time',      per: 1,     base: { trailmark: 120 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'marks:40' },
