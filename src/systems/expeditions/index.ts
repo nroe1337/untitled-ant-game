@@ -117,7 +117,8 @@ function finish(ctx: Context, p: Party) {
   let lost = 0;
   if (Math.random() < X.lossChance * safety) { lost = 1; ctx.res.add('ant', -1); }
   s.runs += 1;
-  ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.` + (lost ? ' One worker did not come back.' : ''));
+  ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
+  if (lost) ctx.log(`One worker did not come back from ${d.name.toLowerCase()}.`, 'warn');
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
