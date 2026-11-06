@@ -16,6 +16,7 @@ export const BROOD = {
   nurseTends: 3,            // eggs or larvae each nurse looks after
   queenTends: 4,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
+  healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
@@ -25,6 +26,7 @@ export const BROOD = {
     devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay {p} faster per level',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
     clutch:    { name: 'Larger clutch',   desc: 'The queen lays {p} more egg per lay, per level', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
     plates:    { name: 'Chitin plates',   desc: 'Plate the queen in raider chitin: eggs hatch {p} faster per level', per: 0.02, base: { chitin: 5 }, growth: 1.15, max: 50, needs: 'rival' },
+    wounds:    { name: 'Wound care',      desc: 'Each nurse cuts the chance of losing a worker on expeditions by {p} per level, up to half. Wounded champions heal faster too', per: 0.004, base: { food: 80, resin: 2 }, growth: 1.3, max: 10, needs: 'surface' },
     longevity: { name: 'Royal rhythm',    desc: 'The queen lays {p} eggs/s on her own, per level', per: 0.005, base: { seed: 6, resin: 1 }, growth: 1.3, max: 20, unit: 'flat' as const, needs: 'surface' },
   },
 };
@@ -90,14 +92,14 @@ export const NEST = {
 export const EXPEDITIONS = {
   minParty: 3,
   /** tile: where on the map this place is, as an offset from the nest.
-   *  loss: chance a trip loses one worker (2.5x wipe; above 1, one is always lost and the rest is the chance of a second); wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
+   *  loss: chance a trip loses one worker (2.5x wipe near home, flattening to 80% at the hedge; above 1, one is always lost and the rest is the chance of a second); wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
   destinations: [
     { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.25, wipe: 0.1, loot: { food: [4, 8], twig: [1, 2] } },
     { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 3,   tile: [3, 3],  loss: 0.375, wipe: 0.15, loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
-    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 10,  tile: [6, -3], loss: 0.55, wipe: 0.22, loot: { twig: [3, 6], resin: [1, 2], seed: [1, 2] } },
-    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 25, tile: [10, 1], loss: 0.75, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
-    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 50, tile: [12, -2], loss: 0.95, wipe: 0.38, loot: { food: [20, 35], resin: [2, 4] } },
-    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 90, tile: [20, -6], loss: 1.2, wipe: 0.48, loot: { twig: [8, 14], seed: [5, 9] } },
+    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 10,  tile: [6, -3], loss: 0.52, wipe: 0.22, loot: { twig: [3, 6], resin: [1, 2], seed: [1, 2] } },
+    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 25, tile: [10, 1], loss: 0.64, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
+    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 50, tile: [12, -2], loss: 0.73, wipe: 0.38, loot: { food: [20, 35], resin: [2, 4] } },
+    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 90, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [8, 14], seed: [5, 9] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */

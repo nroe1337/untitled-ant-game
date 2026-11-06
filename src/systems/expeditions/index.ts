@@ -74,7 +74,7 @@ const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && rea
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
 type Dest = (typeof X.destinations)[number];
-const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx);
+const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx) * (1 - ctx.mods.get('nurseHeal'));
 const riskText = (r: number) => r < 1 ? `${fmt(r * 100)}% to lose a worker` : `always loses a worker, ${fmt((r % 1) * 100)}% to lose a second`;
 const wipeOf = (ctx: Context, d: Dest) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
 

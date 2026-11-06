@@ -299,7 +299,7 @@ export const champion: GameSystem = {
     s.lunge = Math.max(0, s.lunge - dt);
     const st = stats(ctx);
     if (s.recover > 0) {
-      s.recover -= dt;
+      s.recover -= dt * (1 + 2 * ctx.mods.get('nurseHeal'));
       if (s.recover <= 0) { s.hp = st.maxHp; ctx.log(`${s.name} is back on its feet and hunting again.`); }
       return;
     }

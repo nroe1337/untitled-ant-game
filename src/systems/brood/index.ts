@@ -70,6 +70,8 @@ export const brood: GameSystem = {
 
   tick(ctx, dt) {
     const s = S(ctx);
+    // Wound care: nurses patch up the injured (read by expeditions and the champion)
+    ctx.mods.set('nurseHeal', 'brood', Math.min(BROOD.healCap, (ctx.state.jobs?.assigned?.nurse ?? 0) * RB.wounds.per * R(ctx, 'wounds')));
     const { res } = ctx;
     res.setCapBonus('larva', 'brood', res.cap('egg') - BROOD.baseBroodCap);
 
