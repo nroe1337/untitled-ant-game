@@ -259,3 +259,4 @@ input[type=checkbox] { accent-color: var(--accent); }
 /* When a queue slot is free, unaffordable tiles take clicks so they can be queued. */
 .tilewrap.queues .tile:disabled { pointer-events: none; }
 .tilewrap.queues { cursor: pointer; }
+.tip .tdesc { white-space: pre-line; }
