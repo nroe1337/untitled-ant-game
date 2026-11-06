@@ -97,8 +97,9 @@ export const NEST = {
 
 export const EXPEDITIONS = {
   minParty: 3,
+  lossShare: 0.3,           // a bad trip loses 1 up to this share of the party
   /** tile: where on the map this place is, as an offset from the nest.
-   *  loss: chance a trip loses one worker (2.5x wipe near home, flattening to 80% at the hedge; above 1, one is always lost and the rest is the chance of a second); wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
+   *  loss: chance a trip loses workers, 1 up to lossShare of the party (2.5x wipe near home, flattening to 80% at the hedge); wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
   destinations: [
     { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.25, wipe: 0.1, loot: { food: [4, 8], twig: [1, 2] } },
     { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 3,   tile: [3, 3],  loss: 0.375, wipe: 0.15, loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
