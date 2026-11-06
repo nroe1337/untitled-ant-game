@@ -42,12 +42,12 @@ export const COLONY = {
   // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
   techniques: {
     trails:   { name: 'Scent trails',        desc: 'Foragers +{p} per level',        per: 0.01,  base: { pheromone: 12 },          growth: 1.25, max: 40, needs: 'surface' },
-    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 12 },               growth: 1.25, max: 40, needs: 'surface' },
-    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.005, base: { seed: 12, food: 90 },     growth: 1.25, max: 30, needs: 'surface' },
-    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.01,  base: { pheromone: 24, twig: 9 }, growth: 1.25, max: 30, needs: 'surface' },
+    grit:     { name: 'Mandible grit',       desc: 'Diggers +{p} per level',         per: 0.01,  base: { twig: 12 },               growth: 1.25, max: 40, needs: 'tech:sharedlabour' },
+    stomach:  { name: 'Shared stomach',      desc: 'Colony upkeep −{p} per level',   per: -0.005, base: { seed: 12, food: 90 },     growth: 1.25, max: 30, needs: 'tech:sharedlabour' },
+    marching: { name: 'Marching songs',      desc: 'Scouts +{p} per level',          per: 0.01,  base: { pheromone: 24, twig: 9 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
     lore:     { name: 'Oral tradition',      desc: 'Elders +{p} per level',          per: 0.01,  base: { knowledge: 45, food: 30 }, growth: 1.25, max: 30 },
     craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less per level', per: -0.01, base: { knowledge: 60, soil: 60 }, growth: 1.25, max: 25 },
-    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.01,  base: { knowledge: 75, twig: 12 }, growth: 1.25, max: 30, needs: 'surface' },
+    carrying: { name: 'Load bearing',        desc: 'Expedition loot +{p} per level', per: 0.01,  base: { knowledge: 75, twig: 12 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
     drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder per level', per: 0.01, base: { chitin: 6, food: 150 }, growth: 1.25, max: 40, needs: 'rival' },
   },
 };
@@ -220,6 +220,8 @@ export const RESEARCH = {
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['teaching', 'surface'], desc: 'Halls of elders hold 50% more knowledge.' },
     lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Storerooms, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'],              desc: 'Unlocks Colony techniques.' },
+    worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'],  desc: 'Unlocks the Marching songs and Load bearing techniques.' },
+    sharedlabour: { name: 'Shared labour',   age: 'forage', cost: { knowledge: 180, twig: 20 },           needs: ['teaching', 'shelving'],  desc: 'Unlocks the Mandible grit and Shared stomach techniques.' },
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 120 },          pop: 0.06, needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 12 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
     resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 260, resin: 8 },          needs: ['seeds'],               desc: 'Unlocks the Resin gallery.' },
