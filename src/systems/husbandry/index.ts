@@ -46,8 +46,8 @@ export const husbandry: GameSystem = {
   id: 'husbandry',
 
   init(ctx) {
-    ctx.res.define({ id: 'honeydew', name: 'Honeydew', cap: H.honeydewCap, order: 17, group: 'Herds' });
-    ctx.res.define({ id: 'wax', name: 'Wax', cap: H.waxCap, order: 18, group: 'Herds' });
+    ctx.res.define({ id: 'honeydew', name: 'Honeydew', cap: H.honeydewCap, order: 35, group: 'Herds' });
+    ctx.res.define({ id: 'wax', name: 'Wax', cap: H.waxCap, order: 36, group: 'Herds' });
     ctx.state.husbandry = { herds: {}, milked: 0, ups: {}, pred: null, driven: 0, lost: 0 } satisfies HerdState;
   },
 

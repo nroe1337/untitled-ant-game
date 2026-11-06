@@ -23,8 +23,8 @@ export const garden: GameSystem = {
   id: 'garden',
 
   init(ctx) {
-    ctx.res.define({ id: 'leaf', name: 'Leaves', cap: GARDEN.leafCap, order: 15, group: 'Garden' });
-    ctx.res.define({ id: 'fungus', name: 'Fungus', cap: GARDEN.fungusCap, order: 16, group: 'Garden' });
+    ctx.res.define({ id: 'leaf', name: 'Leaves', cap: GARDEN.leafCap, order: 30, group: 'Garden' });
+    ctx.res.define({ id: 'fungus', name: 'Fungus', cap: GARDEN.fungusCap, order: 31, group: 'Garden' });
     ctx.state.garden = { mould: 0, ups: {}, weeded: 0 } satisfies GardenState;
   },
 
