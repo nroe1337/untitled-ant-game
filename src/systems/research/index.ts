@@ -2,7 +2,7 @@
 // Each tech sets the flag "tech:<id>". Other systems gate jobs, chambers, upgrades and tabs on those flags.
 import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip, tileButton } from '../../core/ui';
-import { RESEARCH } from '../../data/balance';
+import { COLONY, RESEARCH } from '../../data/balance';
 
 const TECHS = RESEARCH.techs;
 const IDS = Object.keys(TECHS);
@@ -12,6 +12,11 @@ const available = (ctx: Context, id: string) => {
   const t = TECHS[id];
   return !done(ctx, id) && t.needs.every((n) => done(ctx, n)) && (!t.flag || ctx.flags.has(t.flag));
 };
+/** Big research needs a colony that has reached a size: a share of COLONY.targetColony, by peak workers this colony. */
+const popNeed = (id: string) => Math.round((TECHS[id].pop ?? 0) * COLONY.targetColony);
+const peak = (ctx: Context) => Math.max((ctx.state.stats as { colonyPeak?: number } | undefined)?.colonyPeak ?? 0, Math.floor(ctx.res.amt('ant')));
+const bigEnough = (ctx: Context, id: string) => peak(ctx) >= popNeed(id);
+
 export const research: GameSystem = {
   id: 'research',
 
@@ -64,8 +69,9 @@ export const research: GameSystem = {
           const btn = tileButton({
             ctx, label: t.name,
             effect: () => t.desc + ((t.cost.knowledge ?? 0) > ctx.res.cap('knowledge') ? ' Needs more knowledge storage: build Halls of elders.' : ''),
+            warn: () => (bigEnough(ctx, id) ? '' : `Needs a colony of ${popNeed(id)} workers. Largest so far: ${peak(ctx)}.`),
             costs: () => t.cost,
-            enabled: (c) => available(c, id),
+            enabled: (c) => available(c, id) && bigEnough(c, id),
             onBuy: (c) => {
               c.flags.add('tech:' + id);
               c.log(`Researched ${t.name}. ${t.desc}`, 'info');
