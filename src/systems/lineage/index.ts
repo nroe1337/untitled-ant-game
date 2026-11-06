@@ -103,6 +103,7 @@ export const lineage: GameSystem = {
     ctx.mods.set('job:elder', 'lineage', per('memory'));
     ctx.mods.set('job:digger', 'lineage', per('digging'));
     ctx.mods.set('soldierPower', 'lineage', per('line'));
+    ctx.mods.set('queueSlots', 'lineage', per('plans'));
     ctx.res.setCapBonus('ant', 'swarm', LINEAGE.perks.swarm.per * P(ctx, 'swarm'));
   },
 

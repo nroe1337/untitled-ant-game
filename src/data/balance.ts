@@ -212,6 +212,7 @@ export const RESEARCH = {
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 40 },          needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 3 },           needs: ['surface'],             desc: 'Unlocks the Seed granary.' },
     resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 260, resin: 2 },          needs: ['seeds'],               desc: 'Unlocks the Resin gallery.' },
+    plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 80 },          needs: ['surface'],             desc: 'A building queue with 2 slots. Queued chambers are dug as soon as you can afford them.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 60 },          needs: ['elders', 'surface'],   desc: 'Unlocks the Midden.' },
     cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 10 },    needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
     martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 300, food: 80 },         needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
@@ -309,6 +310,7 @@ export const LINEAGE = {
     memory:  { name: 'Deep memory',    desc: 'Elders +{p} per level',       per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
     digging: { name: 'Strong backs',   desc: 'Diggers +{p} per level',      per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
     line:    { name: 'Warrior line',   desc: 'Soldiers fight {p} harder per level', per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
+    plans:   { name: 'Master plans',   desc: 'Building queue +{p} slot per level', per: 1, base: { lineage: 4 }, growth: 1.35, max: 10, unit: 'flat' as const },
     swarm:   { name: 'Founding swarm', desc: 'Start each colony with {p} more workers per level', per: 2, base: { lineage: 5 }, growth: 1.5, max: 10, unit: 'flat' as const },
   },
 };
