@@ -141,7 +141,7 @@ export const MAP = {
   claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nest
   claimTimePerTile: 4,
   /** Outposts: built on a tile you hold, with resources only. Dear, and dearer each time. */
-  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.35, living: 6, defence: 2, yieldBoost: 1 },
+  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.35, living: 6, defence: 2, yieldBoost: 2 },
   expandEvery: 4,           // seconds between claims when the colony expands on its own
   /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
   upgrades: {

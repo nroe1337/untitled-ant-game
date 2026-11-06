@@ -199,7 +199,7 @@ export const jobs: GameSystem = {
           decreeBox,
           list, upkeepEl, census,
         );
-        techs = upgradeList(ctx, () => S(ctx).tech, TECHS);
+        techs = upgradeList(ctx, () => S(ctx).tech, TECHS, { research: true });
         techBox = el('div', { hidden: true }, el('h3', {}, 'Techniques'), el('p.flavor', {}, 'What the elders teach, the colony keeps.'), techs.root);
         root.append(techBox);
         for (const j of JOB_DEFS) {

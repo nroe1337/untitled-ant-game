@@ -276,7 +276,7 @@ export const expeditions: GameSystem = {
         reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced from idle workers." },
           reserveBox, ' Reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
-        ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES);
+        ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
         lootEl = el('p.muted');
         partyHint = el('p.muted');
         idleEl = el('strong');

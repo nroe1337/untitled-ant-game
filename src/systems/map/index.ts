@@ -1,6 +1,6 @@
 // The world map: a flat-colour tile grid. Expeditions reveal fog; adjacent tiles can be
 // claimed by a party of workers who go out, take it, and come home. Held tiles produce by terrain,
-// and an outpost can be built on one (resources only) for living space, defence and double yield. Other systems change ownership via events:
+// and an outpost can be built on one (resources only) for living space, defence and triple yield. Other systems change ownership via events:
 //   emit 'map:capture' { x, y }   -> tile becomes yours
 // and read ctx.state.map (tiles, selected) to know what is where.
 import type { GameSystem, Context } from '../../core/types';
@@ -176,7 +176,7 @@ export const map: GameSystem = {
       s.autoCd = (s.autoCd ?? 0) - dt;
       if (s.autoCd <= 0) { s.autoCd = MAP.expandEvery; autoExpand(ctx); }
     }
-    // territory pays only once the colony has mapped it; an outpost doubles its tile
+    // territory pays only once the colony has mapped it; an outpost triples its tile
     const O = MAP.outpost, n = outposts(ctx);
     if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * yieldMult(ctx) * (t.outpost ? 1 + O.yieldBoost : 1) * dt);
     ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence);
@@ -213,7 +213,7 @@ export const map: GameSystem = {
         });
         build = actionButton({
           ctx, label: 'Build an outpost', costs: () => outpostCost(ctx),
-          desc: `A walled outpost on this tile: +${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, and the tile yields double. Each one costs more than the last.`,
+          desc: `A walled outpost on this tile: +${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, and the tile yields triple. Each one costs more than the last.`,
           enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && t.o === 'you' && !t.core && !t.outpost; },
           onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.outpost = true; c.log(`An outpost rises on the ${TERRAIN_NAME[t.t].toLowerCase()}.`, 'info'); },
         });
@@ -256,11 +256,14 @@ export const map: GameSystem = {
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
         if (t.seen) {
-          rows.push(['Yields if held', Object.keys(y).length ? Object.entries(y).map(([r, v]) => `+${v} ${r}/s`).join(', ') : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
+          const yl = (m: number) => Object.entries(y).map(([r, v]) => `+${+(v * m * yieldMult(ctx)).toFixed(4)} ${r}/s`).join(', ');
+          const boost = 1 + MAP.outpost.yieldBoost;
+          rows.push(['Yield if held', Object.keys(y).length ? yl(1) : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
+          if (!t.core && (t.o === null || t.o === 'you' || t.o === 'humans')) rows.push(['Yield with outpost', (Object.keys(y).length ? yl(boost) + ', ' : '') + `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence`]);
           if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)
             ? (s.claiming ? 'A party is already out claiming' : freeWorkers(ctx) >= MAP.claimParty ? `Yes. The trip takes about ${claimTime(i)}s.` : `Needs ${MAP.claimParty} idle workers`)
             : !openGround(ctx, t) ? (t.t === 'water' ? 'Needs Leaf rafts' : t.o === 'humans' ? 'Needs Street fighting' : 'No') : 'Only tiles next to your territory']);
-          if (t.o === 'you' && t.outpost) rows.push(['Outpost', `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence, double yield`]);
+          if (t.o === 'you' && t.outpost) rows.push(['Outpost', 'Built']);
           if (t.o === 'rival' || t.o === 'spider') rows.push(['Enemy ground', 'Take it with a campaign from the War tab']);
           if (t.o === 'humans' && !ctx.flags.has('tech:pavement')) rows.push(['Humans', 'Too big to fight. For now.']);
         }
