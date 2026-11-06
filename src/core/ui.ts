@@ -107,7 +107,11 @@ export function progressBar() {
 }
 
 /** Cost rows for an info window: one per resource, orange when short, red when over the storage cap. */
+/** Resources the open tooltip's costs name, so the Stores list can light them up. */
+let focusIds: string[] = [];
+export const costFocus = (): string[] => (tipEl && !tipEl.hidden ? focusIds : []);
 function costLines(ctx: Context, c: Costs) {
+  focusIds = Object.keys(c);
   return Object.entries(c).map(([r, n]) => {
     const name = ctx.res.has(r) ? ctx.res.get(r).name : r;
     const short = ctx.res.amt(r) < n, over = ctx.res.has(r) && ctx.res.cap(r) < n;
@@ -148,6 +152,7 @@ function placeTip(anchor: HTMLElement) {
  */
 export function hoverTip(anchor: HTMLElement, content: () => (Node | string)[]) {
   const show = () => {
+    focusIds = [];
     const parts = content();
     if (!parts.length) return;
     tipOwner = anchor; tipText = null;
@@ -217,6 +222,7 @@ export function tileButton(opts: {
 let tipText: string | null = null;
 function showText(node: HTMLElement) {
   tipText = node.dataset.tip ?? '';
+  focusIds = [];
   if (!tipText) { if (tipOwner === node) { tipOwner = null; tip().hidden = true; } return; }
   tipOwner = node;
   tip().replaceChildren(...tipText.split('\n').map((line) => el('div', {}, line)));

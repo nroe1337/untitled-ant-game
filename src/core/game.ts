@@ -2,7 +2,7 @@ import type { Context, GameSystem } from './types';
 import { Resources, fmt } from './resources';
 import { EventBus } from './events';
 import { Mods } from './mods';
-import { el } from './ui';
+import { el, costFocus } from './ui';
 import { queueOrder, setQueueOrder } from './options';
 import { icon } from './sprites';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
@@ -285,7 +285,8 @@ export class Game {
       const p = this.alertEl.firstElementChild as HTMLElement | null;
       if (p) p.dataset.tip = txt.join('\n');
     }
-    // resources
+    // resources (the ones an open tooltip's costs name are lit up)
+    const focus = costFocus();
     for (const r of ctx.res.all()) {
       if (!r.seen) continue;
       let row = this.resRows.get(r.id);
@@ -330,6 +331,7 @@ export class Game {
         row.rate.className = 'rate ' + (flat ? 'flat' : r.rate < 0 ? 'neg' : 'pos');
       }
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
+      row.row.classList.toggle('costfocus', focus.includes(r.id));
       const held = ctx.res.held(r.id);
       const rtip = r.sources.length && !r.stepped ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
       if ((row.rate.dataset.tip ?? '') !== rtip) row.rate.dataset.tip = rtip;
