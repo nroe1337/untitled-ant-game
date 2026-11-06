@@ -33,7 +33,7 @@ export interface ActionButton {
 export function actionButton(opts: {
   label: string | (() => string);
   costs?: () => Costs;
-  desc?: string;
+  desc?: string | (() => string);
   cooldown?: number;
   enabled?: (ctx: Context) => boolean;
   onBuy: (ctx: Context) => void;
@@ -51,7 +51,7 @@ export function actionButton(opts: {
     const c = opts.costs?.() ?? {};
     const lines = costLines(opts.ctx, c);
     return [
-      ...(opts.desc ? [el('div.tdesc', {}, opts.desc)] : []),
+      ...(opts.desc ? [el('div.tdesc', {}, typeof opts.desc === 'function' ? opts.desc() : opts.desc)] : []),
       ...(lines.length ? [el('div.tcost', {}, ...lines)] : []),
       ...(held ? [el('div.short', {}, held)] : []),
     ];

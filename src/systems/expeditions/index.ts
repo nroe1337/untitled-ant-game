@@ -4,7 +4,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { PAL, rect, setup } from '../../core/pixel';
+import { PAL, blob, rect, setup } from '../../core/pixel';
 import { EXPEDITIONS as X, NEST } from '../../data/balance';
 
 interface Party { dest: string; ants: number; elapsed: number; duration: number; told: number; event?: string }
@@ -176,7 +176,8 @@ export const expeditions: GameSystem = {
         } }, d > 0 ? '+' : '−');
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
-          desc: 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.',
+          desc: () => 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.\n' +
+            `Risk each trip: ${fmt(X.lossChance * safetyOf(ctx) * 100)}% to lose a worker, ${fmt(wipeOf(ctx) * 100)}% to lose the whole party.`,
           enabled: canSend, onBuy: (c) => send(c),
         });
         markBtn = actionButton({
@@ -227,8 +228,7 @@ export const expeditions: GameSystem = {
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
           `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}. Trips can be repeated as often as you like.`;
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
-          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5. ` +
-          `Risk each trip: ${fmt(X.lossChance * safetyOf(ctx) * 100)}% to lose a worker, ${fmt(wipeOf(ctx) * 100)}% to lose the whole party.`;
+          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5.`;
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
@@ -269,7 +269,56 @@ function fmtTime(sec: number) {
   return r ? `${m}m ${r}s` : `${m}m`;
 }
 
-// ---- the watchable trail: one flat lane per party ----
+// ---- the watchable trail: one flat lane per party, with scenery for each place ----
+type Scene = { sky: string; ground: string; draw: (c: CanvasRenderingContext2D, y0: number, W: number, near: (i: number, gap: number) => number, far: (i: number, gap: number) => number) => void };
+const GROUND = 32; // y of the ground line inside a 40px lane
+const SCENES: Record<string, Scene> = {
+  grass: { sky: PAL.bg, ground: PAL.grass, draw(c, y0, W, near) {
+    for (let i = 0; i < 40; i++) {
+      const x = near(i, 53), h = 6 + ((i * 17) % 18);
+      rect(c, x, y0 + GROUND - h, 2, h, PAL.grass);
+      if (i % 7 === 0) rect(c, x + 6, y0 + GROUND - 4, 6, 4, PAL.stone);
+    }
+  } },
+  leaf: { sky: '#16140f', ground: '#3a3a22', draw(c, y0, W, near, far) {
+    for (let i = 0; i < 8; i++) blob(c, far(i, 70), y0 + 6, 22, 5, i % 2 ? '#5a4a22' : '#4a3d1c'); // the old leaf overhead
+    for (let i = 0; i < 24; i++) {
+      const x = near(i, 61);
+      if (i % 3 === 0) blob(c, x, y0 + GROUND - 1, 7, 2, i % 2 ? '#7a5a2a' : '#6a4a22'); // fallen leaves
+      else rect(c, x, y0 + GROUND - 8 - (i % 5) * 2, 2, 8 + (i % 5) * 2, '#3a3a22');
+    }
+  } },
+  stump: { sky: '#17130f', ground: '#3a2a1c', draw(c, y0, W, near, far) {
+    for (let i = 0; i < 6; i++) { const x = far(i, 90); rect(c, x, y0, 26, GROUND, '#2e2216'); rect(c, x + 4, y0, 2, GROUND, '#3a2c1c'); rect(c, x + 16, y0, 1, GROUND, '#3a2c1c'); }
+    for (let i = 0; i < 18; i++) {
+      const x = near(i, 67);
+      if (i % 3 === 0) { rect(c, x + 2, y0 + GROUND - 6, 2, 6, '#c9b89a'); blob(c, x + 3, y0 + GROUND - 7, 5, 2, '#a0522d'); } // mushrooms
+      else rect(c, x, y0 + GROUND - 3, 10, 3, '#4a3626'); // bark chips
+    }
+  } },
+  stream: { sky: '#121516', ground: '#3a3a2a', draw(c, y0, W, near, far) {
+    for (let i = 0; i < 30; i++) { const x = far(i, 41), h = 14 + ((i * 13) % 14); rect(c, x, y0 + GROUND - h, 1, h, '#4a5a2a'); rect(c, x - 1, y0 + GROUND - h, 3, 4, '#5a4a2a'); } // reeds
+    rect(c, 0, y0 + GROUND + 3, W, 5, PAL.water);
+    for (let i = 0; i < 20; i++) rect(c, near(i, 37), y0 + GROUND + 4 + (i % 2), 4, 1, '#4a6a7a'); // ripples
+  } },
+  patio: { sky: '#151514', ground: '#5d5b57', draw(c, y0, W, near, far) {
+    for (let i = 0; i < 7; i++) { const x = far(i, 64); rect(c, x, y0 + 14, 40, GROUND - 14, '#3a3936'); rect(c, x, y0 + 14, 40, 2, '#4a4946'); } // the step of the next stone
+    for (let i = 0; i < 16; i++) {
+      const x = near(i, 46);
+      rect(c, x, y0 + GROUND, 2, 8, '#3a3936'); // cracks between the stones
+      if (i % 4 === 1) { rect(c, x + 1, y0 + GROUND - 5, 1, 5, PAL.grass); rect(c, x - 1, y0 + GROUND - 3, 2, 1, PAL.grass); } // weeds in the cracks
+    }
+  } },
+  hedge: { sky: '#101410', ground: '#2e3a22', draw(c, y0, W, near, far) {
+    for (let i = 0; i < 10; i++) { const x = far(i, 48); blob(c, x, y0 + 12, 20, 14, i % 2 ? '#2a3a20' : '#24331c'); }
+    for (let i = 0; i < 20; i++) {
+      const x = near(i, 59);
+      if (i % 2) rect(c, x, y0 + GROUND - 2, 12, 1, '#5a4228'); // twigs
+      else blob(c, x, y0 + GROUND - 3, 3, 2, '#3d4a2a');
+    }
+  } },
+};
+
 function drawTrail(cv: HTMLCanvasElement, parties: Party[]) {
   const LANE = 40;
   const H = LANE * Math.max(1, parties.length);
@@ -286,13 +335,13 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[]) {
     // (distance from home, so it turns smoothly at the halfway point and keeps moving on long trips)
     const fromHome = p ? Math.min(p.elapsed, p.duration - p.elapsed) : 0;
     const scroll = Math.floor(fromHome * 4 + (fromHome / (p?.duration || 1)) * 1200);
-    rect(c, 0, y0 + LANE - 8, W, 8, PAL.grass);
-    for (let i = 0; i < 40; i++) {
-      const x = ((i * 53 + li * 17 - scroll) % (W + 40) + W + 40) % (W + 40) - 20;
-      const h = 6 + ((i * 17) % 18);
-      rect(c, x, y0 + LANE - 8 - h, 2, h, PAL.grass);
-      if (i % 7 === 0) rect(c, x + 6, y0 + LANE - 12, 6, 4, PAL.stone);
-    }
+    const wrapX = (x: number) => ((x % (W + 40)) + W + 40) % (W + 40) - 20;
+    const near = (i: number, gap: number) => wrapX(i * gap + li * 17 - scroll);
+    const far = (i: number, gap: number) => wrapX(i * gap + li * 11 - Math.floor(scroll / 2)); // background drifts slower
+    const scene = SCENES[p?.dest ?? 'grass'] ?? SCENES.grass;
+    rect(c, 0, y0, W, LANE, scene.sky);
+    rect(c, 0, y0 + GROUND, W, LANE - GROUND, scene.ground);
+    scene.draw(c, y0, W, near, far);
     if (!p) return;
     const out = prog < 0.5;
     const base = out ? 40 + prog * 2 * 200 : 240 - (prog - 0.5) * 2 * 200;
