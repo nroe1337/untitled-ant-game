@@ -265,7 +265,7 @@ export const jobs: GameSystem = {
         const hungry = (s.hunger ?? 0) > 0 ? 'Workers are starving and will die one by one until food comes in.' : '';
         upkeepEl.textContent = hungry + ` The colony eats ${fmt(totalAnts(ctx) * COLONY.antFoodPerSecond * upkeepMult(ctx))} food/s.` +
           ' Shift-click moves 10, Ctrl-click moves all.';
-        const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'outposts' ? 'Holding outposts' : k === 'campaign' ? 'On campaign' : k, String(n)]);
+        const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'claiming' ? 'Claiming land' : k === 'campaign' ? 'On campaign' : k, String(n)]);
         census.replaceChildren(...[['Total workers', String(totalAnts(ctx))], ...away].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         census.hidden = !busy;
       },

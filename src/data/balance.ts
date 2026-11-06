@@ -135,8 +135,14 @@ export const MAP = {
   spider: [31, 19] as [number, number],
   startReveal: 2,
   claimCost: { food: 40, twig: 4 },
-  claimGrowth: 1.35,
-  claimWorkers: 2,          // workers who stay at each outpost
+  claimStep: 0.08,          // each tile held past the start makes the next claim 8% of the base dearer (linear, so the whole map stays in reach)
+  startTiles: 9,
+  claimParty: 3,            // workers who go out to claim a tile; they come home when it's done
+  claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nest
+  claimTimePerTile: 4,
+  /** Outposts: built on a tile you hold, with resources only. Dear, and dearer each time. */
+  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.35, living: 6, defence: 2, yieldBoost: 1 },
+  expandEvery: 4,           // seconds between claims when the colony expands on its own
   /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
   upgrades: {
     lines: { name: 'Silk lines', desc: 'Silk lines and nets at every outpost. Outposts yield {p} more each level.', per: 0.05, base: { silk: 5 }, growth: 1.2, max: 20, needs: 'res:silk' },
@@ -234,8 +240,9 @@ export const RESEARCH = {
     plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 200 },          needs: ['surface'],             desc: 'A building queue with 2 slots. Queued chambers are dug as soon as you can afford them.' },
     studyplans: { name: 'Study plans',       age: 'forage', cost: { knowledge: 420, food: 300 },          needs: ['plans', 'songs'],      desc: 'A research queue with 2 slots. Queued research is learned as soon as you can afford it.' },
     ledgers:    { name: 'Work ledgers',      age: 'settlement', cost: { knowledge: 650, paper: 60 },    needs: ['papercraft', 'studyplans'], desc: 'An upgrade queue with 2 slots. Queued upgrades are bought as soon as you can afford them.' },
+    frontier:   { name: 'Frontier sense',    age: 'forage', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['cartography'], desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 160 },          needs: ['elders', 'surface'],   desc: 'Unlocks the Midden.' },
-    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 50 },    pop: 0.1, needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
+    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 50 },    pop: 0.1, needs: ['scouting'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
     martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
     fortify:    { name: 'Fortification',     age: 'forage', cost: { knowledge: 450, twig: 45 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      age: 'forage', cost: { knowledge: 480, chitin: 20 },        needs: ['martial'],             desc: 'Unlocks the Hall of husks.' },
