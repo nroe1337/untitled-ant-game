@@ -78,7 +78,9 @@ function applyEffects(ctx: Context) {
   const mult = (id: ChamberId) => 1 + Object.entries(NEST.storageTechs)
     .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
   const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id) * (k.endsWith('Cap') ? mult(id) : 1), 0);
-  ctx.res.setCapBonus('ant', 'nest', sum('antCap'));
+  const roomier = 1 + Object.entries(NEST.housingTechs).reduce((t, [tech, b]) => t + (ctx.flags.has('tech:' + tech) ? b : 0), 0) + ctx.mods.get('livingSpace');
+  const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') : 0;
+  ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide) * roomier));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
@@ -358,6 +360,11 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         rect(c, cx - 14, y + 1, 28, 4, PAL.water);
         const rock = Math.sin(t * 1.5 + k) > 0 ? 1 : 0;
         rect(c, cx - 5, y - rock, 10, 2, PAL.grass);
+        break;
+      }
+      case 'hall': { // a long sleeping hall: a wide low chamber with resting workers in a row
+        rect(c, cx - 18, y - 3, 36, 7, PAL.hole);
+        for (let i = 0; i < 6; i++) rect(c, cx - 15 + i * 6, y + 1, 3, 1, PAL.bone);
         break;
       }
       case 'waxworks': // a wax store: a honeycomb of yellow cells
