@@ -231,6 +231,8 @@ export const RESEARCH = {
     vaults:     { name: 'Vaulted roofs',     age: 'forage', cost: { knowledge: 480, resin: 30, twig: 30 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Living space from chambers +25%.' },
     partitions: { name: 'Paper partitions',  age: 'settlement', cost: { knowledge: 500, paper: 45 },     pop: 1.0, needs: ['papercraft'],          desc: 'Living space from chambers +50%.' },
     plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 200 },          needs: ['surface'],             desc: 'A building queue with 2 slots. Queued chambers are dug as soon as you can afford them.' },
+    studyplans: { name: 'Study plans',       age: 'forage', cost: { knowledge: 420, food: 300 },          needs: ['plans', 'songs'],      desc: 'A research queue with 2 slots. Queued research is learned as soon as you can afford it.' },
+    ledgers:    { name: 'Work ledgers',      age: 'settlement', cost: { knowledge: 650, paper: 60 },    needs: ['papercraft', 'studyplans'], desc: 'An upgrade queue with 2 slots. Queued upgrades are bought as soon as you can afford them.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 160 },          needs: ['elders', 'surface'],   desc: 'Unlocks the Midden.' },
     cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 50 },    pop: 0.1, needs: ['scouting'],            desc: 'Opens the Map. Claim tiles as outposts.' },
     martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['surface'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
@@ -329,7 +331,7 @@ export const LINEAGE = {
     digging: { name: 'Strong backs',   desc: 'Diggers +{p} per level',      per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },
     line:    { name: 'Warrior line',   desc: 'Soldiers fight {p} harder per level', per: 0.03, base: { lineage: 3 }, growth: 1.15, max: 50 },
     halls:   { name: 'Wide halls',     desc: 'Living space +{p} per level', per: 0.04, base: { lineage: 3 }, growth: 1.2, max: 25 },
-    plans:   { name: 'Master plans',   desc: 'Building queue +{p} slot per level', per: 1, base: { lineage: 4 }, growth: 1.35, max: 10, unit: 'flat' as const },
+    plans:   { name: 'Master plans',   desc: 'Building and research queues +{p} slot per level', per: 1, base: { lineage: 4 }, growth: 1.35, max: 10, unit: 'flat' as const },
     swarm:   { name: 'Founding swarm', desc: 'Start each colony with {p} more workers per level', per: 2, base: { lineage: 5 }, growth: 1.5, max: 10, unit: 'flat' as const },
   },
 };

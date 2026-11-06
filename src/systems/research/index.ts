@@ -3,6 +3,8 @@
 import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip, tileButton } from '../../core/ui';
 import { COLONY, RESEARCH } from '../../data/balance';
+import { fits, queueStrip, runQueue } from '../../core/queue';
+import { runUpgradeQueue } from '../../core/upgrades';
 
 const TECHS = RESEARCH.techs;
 const IDS = Object.keys(TECHS);
@@ -17,17 +19,30 @@ const popNeed = (id: string) => Math.round((TECHS[id].pop ?? 0) * COLONY.targetC
 const peak = (ctx: Context) => Math.max((ctx.state.stats as { colonyPeak?: number } | undefined)?.colonyPeak ?? 0, Math.floor(ctx.res.amt('ant')));
 const bigEnough = (ctx: Context, id: string) => peak(ctx) >= popNeed(id);
 
+/** Research queue: 2 slots from Study plans, more from the Master plans lineage perk. */
+export const researchSlots = (ctx: Context) => (ctx.flags.has('tech:studyplans') ? 2 + ctx.mods.get('queueSlots') : 0);
+const RQ = (ctx: Context) => { const s = ctx.state.research as { queue?: string[] }; return (s.queue ??= []); };
+function learn(ctx: Context, id: string) {
+  ctx.flags.add('tech:' + id);
+  ctx.log(`Researched ${TECHS[id].name}. ${TECHS[id].desc}`, 'info');
+}
+
 export const research: GameSystem = {
   id: 'research',
 
   init(ctx) {
     ctx.res.define({ id: 'knowledge', name: 'Knowledge', cap: RESEARCH.knowledgeCap, order: 3 });
-    ctx.state.research = {};
+    ctx.state.research = { queue: [], uq: [] };
   },
 
   isUnlocked: (ctx) => ctx.flags.has('research') || Math.floor(ctx.res.amt('ant')) >= RESEARCH.appearAtWorkers,
 
   tick(ctx) {
+    if (researchSlots(ctx)) runQueue(ctx, RQ(ctx), (id) => TECHS[id] && {
+      name: TECHS[id].name, cost: () => TECHS[id].cost,
+      ok: () => available(ctx, id), buy: () => learn(ctx, id),
+    });
+    runUpgradeQueue(ctx);
     // a calm fanfare when the colony enters a new age (not on load, and not for the first age)
     const st = ctx.state.research as { age?: string };
     const age = currentAge(ctx);
@@ -47,6 +62,7 @@ export const research: GameSystem = {
     const rows = new Map<string, ReturnType<typeof tileButton>>();
     const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
     let empty: HTMLElement, ageEl: HTMLElement;
+    const strip = queueStrip('Research queue', 'Shift-click a research to queue it. Research you can\'t afford yet queues with a plain click.');
     return {
       title: 'Research',
       group: 'Research',
@@ -56,6 +72,7 @@ export const research: GameSystem = {
           el('p.flavor', {}, 'Elders remember. What one ant learns, the colony keeps.'),
           ageEl,
           el('p.muted', {}, 'Put workers on the Elder job to gather knowledge.'),
+          strip.root,
         );
         // one group per age, in order
         for (const age of RESEARCH.ages) {
@@ -72,9 +89,12 @@ export const research: GameSystem = {
             warn: () => (bigEnough(ctx, id) ? '' : `Needs a colony of ${popNeed(id)} workers. Largest so far: ${peak(ctx)}.`),
             costs: () => t.cost,
             enabled: (c) => available(c, id) && bigEnough(c, id),
-            onBuy: (c) => {
-              c.flags.add('tech:' + id);
-              c.log(`Researched ${t.name}. ${t.desc}`, 'info');
+            onBuy: (c) => learn(c, id),
+            onQueue: (c) => {
+              const q = RQ(c);
+              if (q.length >= researchSlots(c) || q.includes(id) || !available(c, id) || !bigEnough(c, id) || !fits(c, t.cost)) return false;
+              q.push(id);
+              return true;
             },
           });
           btn.root.hidden = true;
@@ -87,11 +107,14 @@ export const research: GameSystem = {
       update(_root, ctx) {
         let any = false;
         const shown = new Set<string>();
+        const slots = researchSlots(ctx), q = RQ(ctx);
+        strip.update(slots, q, (id) => TECHS[id]?.name ?? id);
         for (const id of IDS) {
           const r = rows.get(id)!;
-          const show = available(ctx, id);
+          const show = available(ctx, id) && !q.includes(id);
           r.root.hidden = !show;
           if (!show) continue;
+          r.root.classList.toggle('queues', slots > q.length && bigEnough(ctx, id));
           any = true;
           shown.add(TECHS[id].age);
           r.update(ctx);
