@@ -15,6 +15,8 @@ type ChamberDef = {
   antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
   soilCap?: number; matCap?: Record<string, number>;
   foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
+  /** Any shared modifier, per chamber built (e.g. { 'job:forager': 0.04 }). */
+  mods?: Record<string, number>;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 const IDS = Object.keys(DEFS) as ChamberId[];
@@ -97,6 +99,9 @@ function applyEffects(ctx: Context) {
   if (ctx.res.has('fungus')) ctx.res.setCapBonus('fungus', 'nest', sum('fungusCap'));
   if (ctx.res.has('wax')) ctx.res.setCapBonus('wax', 'nest', sum('waxCap'));
   ctx.mods.set('boatSlots', 'nest', sum('boats'));
+  const m: Record<string, number> = {};
+  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id);
+  for (const id of IDS) for (const k of Object.keys(DEFS[id].mods ?? {})) ctx.mods.set(k, 'nest:mods', m[k] ?? 0);
 }
 
 export const nest: GameSystem = {
