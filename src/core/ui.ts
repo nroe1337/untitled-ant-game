@@ -170,12 +170,22 @@ export function tileButton(opts: {
   ctx: Context; label: string; desc?: string; effect?: string | (() => string);
   costs: () => Costs; count?: () => number | string;
   enabled?: (ctx: Context) => boolean; onBuy: (ctx: Context) => void;
+  /** Building queue: return true if the click queued it. Called on shift-click, or any click while unaffordable. */
+  onQueue?: (ctx: Context) => boolean;
 }) {
   const btn = actionButton({ ctx: opts.ctx, label: opts.label, costs: opts.costs, enabled: opts.enabled, onBuy: opts.onBuy, noTitle: true });
   const badge = el('span.badge');
   btn.root.classList.add('tile');
   if (opts.count) btn.root.append(badge);
   const wrap = el('div.tilewrap', {}, btn.root);
+  if (opts.onQueue) {
+    // Capture runs before the button's own click, so a shift-click queues instead of buying.
+    // Disabled tiles let clicks through to the wrap (see .tilewrap.queues in the CSS).
+    wrap.addEventListener('click', (e) => {
+      if (!wrap.classList.contains('queues')) return;
+      if ((e.shiftKey || btn.root.disabled) && opts.onQueue!(opts.ctx)) { e.stopPropagation(); e.preventDefault(); }
+    }, { capture: true });
+  }
   const fill = (ctx: Context) => {
     const lines = costLines(ctx, opts.costs());
     tip().replaceChildren(

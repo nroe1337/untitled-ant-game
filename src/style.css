@@ -249,3 +249,13 @@ input[type=checkbox] { accent-color: var(--accent); }
   .top .alerts { max-width: none; }
   .top .tools { justify-self: end; }
 }
+/* Building queue: a strip above the chamber tiles */
+.queue { border: 1px solid var(--line); background: var(--panel); padding: 8px 10px; margin: 8px 0; }
+.queue .qhead { font-size: 13px; margin-bottom: 6px; }
+.queue .qlist { display: flex; flex-wrap: wrap; gap: 6px; }
+.queue .qchip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); padding: 2px 4px 2px 8px; font-size: 13px; }
+.queue .qx { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 12px; }
+.queue .qx:hover { color: var(--fg); }
+/* When a queue slot is free, unaffordable tiles take clicks so they can be queued. */
+.tilewrap.queues .tile:disabled { pointer-events: none; }
+.tilewrap.queues { cursor: pointer; }

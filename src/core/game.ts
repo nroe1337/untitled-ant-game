@@ -3,6 +3,7 @@ import { Resources, fmt } from './resources';
 import { EventBus } from './events';
 import { Mods } from './mods';
 import { el } from './ui';
+import { queueOrder, setQueueOrder } from './options';
 import { icon } from './sprites';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
@@ -172,9 +173,15 @@ export class Game {
     const resetBtn = el('button.ghost', { type: 'button', onclick: () => this.confirmReset(resetBtn) }, 'Reset');
 
     // Save, export and reset live in a small menu; pause and speed stay out in the open.
-    const menu = el('div.menu', { hidden: true, role: 'menu' }, saveBtn, exportBtn, resetBtn);
+    // Building queue order: dig strictly in order, or whatever queued chamber is cheapest and affordable.
+    const queueLabel = () => (queueOrder() === 'cheapest' ? 'Queue: cheapest first' : 'Queue: in order');
+    const queueBtn = el('button.ghost', { type: 'button', title: 'In order: the queue waits for the first chamber in line.\nCheapest first: digs whichever queued chamber you can afford that costs least.', onclick: () => {
+      setQueueOrder(queueOrder() === 'cheapest' ? 'order' : 'cheapest');
+      queueBtn.textContent = queueLabel();
+    } }, queueLabel()) as HTMLButtonElement;
+    const menu = el('div.menu', { hidden: true, role: 'menu' }, saveBtn, exportBtn, queueBtn, resetBtn);
     const menuBtn = el('button.ghost', { type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false' }, 'Menu ▾') as HTMLButtonElement;
-    const setMenu = (open: boolean) => { menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
+    const setMenu = (open: boolean) => { queueBtn.hidden = !this.ctx.flags.has('tech:plans'); menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
     menuBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(menu.hidden); });
     menu.addEventListener('click', (e) => { if (e.target !== resetBtn) setMenu(false); }); // reset needs a second click
     document.addEventListener('click', (e) => { if (!menuWrap.contains(e.target as Node)) setMenu(false); });

@@ -2,6 +2,7 @@
 // Ten chambers break the surface. Each chamber type draws differently in the nest view.
 import type { GameSystem, Context } from '../../core/types';
 import { el, tileButton } from '../../core/ui';
+import { queueOrder } from '../../core/options';
 import type { Costs } from '../../core/resources';
 import { NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
@@ -17,7 +18,7 @@ type ChamberDef = {
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 const IDS = Object.keys(DEFS) as ChamberId[];
 
-interface NestState { built: Record<string, number>; order: ChamberId[] }
+interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[] }
 const S = (ctx: Context) => ctx.state.nest as NestState;
 
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
@@ -34,6 +35,43 @@ function visible(ctx: Context, id: ChamberId) {
   if (n.startsWith('res:')) { const r = n.slice(4); return ctx.res.has(r) && ctx.res.get(r).seen; }
   if (n.startsWith('chambers:')) return totalChambers(ctx) >= Number(n.slice(9));
   return ctx.flags.has(n);
+}
+
+/** Building queue slots: 2 from Digging plans, more from the Master plans lineage perk. */
+export const queueSlots = (ctx: Context) => (ctx.flags.has('tech:plans') ? 2 + ctx.mods.get('queueSlots') : 0);
+const totalCost = (c: Costs) => Object.values(c).reduce((a, b) => a + b, 0);
+const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx.res.has(r) && ctx.res.cap(r) >= n);
+const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && (!DEFS[id].max || count(ctx, id) < DEFS[id].max!);
+
+function build(ctx: Context, id: ChamberId) {
+  const def = DEFS[id];
+  S(ctx).built[id] = count(ctx, id) + 1;
+  S(ctx).order.push(id);
+  if (id === 'brood' && !ctx.flags.has('chamber:brood')) {
+    ctx.flags.add('chamber:brood');
+    ctx.log('A warm brood chamber is finished. Some workers could become nurses.');
+  }
+  if (count(ctx, id) === 1 && id !== 'tunnel' && id !== 'brood') ctx.log(`The first ${def.name.toLowerCase()} is dug.`, 'info');
+  applyEffects(ctx);
+}
+
+/** Dig at most one queued chamber per tick: the first in line, or the cheapest affordable one. */
+function runQueue(ctx: Context) {
+  const q = S(ctx).queue;
+  if (!q?.length) return;
+  for (let i = q.length - 1; i >= 0; i--) if (!canBuild(ctx, q[i]) || !fits(ctx, costOf(ctx, q[i]))) q.splice(i, 1);
+  if (!q.length) return;
+  let pick = 0;
+  if (queueOrder() === 'cheapest') {
+    pick = -1;
+    let best = Infinity;
+    q.forEach((id, i) => { const c = costOf(ctx, id); if (ctx.res.canAfford(c) && totalCost(c) < best) { best = totalCost(c); pick = i; } });
+    if (pick < 0) return;
+  }
+  const id = q[pick];
+  if (!ctx.res.spend(costOf(ctx, id))) return;
+  q.splice(pick, 1);
+  build(ctx, id);
 }
 
 function applyEffects(ctx: Context) {
@@ -63,7 +101,7 @@ export const nest: GameSystem = {
 
   init(ctx) {
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
-    ctx.state.nest = { built: Object.fromEntries(IDS.map((i) => [i, 0])), order: [] } satisfies NestState;
+    ctx.state.nest = { built: Object.fromEntries(IDS.map((i) => [i, 0])), order: [], queue: [] } satisfies NestState;
     ctx.bus.on('loaded', () => applyEffects(ctx));
   },
 
@@ -71,6 +109,7 @@ export const nest: GameSystem = {
 
   tick(ctx, dt) {
     applyEffects(ctx);
+    if (queueSlots(ctx)) runQueue(ctx);
     const g = count(ctx, 'granary');
     if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * dt);
     if (!ctx.flags.has('surface') && ctx.flags.has('tech:surface') && totalChambers(ctx) >= NEST.surfaceAtChambers) {
@@ -82,7 +121,8 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
+    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement, queueBox: HTMLElement, queueList: HTMLElement, queueHead: HTMLElement;
+    let queueSig = '';
     return {
       title: 'Nest',
       group: 'Nest',
@@ -91,21 +131,22 @@ export const nest: GameSystem = {
         progress = el('p.muted');
         extra = el('p.muted');
         const grid = el('div.tiles');
+        queueHead = el('strong');
+        queueList = el('div.qlist');
+        queueBox = el('div.queue', { hidden: true }, el('div.qhead', {}, queueHead, el('span.muted', {}, ' Shift-click a chamber to queue it. Chambers you can\'t afford yet queue with a plain click.')), queueList);
         for (const id of IDS) {
           const def = DEFS[id];
           const btn = tileButton({
             ctx, label: def.name, effect: def.desc, count: () => count(ctx, id),
             costs: () => costOf(ctx, id),
             enabled: (c) => !def.max || count(c, id) < def.max,
-            onBuy: (c) => {
-              S(c).built[id] = count(c, id) + 1;
-              S(c).order.push(id);
-              if (id === 'brood' && !c.flags.has('chamber:brood')) {
-                c.flags.add('chamber:brood');
-                c.log('A warm brood chamber is finished. Some workers could become nurses.');
-              }
-              if (count(c, id) === 1 && id !== 'tunnel' && id !== 'brood') c.log(`The first ${def.name.toLowerCase()} is dug.`, 'info');
-              applyEffects(c);
+            onBuy: (c) => build(c, id),
+            onQueue: (c) => {
+              const s = S(c);
+              s.queue ??= [];
+              if (!queueSlots(c) || s.queue.length >= queueSlots(c) || !canBuild(c, id) || !fits(c, costOf(c, id))) return false;
+              s.queue.push(id);
+              return true;
             },
           });
           btn.root.hidden = true;
@@ -122,11 +163,25 @@ export const nest: GameSystem = {
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
           picked = null;
         });
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap them. Layout is cosmetic only.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, grid);
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap them. Layout is cosmetic only.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, queueBox, grid);
       },
       update(_root, ctx) {
+        const slots = queueSlots(ctx);
+        const q = S(ctx).queue ?? [];
+        queueBox.hidden = !slots;
+        if (slots) {
+          queueHead.textContent = `Queue ${q.length}/${slots}.`;
+          const sig = q.join(',') + '|' + slots;
+          if (sig !== queueSig) {
+            queueSig = sig;
+            queueList.replaceChildren(...(q.length ? q.map((id, i) => el('span.qchip', {}, DEFS[id].name,
+              el('button.qx', { type: 'button', 'aria-label': `Remove ${DEFS[id].name} from the queue`, onclick: () => { S(ctx).queue!.splice(i, 1); } }, '✕')))
+              : [el('span.muted', {}, 'Nothing queued.')]));
+          }
+        }
         for (const id of IDS) {
           const b = buttons.get(id)!;
+          b.root.classList.toggle('queues', slots > q.length);
           b.root.hidden = !visible(ctx, id);
           b.update(ctx);
         }
