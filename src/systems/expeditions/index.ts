@@ -16,7 +16,8 @@ interface ExpState {
   dest: string;
   parties: Party[];
   ups: Record<string, number>;
-  marked: boolean;
+  /** The place whose trail is marked (true in older saves: any place). */
+  marked: boolean | string;
   auto: boolean;
   rare: number;
   /** legacy single-party saves */
@@ -57,6 +58,11 @@ const idle = (ctx: Context) => {
 const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns');
 const durationOf = (ctx: Context, time: number, marked = false) =>
   time * Math.max(0.4, 1 + U.feet.per * lvl(ctx, 'feet')) * (marked ? 1 - X.markTrailCut : 1);
+/** Marking costs more for longer trails, but grows slower than the time it saves, so it always pays off. */
+const markCost = (ctx: Context) => {
+  const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
+  return Object.fromEntries(Object.entries(X.markTrailCost).map(([r, n]) => [r, Math.ceil(n * Math.sqrt(d.time / X.destinations[0].time))]));
+};
 const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
 const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && idle(ctx) >= S(ctx).party;
 
@@ -75,9 +81,9 @@ const WIPEOUTS = [
 function send(ctx: Context) {
   const st = S(ctx);
   const d = X.destinations.find((x) => x.id === st.dest) ?? X.destinations[0];
-  st.parties.push({ dest: d.id, ants: st.party, elapsed: 0, duration: durationOf(ctx, d.time, st.marked), told: 0 });
-  if (st.marked) ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info');
-  st.marked = false;
+  const marked = st.marked === true || st.marked === d.id;
+  st.parties.push({ dest: d.id, ants: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0 });
+  if (marked) { ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
   ctx.busy.expeditions = away(ctx);
 }
 
@@ -181,9 +187,13 @@ export const expeditions: GameSystem = {
           enabled: canSend, onBuy: (c) => send(c),
         });
         markBtn = actionButton({
-          ctx, label: 'Mark the trail', costs: () => X.markTrailCost,
-          desc: `Lay pheromone along the way. The next expedition is ${Math.round(X.markTrailCut * 100)}% shorter.`,
-          enabled: (c) => !S(c).marked, onBuy: (c) => { S(c).marked = true; },
+          ctx, label: () => (S(ctx).marked ? 'Trail marked' : 'Mark the trail'), costs: () => markCost(ctx),
+          desc: () => {
+            const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
+            return `Lay pheromone along the way. The next expedition to ${d.name.toLowerCase()} is ${Math.round(X.markTrailCut * 100)}% shorter. ` +
+              'Longer trails take more pheromone to mark.';
+          },
+          enabled: (c) => !S(c).marked, onBuy: (c) => { S(c).marked = S(c).dest; },
         });
         statusEl = el('p.muted');
         captions = el('div.captions');
