@@ -51,6 +51,8 @@ interface JobsState {
   decree?: Record<string, number>; decreeOn?: boolean;
 }
 const S = (ctx: Context) => ctx.state.jobs as JobsState;
+/** Per-worker rates get three significant figures, so 'each' times the count matches the total. */
+const fmtEach = (n: number) => (Math.abs(n) < 1 && n !== 0 ? String(Number(n.toPrecision(3))) : fmt(n));
 
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
@@ -221,7 +223,7 @@ export const jobs: GameSystem = {
           // Every worker on a job makes exactly the same amount, so the total is just "each x count".
           const each = Object.entries(j.produces).map(([rid, per]) => [ctx.res.get(rid).name.toLowerCase(), per * jobMult(ctx, j.id)] as const);
           const n = s.assigned[j.id];
-          const parts = each.map(([name, per]) => n ? `+${fmt(per * n)} ${name}/s (${fmt(per)} each)` : `${fmt(per)} ${name}/s each`);
+          const parts = each.map(([name, per]) => n ? `+${fmt(per * n)} ${name}/s (${fmtEach(per)} each)` : `${fmtEach(per)} ${name}/s each`);
           r.row.dataset.tip = j.desc + (each.length ? '\nEach ' + j.name.toLowerCase() + ' makes ' + each.map(([name, per]) => `+${fmt(per)} ${name}/s`).join(', ') + ', bonuses included. Every worker adds the same amount.' : '');
           if (j.id === 'nurse' && s.assigned.nurse) parts.push('laying eggs');
           if (j.id === 'soldier' && s.assigned.soldier) parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
