@@ -260,3 +260,6 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tilewrap.queues .tile:disabled { pointer-events: none; }
 .tilewrap.queues { cursor: pointer; }
 .tip .tdesc { white-space: pre-line; }
+/* Stores: small group labels between resource groups */
+.res-group { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 10px 0 2px; }
+.res-group:first-child { padding-top: 0; }

@@ -41,6 +41,16 @@ const STEPS_PER_FRAME = 200;
 const ALERT_ROTATE_S = 5;
 
 /** Top tabs always sit in this order, whatever order they unlock in. Unlisted groups go last. */
+/** A muted colour for each resource name in Stores. */
+const RES_TINT: Record<string, string> = {
+  ant: '#e2d6c2', food: '#a8b872', soil: '#b48e68', pheromone: '#a69be6', knowledge: '#93b6dc',
+  egg: '#efe6d2', larva: '#e3d2ad', jelly: '#e6c76c',
+  leaf: '#86b062', fungus: '#cdb7a2', honeydew: '#d9c274', wax: '#e8cb8e',
+  twig: '#b8966a', seed: '#cfa848', resin: '#c48f42', amber: '#e39f45', silk: '#d6d2e8', trailmark: '#a69be6',
+  chitin: '#a98264', venom: '#a6c873',
+  lineage: '#d8a85e', heritage: '#cf8461', memory: '#aea6cc', unity: '#93c4b4',
+};
+
 /** How each system shows up when you hover a resource's rate (systems can name finer sources themselves). */
 const SOURCE_LABELS: Record<string, string> = {
   brood: 'Brood', jobs: 'Workers', nest: 'Granaries', expeditions: 'Expeditions', map: 'Outposts', war: 'War',
@@ -70,6 +80,7 @@ export class Game {
   private systems: GameSystem[];
   private tabs = new Map<string, Tab>();
   private active = '';
+  private groupHeads = new Map<string, HTMLElement>();
   private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement; last?: number; step?: number; until?: number }>();
   private logEl!: HTMLElement;
   private tabBar!: HTMLElement;
@@ -280,14 +291,25 @@ export class Game {
       let row = this.resRows.get(r.id);
       if (!row) {
         const amt = el('span.amt'), rate = el('span.rate');
-        const rowEl = el('div.res', {}, el('span.name', {}, icon(r.id), r.name), amt, rate);
+        const tint = RES_TINT[r.id];
+        const rowEl = el('div.res', {}, el('span.name', tint ? { style: `color: ${tint}` } : {}, icon(r.id), r.name), amt, rate);
         this.resList.append(rowEl);
         row = { row: rowEl, amt, rate };
         this.resRows.set(r.id, row);
-        // keep sidebar order
+        // keep sidebar order, with a small label above each group
+        let group = '';
         [...this.resRows.entries()]
           .sort((a, b) => ctx.res.get(a[0]).order - ctx.res.get(b[0]).order)
-          .forEach(([, v]) => this.resList.append(v.row));
+          .forEach(([id, v]) => {
+            const g = ctx.res.get(id).group;
+            if (g !== group) {
+              group = g;
+              let head = this.groupHeads.get(g);
+              if (!head) { head = el('div.res-group', {}, g); this.groupHeads.set(g, head); }
+              this.resList.append(head);
+            }
+            this.resList.append(v.row);
+          });
       }
       const cap = ctx.res.cap(r.id);
       row.amt.textContent = fmt(r.amount, r.integer) + (isFinite(cap) ? ` / ${fmt(cap, true)}` : '');
