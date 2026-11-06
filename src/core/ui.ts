@@ -173,6 +173,8 @@ export function hoverTip(anchor: HTMLElement, content: () => (Node | string)[]) 
  */
 export function tileButton(opts: {
   ctx: Context; label: string; desc?: string; effect?: string | (() => string);
+  /** An orange line under the effect: why it can't be bought yet. */
+  warn?: () => string;
   costs: () => Costs; count?: () => number | string;
   enabled?: (ctx: Context) => boolean; onBuy: (ctx: Context) => void;
   /** Building queue: return true if the click queued it. Called on shift-click, or any click while unaffordable. */
@@ -197,6 +199,7 @@ export function tileButton(opts: {
       ...(opts.desc ? [el('div.tdesc', {}, opts.desc)] : []),
       ...(lines.length ? [el('div.tcost', {}, ...lines)] : []),
       ...(opts.effect ? [el('div.teffect', {}, typeof opts.effect === 'function' ? opts.effect() : opts.effect)] : []),
+      ...(opts.warn?.() ? [el('div.short', {}, opts.warn())] : []),
     );
   };
   const show = () => { tipOwner = wrap; tipText = null; fill(opts.ctx); placeTip(wrap); };
