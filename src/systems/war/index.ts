@@ -31,8 +31,6 @@ interface WarState {
   rivalDefeated: boolean;
   spiderDefeated: boolean;
   lastReport: string;
-  /** The result card shown after a raid or campaign, until dismissed. */
-  result?: { win: boolean; title: string; lines: string[] } | null;
   /** Refill dead soldiers and majors from idle workers. */
   replenish?: boolean;
   refill?: { soldier: number; major: number };
@@ -88,6 +86,11 @@ function refill(ctx: Context) {
   }
 }
 
+/** The end of a fight: a small banner over the page, like the new-age one but lighter. */
+function showResult(ctx: Context, kicker: string, r: { win: boolean; title: string; lines: string[] }) {
+  ctx.announce(r.title, '', { small: true, kicker, lines: r.lines, loss: !r.win });
+}
+
 // ---- the entrance battle ----
 function startBattle(ctx: Context) {
   const s = S(ctx);
@@ -101,7 +104,6 @@ function startBattle(ctx: Context) {
   const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
   for (let i = 0; i < Math.min(40, plain); i++) units.push({ kind: 'soldier', x: 40 + (i % 8) * 4, hp, max: hp });
   for (let i = 0; i < Math.min(20, majors(ctx)); i++) units.push({ kind: 'soldier', big: true, x: 44 + (i % 6) * 5, hp: hp * CASTES.major.hp, max: hp * CASTES.major.hp, atk: B.soldier.atk * CASTES.major.atk });
-  s.result = null;
   s.battle = { units, kills: 0, breaches: 0, soldiersLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: soldiers(ctx) };
   ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${n} of them pour toward the entrance.`, 'warn');
   if (fl(ctx, 'alarm') || ctx.flags.has('accord:alarm')) rally(ctx);
@@ -181,7 +183,7 @@ function endBattle(ctx: Context) {
   if (workerLoss) lines.push(`${workerLoss} worker${workerLoss > 1 ? 's' : ''} fell`);
   if (b.breaches) lines.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   lines.push(clean ? `Next: wave ${s.wave}` : `Wave ${waveOf(ctx)} must be fought again`);
-  s.result = { win: clean, title: clean ? 'Victory' : 'They got through', lines };
+  showResult(ctx, 'The raid', { win: clean, title: clean ? 'Victory' : 'They got through', lines });
   ctx.log((b.breaches ? 'The raid is over. ' : 'The raid is broken at the entrance. ') + s.lastReport, b.breaches ? 'warn' : 'story');
   s.nextRaid = WAR.provokeCooldown;
 }
@@ -216,14 +218,14 @@ function finishCampaign(ctx: Context) {
   const lost = Math.min(c.army, Math.ceil(c.army * WAR.campaignLoss * (win ? 1 : 2)));
   ctx.res.add('ant', -lost);
   loseFighters(ctx, lost);
-  if (!win) { ctx.log(`The campaign fails. ${lost} soldiers do not return.`, 'warn'); s.result = { win: false, title: 'Defeat', lines: ['The tile holds', `${lost} soldiers fell`] }; return; }
+  if (!win) { ctx.log(`The campaign fails. ${lost} soldiers do not return.`, 'warn'); showResult(ctx, 'The campaign', { win: false, title: 'Defeat', lines: ['The tile holds', `${lost} soldiers fell`] }); return; }
   const owner = t.o!;
   const loot = WAR.loot[owner] ?? {};
   const got = Object.entries(loot).map(([r, [lo, hi]]) => { const n = Math.round(rand(lo, hi) * (t.core ? 4 : 1)); ctx.res.add(r, n); return `${n} ${r}`; });
   if (owner === 'rival') s.rivalArmy = Math.max(5, s.rivalArmy - enemy * 0.5);
   ctx.bus.emit('map:capture', { x: c.target % MAP.cols, y: Math.floor(c.target / MAP.cols) });
   ctx.log(`Victory. The tile is ours, with ${got.join(', ')}. ${lost} soldiers fell.`);
-  s.result = { win: true, title: 'Victory', lines: ['The tile is ours', ...got.map((g) => '+' + g), ...(lost ? [`${lost} soldiers fell`] : [])] };
+  showResult(ctx, 'The campaign', { win: true, title: 'Victory', lines: ['The tile is ours', ...got.map((g) => '+' + g), ...(lost ? [`${lost} soldiers fell`] : [])] });
   if (t.core && owner === 'rival') { s.rivalDefeated = true; ctx.flags.add('rival:defeated'); ctx.log('The rival queen is dead. Her mound is ours. The raids stop.'); }
   if (t.core && owner === 'spider') { s.spiderDefeated = true; ctx.flags.add('spider:defeated'); ctx.log('The spider is dead. Its web hangs empty in the wind.'); }
 }
@@ -260,7 +262,7 @@ export const war: GameSystem = {
 
   panel: (() => {
     let fortSection: HTMLElement, campSection: HTMLElement;
-    let cv: HTMLCanvasElement, status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, resultEl: HTMLElement, resultSig = '', refillBox: HTMLInputElement, campBtn: ActionButton, campInfo: HTMLElement, provokeBtn: ActionButton;
+    let cv: HTMLCanvasElement, status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, refillBox: HTMLInputElement, campBtn: ActionButton, campInfo: HTMLElement, provokeBtn: ActionButton;
     let forts: ReturnType<typeof upgradeList>;
     const campBar = progressBar();
     return {
@@ -269,7 +271,6 @@ export const war: GameSystem = {
       mount(root, ctx) {
         cv = el('canvas.viewer', { width: 320, height: 40, 'aria-label': 'The nest entrance' }) as HTMLCanvasElement;
         status = el('p');
-        resultEl = el('div.warresult', { hidden: true });
         ledger = el('div.ledger');
         provokeBtn = actionButton({
           ctx, label: 'Provoke a raid', costs: () => WAR.provokeCost,
@@ -297,7 +298,7 @@ export const war: GameSystem = {
         forts = upgradeList(ctx, () => S(ctx).forts, FORTS);
         root.append(
           el('p.flavor', {}, 'They know where we are now. Hold the entrance, then take the fight to them.'),
-          cv, status, resultEl, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap), ledger,
+          cv, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap), ledger,
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
           campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Select an enemy tile next to your territory on the Map, then launch.'),
             campInfo, el('div.row', {}, campBtn.root), campBar.root),
@@ -306,17 +307,6 @@ export const war: GameSystem = {
       update(_root, ctx) {
         const s = S(ctx);
         drawEntrance(cv, s.battle);
-        const res = s.result, sig = res ? res.title + res.lines.join('|') : '';
-        if (sig !== resultSig) {
-          resultSig = sig;
-          resultEl.hidden = !res;
-          resultEl.className = 'warresult' + (res?.win ? ' win' : ' loss');
-          if (res) resultEl.replaceChildren(
-            el('p.rtitle', {}, res.title),
-            el('ul', {}, ...res.lines.map((l) => el('li', {}, l))),
-            el('button.small', { type: 'button', onclick: () => { S(ctx).result = null; } }, 'OK'),
-          );
-        }
         fortSection.hidden = !ctx.flags.has('tech:fortify');
         campSection.hidden = !ctx.flags.has('tech:campaigns');
         refillBox.checked = !!s.replenish;

@@ -28,7 +28,8 @@ export interface Context {
   /** True while the player has paused the game. Systems don't tick; buttons still work. */
   paused: boolean;
   /** A short fanfare at the top of the screen for a big milestone, such as reaching a new age. */
-  announce(title: string, text: string): void;
+  /** A banner over the main column. small: a lighter one for battles and the like, with a kicker line and a list of results. */
+  announce(title: string, text: string, opts?: { small?: boolean; kicker?: string; lines?: string[]; loss?: boolean }): void;
   /**
    * Prestige: start a new colony. Every system's state is wiped except what its keep() returns,
    * and only flags starting with "legacy:" survive. The page reloads into the new colony.

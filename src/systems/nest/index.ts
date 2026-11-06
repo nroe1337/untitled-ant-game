@@ -3,6 +3,7 @@
 import type { GameSystem, Context } from '../../core/types';
 import { el, tileButton } from '../../core/ui';
 import { queueOrder } from '../../core/options';
+import { queueStrip } from '../../core/queue';
 import type { Costs } from '../../core/resources';
 import { NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
@@ -123,8 +124,8 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement, queueBox: HTMLElement, queueList: HTMLElement, queueHead: HTMLElement;
-    let queueSig = '';
+    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
+    const strip = queueStrip('Building queue');
     return {
       title: 'Nest',
       group: 'Nest',
@@ -133,9 +134,6 @@ export const nest: GameSystem = {
         progress = el('p.muted');
         extra = el('p.muted');
         const grid = el('div.tiles');
-        queueHead = el('strong');
-        queueList = el('div.qlist');
-        queueBox = el('div.queue', { hidden: true }, el('div.qhead', {}, queueHead, el('span.muted', {}, ' Shift-click a chamber to queue it. Chambers you can\'t afford yet queue with a plain click.')), queueList);
         for (const id of IDS) {
           const def = DEFS[id];
           const btn = tileButton({
@@ -165,22 +163,12 @@ export const nest: GameSystem = {
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
           picked = null;
         });
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap them. Layout is cosmetic only.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, queueBox, grid);
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap them. Layout is cosmetic only.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, strip.root, grid);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
         const q = S(ctx).queue ?? [];
-        queueBox.hidden = !slots;
-        if (slots) {
-          queueHead.textContent = `Queue ${q.length}/${slots}.`;
-          const sig = q.join(',') + '|' + slots;
-          if (sig !== queueSig) {
-            queueSig = sig;
-            queueList.replaceChildren(...(q.length ? q.map((id, i) => el('span.qchip', {}, DEFS[id].name,
-              el('button.qx', { type: 'button', 'aria-label': `Remove ${DEFS[id].name} from the queue`, onclick: () => { S(ctx).queue!.splice(i, 1); } }, '✕')))
-              : [el('span.muted', {}, 'Nothing queued.')]));
-          }
-        }
+        strip.update(slots, q, (id) => DEFS[id as ChamberId].name, undefined, ctx, (id) => costOf(ctx, id as ChamberId));
         for (const id of IDS) {
           const b = buttons.get(id)!;
           b.root.classList.toggle('queues', slots > q.length);

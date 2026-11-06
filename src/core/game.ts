@@ -101,7 +101,7 @@ export class Game {
       state: {},
       speed: 1,
       paused: false,
-      announce: (title, text) => this.announce(title, text),
+      announce: (title, text, opts) => this.announce(title, text, opts),
       log: (m, k) => this.log(m, k),
       alert: (id, m) => { if (m) this.alerts.set(id, m); else this.alerts.delete(id); },
       rebirth: () => this.rebirth(),
@@ -423,14 +423,17 @@ export class Game {
   }
 
   /** A short, calm fanfare across the top of the main column, for milestones like a new age. */
-  private announce(title: string, text: string) {
-    this.fanfareEl.replaceChildren(el('span.rule'), el('p.kicker', {}, 'Welcome to the new age'), el('p.title', {}, title), el('p.note', {}, text));
+  private announce(title: string, text: string, opts: { small?: boolean; kicker?: string; lines?: string[]; loss?: boolean } = {}) {
+    this.fanfareEl.className = 'fanfare' + (opts.small ? ' lite' : '') + (opts.loss ? ' loss' : '');
+    this.fanfareEl.replaceChildren(el('span.rule'), el('p.kicker', {}, opts.kicker ?? 'Welcome to the new age'), el('p.title', {}, title),
+      ...(text ? [el('p.note', {}, text)] : []),
+      ...(opts.lines?.length ? [el('p.lines', {}, ...opts.lines.flatMap((l, i) => (i ? [el('span.sep', {}, '·'), el('span', {}, l)] : [el('span', {}, l)])))] : []));
     this.fanfareEl.hidden = false;
     this.fanfareEl.classList.remove('play');
     void this.fanfareEl.offsetWidth; // restart the animation
     this.fanfareEl.classList.add('play');
     clearTimeout(this.fanfareTimer);
-    this.fanfareTimer = window.setTimeout(() => { this.fanfareEl.hidden = true; }, 9000);
+    this.fanfareTimer = window.setTimeout(() => { this.fanfareEl.hidden = true; }, opts.small ? 7000 : 9000);
   }
   private fanfareTimer = 0;
   private storesBtn!: HTMLButtonElement;

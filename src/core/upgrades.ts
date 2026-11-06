@@ -11,7 +11,6 @@ const uq = (ctx: Context) => { const r = (ctx.state.research ??= {}) as { uq?: s
 /** Every upgrade list drawn so far, so the queue can buy from a tab that isn't open. */
 const registry = new Map<string, { def: UpgradeDef; levels: () => Record<string, number> }>();
 const lvlOf = (key: string) => { const r = registry.get(key)!; return r.levels()[r.def.id] ?? 0; };
-const queuedOf = (ctx: Context, key: string) => uq(ctx).filter((k) => k === key).length;
 const itemOf = (ctx: Context, key: string): QueueItem | undefined => {
   const r = registry.get(key);
   if (!r) return undefined;
@@ -22,6 +21,11 @@ const itemOf = (ctx: Context, key: string): QueueItem | undefined => {
     buy: () => { const L = r.levels(); L[r.def.id] = (L[r.def.id] ?? 0) + 1; r.def.onBuy?.(ctx, L[r.def.id]); ctx.log(`Upgraded ${r.def.name} from the queue.`, 'info'); },
   };
 };
+/** Techniques and trail upgrades go in the research queue (Study plans) instead, as "u:<key>". */
+const studySlots = (ctx: Context) => (ctx.flags.has('tech:studyplans') ? 2 + ctx.mods.get('queueSlots') : 0);
+const rq = (ctx: Context) => { const r = (ctx.state.research ??= {}) as { queue?: string[] }; return (r.queue ??= []); };
+export const upgradeItem = (ctx: Context, qkey: string) => itemOf(ctx, qkey.slice(2));
+export const upgradeName = (qkey: string) => registry.get(qkey.slice(2))?.def.name ?? qkey.split('/').pop()!;
 /** Called once a tick (by research). */
 export function runUpgradeQueue(ctx: Context) {
   if (upgradeSlots(ctx)) runQueue(ctx, uq(ctx), (k) => itemOf(ctx, k));
@@ -64,12 +68,16 @@ export function fromBalance(
 export const scaled = (base: Costs, growth: number) => (level: number): Costs =>
   Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.ceil(v * Math.pow(growth, level))]));
 
-export function upgradeList(ctx: Context, levels: () => Record<string, number>, defs: UpgradeDef[]) {
+export function upgradeList(ctx: Context, levels: () => Record<string, number>, defs: UpgradeDef[], opts: { research?: boolean } = {}) {
   const grid = el('div.tiles');
-  const strip = queueStrip('Upgrade queue', 'Shift-click an upgrade to queue it. Upgrades you can\'t afford yet queue with a plain click.');
+  const research = !!opts.research, pre = research ? 'u:' : '';
+  const Q = (c: Context) => (research ? rq(c) : uq(c));
+  const SL = (c: Context) => (research ? studySlots(c) : upgradeSlots(c));
+  const strip = queueStrip(research ? 'Research queue' : 'Upgrade queue');
   const root = el('div', {}, strip.root, grid);
   const list = defs.map((d) => d.id).join('+');
   const keyOf = (def: UpgradeDef) => `${list}/${def.id}`;
+  const qd = (c: Context, def: UpgradeDef) => Q(c).filter((k) => k === pre + keyOf(def)).length;
   const rows: { def: UpgradeDef; tile: ReturnType<typeof tileButton> }[] = [];
   const lvl = (def: UpgradeDef) => levels()[def.id] ?? 0;
   for (const def of defs) {
@@ -77,7 +85,7 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
     const tile = tileButton({
       ctx, label: def.name,
       effect: () => def.desc,
-      count: () => (lvl(def) >= def.max ? 'max' : `${lvl(def)}/${def.max}` + (queuedOf(ctx, keyOf(def)) ? ` +${queuedOf(ctx, keyOf(def))}` : '')),
+      count: () => (lvl(def) >= def.max ? 'max' : `${lvl(def)}/${def.max}` + (qd(ctx, def) ? ` +${qd(ctx, def)}` : '')),
       costs: () => def.cost(lvl(def)),
       enabled: () => lvl(def) < def.max,
       onBuy: (c) => {
@@ -86,10 +94,10 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
         def.onBuy?.(c, L[def.id]);
       },
       onQueue: (c) => {
-        const q = uq(c), k = keyOf(def);
-        const next = lvl(def) + queuedOf(c, k);
-        if (q.length >= upgradeSlots(c) || next >= def.max || !fits(c, def.cost(next))) return false;
-        q.push(k);
+        const q = Q(c);
+        const next = lvl(def) + qd(c, def);
+        if (q.length >= SL(c) || next >= def.max || !fits(c, def.cost(next))) return false;
+        q.push(pre + keyOf(def));
         return true;
       },
     });
@@ -101,16 +109,16 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
     root,
     update(c: Context) {
       let any = false;
-      const slots = upgradeSlots(c), q = uq(c);
+      const slots = SL(c), q = Q(c);
       for (const r of rows) {
         const show = !r.def.requires || r.def.requires(c);
         r.tile.root.hidden = !show;
         if (!show) continue;
         any = true;
-        r.tile.root.classList.toggle('queues', slots > q.length && lvl(r.def) + queuedOf(c, keyOf(r.def)) < r.def.max);
+        r.tile.root.classList.toggle('queues', slots > q.length && lvl(r.def) + qd(c, r.def) < r.def.max);
         r.tile.update(c);
       }
-      strip.update(any ? slots : 0, q, (k) => registry.get(k)?.def.name ?? k, (k) => k.startsWith(list + '/'));
+      strip.update(any ? slots : 0, q, (k) => registry.get(k.slice(pre.length))?.def.name ?? k, (k) => k.startsWith(pre + list + '/'), c, (k) => itemOf(c, k.slice(pre.length))?.cost());
       root.hidden = !any;
       return any;
     },

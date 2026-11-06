@@ -4,7 +4,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip, tileButton } from '../../core/ui';
 import { COLONY, RESEARCH } from '../../data/balance';
 import { fits, queueStrip, runQueue } from '../../core/queue';
-import { runUpgradeQueue } from '../../core/upgrades';
+import { runUpgradeQueue, upgradeItem, upgradeName } from '../../core/upgrades';
 
 const TECHS = RESEARCH.techs;
 const IDS = Object.keys(TECHS);
@@ -38,7 +38,7 @@ export const research: GameSystem = {
   isUnlocked: (ctx) => ctx.flags.has('research') || Math.floor(ctx.res.amt('ant')) >= RESEARCH.appearAtWorkers,
 
   tick(ctx) {
-    if (researchSlots(ctx)) runQueue(ctx, RQ(ctx), (id) => TECHS[id] && {
+    if (researchSlots(ctx)) runQueue(ctx, RQ(ctx), (id) => id.startsWith('u:') ? upgradeItem(ctx, id) : TECHS[id] && {
       name: TECHS[id].name, cost: () => TECHS[id].cost,
       ok: () => available(ctx, id), buy: () => learn(ctx, id),
     });
@@ -62,7 +62,7 @@ export const research: GameSystem = {
     const rows = new Map<string, ReturnType<typeof tileButton>>();
     const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
     let empty: HTMLElement, ageEl: HTMLElement;
-    const strip = queueStrip('Research queue', 'Shift-click a research to queue it. Research you can\'t afford yet queues with a plain click.');
+    const strip = queueStrip('Research queue');
     return {
       title: 'Research',
       group: 'Research',
@@ -108,7 +108,7 @@ export const research: GameSystem = {
         let any = false;
         const shown = new Set<string>();
         const slots = researchSlots(ctx), q = RQ(ctx);
-        strip.update(slots, q, (id) => TECHS[id]?.name ?? id);
+        strip.update(slots, q, (id) => (id.startsWith('u:') ? upgradeName(id) : TECHS[id]?.name ?? id), undefined, ctx, (id) => (id.startsWith('u:') ? upgradeItem(ctx, id)?.cost() : TECHS[id]?.cost));
         for (const id of IDS) {
           const r = rows.get(id)!;
           const show = available(ctx, id) && !q.includes(id);

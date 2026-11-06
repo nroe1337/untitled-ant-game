@@ -151,6 +151,18 @@ input[type=checkbox] { accent-color: var(--accent); }
 .fanfare .title { font: 400 46px/1.1 var(--display); color: var(--warn); margin: 0; }
 @keyframes fanfare { 0% { opacity: 0; transform: translateY(-6px); } 6%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @keyframes rule { to { width: 60%; } }
+/* The lighter banner: battle results and other small moments */
+.fanfare.lite { padding: 14px 18px 16px; gap: 4px; }
+.fanfare.lite.play { animation-duration: 7s; }
+.fanfare.lite .title { font-size: 30px; }
+.fanfare.lite .kicker { font-size: 12px; }
+.fanfare.lite .lines { margin: 2px 0 0; font-size: 15px; color: var(--fg); display: flex; flex-wrap: wrap; gap: 4px 8px; justify-content: center; }
+.fanfare.lite .lines .sep { color: var(--muted); }
+.fanfare.lite.play .rule { animation-name: rulesmall; }
+@keyframes rulesmall { to { width: 30%; } }
+.fanfare.loss { border-color: var(--line); }
+.fanfare.loss .title { color: var(--muted); }
+.fanfare.loss .rule { background: var(--line); }
 
 .section { display: grid; gap: 14px; }
 
@@ -254,13 +266,16 @@ input[type=checkbox] { accent-color: var(--accent); }
   .top .alerts { max-width: none; }
   .top .tools { justify-self: end; }
 }
-/* Building queue: a strip above the chamber tiles */
-.queue { border: 1px solid var(--line); background: var(--panel); padding: 8px 10px; margin: 8px 0; }
-.queue .qhead { font-size: 13px; margin-bottom: 6px; }
-.queue .qlist { display: flex; flex-wrap: wrap; gap: 6px; }
-.queue .qchip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); padding: 2px 4px 2px 8px; font-size: 13px; }
-.queue .qx { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 12px; }
-.queue .qx:hover { color: var(--fg); }
+/* Queues (building, research, upgrades): a small Evolve-style list above the tiles */
+.queue { border: 1px solid var(--line); background: var(--panel); padding: 6px 8px; margin: 8px 0; max-width: 340px; }
+.queue .qhead { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.queue .qlist { display: grid; gap: 2px; }
+.queue .qrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 6px; font-size: 13px; padding: 1px 0; }
+.queue .qrow.muted { display: block; color: var(--muted); }
+.queue .qeta { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.queue .qx { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 3px; font-size: 11px; }
+.queue .qx:hover:not(:disabled) { color: var(--fg); }
+.queue .qx:disabled { opacity: .3; cursor: default; }
 /* When a queue slot is free, unaffordable tiles take clicks so they can be queued. */
 .tilewrap.queues .tile:disabled { pointer-events: none; }
 .tilewrap.queues { cursor: pointer; }
@@ -268,13 +283,6 @@ input[type=checkbox] { accent-color: var(--accent); }
 /* Stores: small group labels between resource groups */
 .res-group { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 10px 0 2px; }
 .res-group:first-child { padding-top: 0; }
-/* War: the short result card after a raid or campaign */
-.warresult { border: 1px solid var(--line); background: var(--panel); padding: 8px 12px; margin: 6px 0; max-width: 420px; }
-.warresult.win { border-color: var(--warn); }
-.warresult .rtitle { margin: 0 0 4px; font: 400 24px/1.1 var(--display); }
-.warresult.win .rtitle { color: var(--warn); }
-.warresult.loss .rtitle { color: var(--muted); }
-.warresult ul { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
-.warresult .small { width: auto; padding: 0 14px; }
 .tip .tnote { color: var(--muted); font-size: 12px; }
 .tip .teffect + .tnote { border-top: 0; margin-top: 3px; padding-top: 0; }
+.queue .qname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

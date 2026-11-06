@@ -32,25 +32,51 @@ export function runQueue(ctx: Context, q: string[], resolve: (key: string) => Qu
   it.buy();
 }
 
-/** The strip of chips above a tile grid: "Queue 1/2." and a ✕ on each. */
-export function queueStrip(title: string, hint: string) {
-  const head = el('strong');
+/** Seconds until these costs are affordable at current rates; Infinity if something isn't coming in. */
+export function eta(ctx: Context, c: Costs) {
+  let t = 0;
+  for (const [r, n] of Object.entries(c)) {
+    const short = n - ctx.res.amt(r);
+    if (short <= 0) continue;
+    const rate = ctx.res.has(r) ? ctx.res.get(r).rate : 0;
+    if (rate <= 0) return Infinity;
+    t = Math.max(t, short / rate);
+  }
+  return t;
+}
+const fmtEta = (t: number) => (t <= 0 ? 'ready' : !isFinite(t) ? 'waiting' : t < 60 ? `${Math.ceil(t)}s` : t < 3600 ? `${Math.floor(t / 60)}m ${Math.ceil(t % 60)}s` : `${Math.floor(t / 3600)}h ${Math.floor((t % 3600) / 60)}m`);
+
+/**
+ * An Evolve-style queue box: a titled list, one row per queued item with the time until it can be
+ * bought, a button to move it up and one to take it out. Repeats in a row show as "×N".
+ */
+export function queueStrip(title: string, _hint?: string) {
+  const head = el('div.qhead');
   const list = el('div.qlist');
-  const root = el('div.queue', { hidden: true }, el('div.qhead', {}, head, el('span.muted', {}, ' ' + hint)), list);
-  let sig = '';
+  const root = el('div.queue', { hidden: true }, head, list);
+  let sig = '', last = 0;
   return {
     root,
-    update(slots: number, q: string[], name: (key: string) => string, only?: (key: string) => boolean) {
+    update(slots: number, q: string[], name: (key: string) => string, only?: (key: string) => boolean, ctx?: Context, cost?: (key: string) => Costs | undefined) {
       root.hidden = !slots;
       if (!slots) return;
-      head.textContent = `${title} ${q.length}/${slots}.`;
-      const shown = q.map((k, i) => [k, i] as const).filter(([k]) => !only || only(k));
-      const s = shown.map(([k]) => k).join(',') + '|' + q.length + '|' + slots;
-      if (s === sig) return;
-      sig = s;
-      list.replaceChildren(...(shown.length ? shown.map(([k, i]) => el('span.qchip', {}, name(k),
-        el('button.qx', { type: 'button', 'aria-label': `Remove ${name(k)} from the queue`, onclick: () => { if (q[i] === k) q.splice(i, 1); sig = ''; } }, '✕')))
-        : [el('span.muted', {}, 'Nothing queued.')]));
+      const now = performance.now();
+      const s = q.join(',') + '|' + slots;
+      if (s === sig && now - last < 500) return;
+      sig = s; last = now;
+      head.textContent = `${title} (${q.length}/${slots})`;
+      // group runs of the same key so "Tunnel ×3" takes one row
+      const rows: { k: string; i: number; n: number }[] = [];
+      q.forEach((k, i) => { if (only && !only(k)) return; const prev = rows[rows.length - 1]; if (prev && prev.k === k && prev.i + prev.n === i) prev.n++; else rows.push({ k, i, n: 1 }); });
+      list.replaceChildren(...(rows.length ? rows.map(({ k, i, n }) => {
+        const c = ctx && cost ? cost(k) : undefined;
+        const when = c && ctx ? fmtEta(eta(ctx, c)) : '';
+        return el('div.qrow', {},
+          el('span.qname', {}, name(k) + (n > 1 ? ` ×${n}` : '')),
+          el('span.qeta', {}, when),
+          el('button.qx', { type: 'button', title: 'Move up', 'aria-label': `Move ${name(k)} up`, ...(i === 0 ? { disabled: true } : {}), onclick: () => { if (i > 0 && q[i] === k) { const [it] = q.splice(i, n); q.splice(i - 1, 0, ...Array(n).fill(it)); sig = ''; } } }, '▲'),
+          el('button.qx', { type: 'button', title: 'Remove', 'aria-label': `Remove ${name(k)} from the queue`, onclick: () => { if (q[i] === k) q.splice(i, 1); sig = ''; } }, '✕'));
+      }) : [el('div.qrow.muted', {}, 'Empty')]));
     },
   };
 }
