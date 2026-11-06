@@ -268,3 +268,11 @@ input[type=checkbox] { accent-color: var(--accent); }
 /* Stores: small group labels between resource groups */
 .res-group { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 10px 0 2px; }
 .res-group:first-child { padding-top: 0; }
+/* War: the short result card after a raid or campaign */
+.warresult { border: 1px solid var(--line); background: var(--panel); padding: 8px 12px; margin: 6px 0; max-width: 420px; }
+.warresult.win { border-color: var(--warn); }
+.warresult .rtitle { margin: 0 0 4px; font: 400 24px/1.1 var(--display); }
+.warresult.win .rtitle { color: var(--warn); }
+.warresult.loss .rtitle { color: var(--muted); }
+.warresult ul { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
+.warresult .small { width: auto; padding: 0 14px; }
