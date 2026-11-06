@@ -87,6 +87,16 @@ const riskText = (r: number, party: number) => {
 };
 const wipeOf = (ctx: Context, d: Dest) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
 
+/** Why a trip came home short. {n} is "one worker" or "3 workers". */
+const LOSSES = [
+  'A jumping spider struck from above and took {n}.',
+  'A gust of wind scattered the column. They found all but {n}.',
+  'A beetle crushed {n} under a leaf.',
+  'Raiders from another nest cut off {n}.',
+  'A drop of dew trapped {n}.',
+  'An antlion pit swallowed {n}.',
+  'A bird pecked at the trail and took {n}.',
+];
 const WIPEOUTS = [
   'A bird found the column.',
   'Rain flooded the trail.',
@@ -141,7 +151,11 @@ function finish(ctx: Context, p: Party) {
   if (lost) { ctx.res.add('ant', -lost); s.perished = (s.perished ?? 0) + lost; }
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
-  if (lost) ctx.log(`${lost === 1 ? 'One worker' : `${lost} workers`} did not come back from ${d.name.toLowerCase()}.`, 'warn');
+  if (lost) {
+    const who = lost === 1 ? 'one worker' : `${lost} workers`;
+    const why = LOSSES[Math.floor(Math.random() * LOSSES.length)].replace('{n}', who);
+    ctx.log(`${why} The rest come home from ${d.name.toLowerCase()}.`, 'warn');
+  }
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: p.ants, lost });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
