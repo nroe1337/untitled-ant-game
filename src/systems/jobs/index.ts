@@ -84,7 +84,7 @@ export const jobs: GameSystem = {
   init(ctx) {
     ctx.res.define({ id: 'food', name: 'Food', cap: NEST.baseFoodCap, order: 1 });
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
-    ctx.res.define({ id: 'pheromone', name: 'Pheromone', cap: 40, order: 3 });
+    ctx.res.define({ id: 'pheromone', name: 'Pheromone', cap: 40, order: 4 });
     ctx.state.jobs = { assigned: Object.fromEntries(JOB_DEFS.map((j) => [j.id, 0])), tech: {} } satisfies JobsState;
   },
 

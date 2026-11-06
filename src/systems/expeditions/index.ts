@@ -135,8 +135,8 @@ export const expeditions: GameSystem = {
     ctx.res.define({ id: 'twig', name: 'Twigs', cap: NEST.baseMaterialCap.twig, order: 20, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
-    ctx.res.define({ id: 'amber', name: 'Amber', order: 23, integer: true, stepped: true, group: 'Surface' });
-    ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 30, integer: true, stepped: true, group: 'Surface' });
+    ctx.res.define({ id: 'amber', name: 'Amber', order: 24, integer: true, stepped: true, group: 'Surface' });
+    ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 25, integer: true, stepped: true, group: 'Surface' });
     ctx.state.expeditions = { runs: 0, party: X.minParty, dest: 'grass', parties: [], ups: {}, marked: false, auto: true, rare: 0 } satisfies ExpState;
     ctx.bus.on('loaded', () => {
       const s = S(ctx);

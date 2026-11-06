@@ -16,7 +16,7 @@ export const research: GameSystem = {
   id: 'research',
 
   init(ctx) {
-    ctx.res.define({ id: 'knowledge', name: 'Knowledge', cap: RESEARCH.knowledgeCap, order: 5 });
+    ctx.res.define({ id: 'knowledge', name: 'Knowledge', cap: RESEARCH.knowledgeCap, order: 3 });
     ctx.state.research = {};
   },
 
