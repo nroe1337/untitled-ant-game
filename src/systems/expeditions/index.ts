@@ -129,7 +129,7 @@ export const expeditions: GameSystem = {
   panel: (() => {
     let sendBtn: ActionButton, markBtn: ActionButton, partyEl: HTMLElement, destSel: HTMLSelectElement, statusEl: HTMLElement;
     let viewer: HTMLCanvasElement, captions: HTMLElement, autoBox: HTMLInputElement, autoWrap: HTMLElement, ledger: HTMLElement;
-    let lootEl: HTMLElement, partyHint: HTMLElement, upsHead: HTMLElement;
+    let lootEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
     const bars: ReturnType<typeof progressBar>[] = [];
     return {
@@ -164,11 +164,13 @@ export const expeditions: GameSystem = {
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES);
         lootEl = el('p.muted');
         partyHint = el('p.muted');
+        idleEl = el('strong');
         upsHead = el('h3', {}, 'Trail upgrades');
         root.append(
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           lootEl,
+          el('p', {}, 'Idle workers: ', idleEl),
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), sendBtn.root, markBtn.root),
           partyHint,
           autoWrap,
@@ -188,6 +190,7 @@ export const expeditions: GameSystem = {
           destSel.value = s.dest;
         }
         partyEl.textContent = String(s.party);
+        idleEl.textContent = String(Math.max(0, idle(ctx)));
         const dest = X.destinations.find((x) => x.id === s.dest) ?? X.destinations[0];
         const m = partyMult(s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
         lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
