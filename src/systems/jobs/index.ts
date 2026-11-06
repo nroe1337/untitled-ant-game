@@ -220,11 +220,18 @@ export const jobs: GameSystem = {
           const r = rows.get(j.id)!;
           r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);
           r.count.textContent = String(s.assigned[j.id]);
-          // Every worker on a job makes exactly the same amount, so the total is just "each x count".
-          const each = Object.entries(j.produces).map(([rid, per]) => [ctx.res.get(rid).name.toLowerCase(), per * jobMult(ctx, j.id)] as const);
+          // The row shows only the rate; the tooltip shows the math once.
           const n = s.assigned[j.id];
-          const parts = each.map(([name, per]) => n ? `+${fmt(per * n)} ${name}/s (${fmtEach(per)} each)` : `${fmtEach(per)} ${name}/s each`);
-          r.row.dataset.tip = j.desc + (each.length ? '\nEach ' + j.name.toLowerCase() + ' makes ' + each.map(([name, per]) => `+${fmt(per)} ${name}/s`).join(', ') + ', bonuses included. Every worker adds the same amount.' : '');
+          const mult = jobMult(ctx, j.id);
+          const who = j.name.toLowerCase();
+          const each = Object.entries(j.produces).map(([rid, base]) => ({ name: ctx.res.get(rid).name.toLowerCase(), base, per: base * mult }));
+          const tot = (x: number) => (x ? fmt(x) : '0');
+          const parts = each.map((e) => `+${tot(e.per * n)} ${e.name}/s`);
+          const math = each.flatMap((e) => [
+            `Each ${who}: ${fmtEach(e.base)} ${e.name}/s` + (Math.abs(mult - 1) > 1e-9 ? `, ${mult > 1 ? '+' : '−'}${Math.round(Math.abs(mult - 1) * 100)}% from bonuses = ${fmtEach(e.per)}` : ''),
+            `${n} × ${fmtEach(e.per)} = ${tot(e.per * n)} ${e.name}/s`,
+          ]);
+          r.row.dataset.tip = j.desc + (math.length ? '\n' + math.join('\n') : '');
           if (j.id === 'nurse' && s.assigned.nurse) parts.push('laying eggs');
           if (j.id === 'soldier' && s.assigned.soldier) parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
           r.out.textContent = parts.join(', ');
