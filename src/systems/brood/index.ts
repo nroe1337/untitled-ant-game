@@ -90,7 +90,9 @@ export const brood: GameSystem = {
       const room = res.amt('ant') < res.cap('ant');
       const need = larvae * larvaFood(ctx) * dt;
       if (room && res.amt('food') >= need) {
+        res.source = 'Larvae eating';
         res.add('food', -need);
+        res.source = 'Brood';
         s.larvaProgress += (dt / growTime(ctx)) * larvae;
         while (s.larvaProgress >= 1 && res.amt('larva') >= 1) {
           res.add('larva', -1); res.add('ant', 1); s.larvaProgress -= 1; s.born += 1;

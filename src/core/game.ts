@@ -40,6 +40,12 @@ const STEPS_PER_FRAME = 200;
 const ALERT_ROTATE_S = 5;
 
 /** Top tabs always sit in this order, whatever order they unlock in. Unlisted groups go last. */
+/** How each system shows up when you hover a resource's rate (systems can name finer sources themselves). */
+const SOURCE_LABELS: Record<string, string> = {
+  brood: 'Brood', jobs: 'Workers', nest: 'Granaries', expeditions: 'Expeditions', map: 'Outposts', war: 'War',
+  garden: 'Fungus gardens', castes: 'Castes', waters: 'Boats', lineage: 'Swarm Spire', husbandry: 'Herds',
+  champion: 'Hunts', town: 'Town', supercolony: 'Continent', migration: 'Migration',
+};
 const GROUP_ORDER = ['Home', 'Nest', 'Research', 'World', 'War', 'Lineage'];
 function sortChildren(bar: HTMLElement) {
   const kids = Array.from(bar.children) as HTMLElement[];
@@ -116,7 +122,8 @@ export class Game {
         owed -= step;
         const dt = step * this.ctx.speed;
         this.time += dt;
-        for (const s of this.systems) s.tick?.(this.ctx, dt);
+        for (const s of this.systems) { this.ctx.res.source = SOURCE_LABELS[s.id] ?? s.id; s.tick?.(this.ctx, dt); }
+        this.ctx.res.source = 'Other';
         rateAcc += step;
         if (rateAcc >= 1) { this.ctx.res.measureRates(rateAcc * this.ctx.speed); rateAcc = 0; } // rates in game time
       }
@@ -282,6 +289,8 @@ export class Game {
       row.rate.className = 'rate ' + (flat ? 'flat' : r.rate < 0 ? 'neg' : 'pos');
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
       const held = ctx.res.held(r.id);
+      const rtip = r.sources.length ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
+      if ((row.rate.dataset.tip ?? '') !== rtip) row.rate.dataset.tip = rtip;
       const tip = held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : '';
       if ((row.row.dataset.tip ?? '') !== tip) { row.row.dataset.tip = tip; row.row.classList.toggle('held', held > 0); }
     }
