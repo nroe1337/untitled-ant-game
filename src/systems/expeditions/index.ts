@@ -75,6 +75,7 @@ const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && rea
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
 type Dest = (typeof X.destinations)[number];
 const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx);
+const riskText = (r: number) => r < 1 ? `${fmt(r * 100)}% to lose a worker` : `always loses a worker, ${fmt((r % 1) * 100)}% to lose a second`;
 const wipeOf = (ctx: Context, d: Dest) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
 
 const WIPEOUTS = [
@@ -122,11 +123,13 @@ function finish(ctx: Context, p: Party) {
     ctx.res.add('amber', 1); s.rare += 1;
     ctx.log('Among the haul: a bead of amber with something tiny trapped inside.');
   }
-  let lost = 0;
-  if (Math.random() < lossOf(ctx, d)) { lost = 1; ctx.res.add('ant', -1); }
+  // Above 100% the party always loses one, with the remainder as the chance of losing a second.
+  const risk = lossOf(ctx, d);
+  let lost = Math.min(p.ants, Math.floor(risk) + (Math.random() < risk % 1 ? 1 : 0));
+  if (lost) ctx.res.add('ant', -lost);
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
-  if (lost) ctx.log(`One worker did not come back from ${d.name.toLowerCase()}.`, 'warn');
+  if (lost) ctx.log(`${lost === 1 ? 'One worker' : `${lost} workers`} did not come back from ${d.name.toLowerCase()}.`, 'warn');
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
@@ -202,7 +205,7 @@ export const expeditions: GameSystem = {
           ctx, label: 'Send expedition',
           desc: () => 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.\n' +
             (() => { const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
-              return `Risk each trip to ${d.name.toLowerCase()}: ${fmt(lossOf(ctx, d) * 100)}% to lose a worker, ${fmt(wipeOf(ctx, d) * 100)}% to lose the whole party. Farther places are more dangerous.`; })(),
+              return `Risk each trip to ${d.name.toLowerCase()}: ${riskText(lossOf(ctx, d))}, ${fmt(wipeOf(ctx, d) * 100)}% to lose the whole party. Farther places are more dangerous.`; })(),
           enabled: canSend, onBuy: (c) => send(c),
         });
         markBtn = actionButton({
