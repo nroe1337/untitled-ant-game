@@ -5,7 +5,7 @@ import { icon } from '../../core/sprites';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, COLONY, JOBS, NEST, WAR } from '../../data/balance';
-import { nurseEggsEach } from '../brood';
+import { broodFoodOutlook, nurseEggsEach } from '../brood';
 
 interface JobDef {
   id: string;
@@ -87,6 +87,24 @@ function followDecree(ctx: Context) {
   }
 }
 
+/**
+ * Seconds until food runs out, or Infinity. The shown rate counts larvae eating, but a larva only eats
+ * until it pupates, so a short dip from a batch of larvae is weighed against the food in store:
+ * the stores only need to cover what the brood here will still eat, plus the drain from eggs still being laid.
+ */
+function foodRunsOutIn(ctx: Context, have: number) {
+  const food = ctx.res.get('food');
+  const rate = food.rate;
+  const larvae = -(food.sources.find(([k]) => k === 'Larvae eating')?.[1] ?? 0);
+  const { committed, ongoing } = broodFoodOutlook(ctx);
+  if (larvae <= ongoing) return rate < 0 ? have / -rate : Infinity; // the brood drain is steady: take the rate as it is
+  const until = committed / (larvae - ongoing); // when the brood here has eaten its fill
+  if (rate < 0 && have / -rate <= until) return have / -rate;
+  const left = have + rate * until;
+  const after = rate + larvae - ongoing;
+  return after < 0 ? until + left / -after : Infinity;
+}
+
 export const jobs: GameSystem = {
   id: 'jobs',
 
@@ -138,16 +156,16 @@ export const jobs: GameSystem = {
       s.lowest = Math.min(s.lowest ?? Infinity, left);
     }
     const starving = unpaid > 0 && totalAnts(ctx) > 0;
-    const foodRate = ctx.res.get('food').rate;
-    if (!s.warned && foodRate < 0 && have / -foodRate < COLONY.starveWarnSeconds && have > 0) {
+    const runsOut = foodRunsOutIn(ctx, have);
+    const low = have > 0 && runsOut < COLONY.starveWarnSeconds;
+    if (!s.warned && low) {
       s.warned = true;
-      ctx.log(`Food is running low. At this rate it is gone in about ${Math.ceil(have / -foodRate)}s, and then workers will starve.`, 'warn');
+      ctx.log(`Food is running low. At this rate it is gone in about ${Math.ceil(runsOut)}s, and then workers will starve.`, 'warn');
     }
-    if (foodRate >= 0 && have > 0) s.warned = false;
+    if (!low && have > 0) s.warned = false;
     ctx.alert('starving', starving
       ? 'Your workers are starving. They will die one by one until food comes in. Put more workers on foraging.'
-      : foodRate < 0 && have > 0 && have / -foodRate < COLONY.starveWarnSeconds
-        ? `Food runs out in about ${Math.ceil(have / -foodRate)}s. Then workers start to starve.` : null);
+      : low ? `Food runs out in about ${Math.ceil(runsOut)}s. Then workers start to starve.` : null);
     const mult = starving ? COLONY.starvingPenalty : 1;
 
     for (const j of JOB_DEFS) {

@@ -41,6 +41,21 @@ export const tendSpeed = (ctx: Context) => {
 };
 const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
 
+/**
+ * How much food the brood will still eat, for the food warning. Larvae eat for a while and then stop,
+ * so their drain shouldn't be read as permanent. `committed` is what the eggs and growing larvae
+ * already here will eat before they pupate; `ongoing` is the drain per second from eggs still being laid.
+ */
+export function broodFoodOutlook(ctx: Context) {
+  const s = ctx.state.brood as BroodState | undefined;
+  if (!s) return { committed: 0, ongoing: 0 };
+  const perLarva = larvaFood(ctx) * growTime(ctx) / Math.max(0.05, tendSpeed(ctx));
+  const growing = Math.max(0, Math.floor(ctx.res.amt('larva')) - (s.pupae ?? 0));
+  const left = Math.max(0, growing - (growing >= 1 ? s.larvaProgress : 0)) + Math.floor(ctx.res.amt('egg'));
+  const laying = broodUsed(ctx) < broodCap(ctx) ? nurseRate(ctx) + queenRate(ctx) : 0;
+  return { committed: left * perLarva, ongoing: laying * perLarva };
+}
+
 const ROYAL = fromBalance(RB, (ctx, needs) => ctx.flags.has('tech:royal') && (!needs || ctx.flags.has(needs)));
 
 function addEggs(ctx: Context, n: number) {
