@@ -151,7 +151,7 @@ export const brood: GameSystem = {
     let ledger: HTMLElement, royalHead: HTMLElement;
     let royal: ReturnType<typeof upgradeList>;
     return {
-      title: 'The Queen',
+      title: 'Queen',
       group: 'Colony',
       mount(root, ctx) {
         lay = actionButton({
