@@ -213,7 +213,7 @@ export const map: GameSystem = {
         });
         build = actionButton({
           ctx, label: 'Build an outpost', costs: () => outpostCost(ctx),
-          desc: `A walled outpost on this tile: +${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, and the tile yields triple. Each one costs more than the last.`,
+          desc: `+${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, tile yields x3`,
           enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && t.o === 'you' && !t.core && !t.outpost; },
           onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.outpost = true; c.log(`An outpost rises on the ${TERRAIN_NAME[t.t].toLowerCase()}.`, 'info'); },
         });
