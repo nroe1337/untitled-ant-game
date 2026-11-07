@@ -77,11 +77,25 @@ function runQueue(ctx: Context) {
   build(ctx, id);
 }
 
+/** Storage techs (Packed walls, Memory songs, Resin lining) multiply what some chambers store. */
+const storeMult = (ctx: Context, id: ChamberId) => 1 + Object.entries(NEST.storageTechs)
+  .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
+/** Housing techs multiply all living space from chambers. */
+const roominess = (ctx: Context) => 1 + Object.entries(NEST.housingTechs).reduce((t, [tech, b]) => t + (ctx.flags.has('tech:' + tech) ? b : 0), 0) + ctx.mods.get('livingSpace');
+const num = (n: number) => String(Number(n.toFixed(2)));
+/** A chamber's tooltip with the numbers it really gives now, after techs. */
+function liveDesc(ctx: Context, id: ChamberId) {
+  const m = storeMult(ctx, id);
+  let d = DEFS[id].desc.replace(/\+(\d+) living space/, (_, n) =>
+    `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx))} living space`);
+  if (m !== 1) d = d.replace(/\+(\d+)(?![\d.]*%)(?! living)/g, (_, n) => `+${num(Number(n) * m)}`);
+  return d;
+}
+
 function applyEffects(ctx: Context) {
-  const mult = (id: ChamberId) => 1 + Object.entries(NEST.storageTechs)
-    .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
+  const mult = (id: ChamberId) => storeMult(ctx, id);
   const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * count(ctx, id) * (k.endsWith('Cap') ? mult(id) : 1), 0);
-  const roomier = 1 + Object.entries(NEST.housingTechs).reduce((t, [tech, b]) => t + (ctx.flags.has('tech:' + tech) ? b : 0), 0) + ctx.mods.get('livingSpace');
+  const roomier = roominess(ctx);
   const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') : 0;
   ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide) * roomier));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
@@ -142,7 +156,7 @@ export const nest: GameSystem = {
         for (const id of IDS) {
           const def = DEFS[id];
           const btn = tileButton({
-            ctx, label: def.name, effect: def.desc, count: () => count(ctx, id),
+            ctx, label: def.name, effect: () => liveDesc(ctx, id), count: () => count(ctx, id),
             costs: () => costOf(ctx, id),
             enabled: (c) => !def.max || count(c, id) < def.max,
             onBuy: (c) => build(c, id),
