@@ -41,14 +41,14 @@ export const COLONY = {
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
   // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
   techniques: {
-    trails:   { name: 'Scent trails',        desc: 'Foragers gather {p} more food each level.',        per: 0.01,  base: { pheromone: 12 },          growth: 1.25, max: 40, needs: 'surface' },
-    grit:     { name: 'Mandible grit',       desc: 'Diggers dig {p} more soil each level.',         per: 0.01,  base: { twig: 12 },               growth: 1.25, max: 40, needs: 'tech:sharedlabour' },
-    stomach:  { name: 'Shared stomach',      desc: 'The colony eats {p} less food each level.',   per: -0.005, base: { seed: 12, food: 90 },     growth: 1.25, max: 30, needs: 'tech:sharedlabour' },
-    marching: { name: 'Marching songs',      desc: 'Scouts make {p} more pheromone each level.',          per: 0.01,  base: { pheromone: 24, twig: 9 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
-    lore:     { name: 'Oral tradition',      desc: 'Elders gather {p} more knowledge each level.',          per: 0.01,  base: { knowledge: 45, food: 30 }, growth: 1.25, max: 30 },
-    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less each level.', per: -0.01, base: { knowledge: 60, soil: 60 }, growth: 1.25, max: 25 },
-    carrying: { name: 'Load bearing',        desc: 'Expeditions bring back {p} more loot each level.', per: 0.01,  base: { knowledge: 75, twig: 12 }, growth: 1.25, max: 30, needs: 'tech:worksongs' },
-    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder each level.', per: 0.01, base: { chitin: 6, food: 150 }, growth: 1.25, max: 40, needs: 'rival' },
+    trails:   { name: 'Scent trails',        desc: 'Foragers gather {p} more food each level.',        per: 0.03,  base: { pheromone: 24 },          growth: 1.6, max: 13, needs: 'surface' },
+    grit:     { name: 'Mandible grit',       desc: 'Diggers dig {p} more soil each level.',         per: 0.03,  base: { twig: 24 },               growth: 1.6, max: 13, needs: 'tech:sharedlabour' },
+    stomach:  { name: 'Shared stomach',      desc: 'The colony eats {p} less food each level.',   per: -0.015, base: { seed: 24, food: 180 },     growth: 1.6, max: 10, needs: 'tech:sharedlabour' },
+    marching: { name: 'Marching songs',      desc: 'Scouts make {p} more pheromone each level.',          per: 0.03,  base: { pheromone: 48, twig: 18 }, growth: 1.6, max: 10, needs: 'tech:worksongs' },
+    lore:     { name: 'Oral tradition',      desc: 'Elders gather {p} more knowledge each level.',          per: 0.03,  base: { knowledge: 90, food: 60 }, growth: 1.6, max: 10 },
+    craft:    { name: 'Tunnel craft',        desc: 'Chambers cost {p} less each level.', per: -0.03, base: { knowledge: 120, soil: 120 }, growth: 1.6, max: 8 },
+    carrying: { name: 'Load bearing',        desc: 'Expeditions bring back {p} more loot each level.', per: 0.03,  base: { knowledge: 150, twig: 24 }, growth: 1.6, max: 10, needs: 'tech:worksongs' },
+    drill:    { name: 'Drill and formation', desc: 'Soldiers fight {p} harder each level.', per: 0.03, base: { chitin: 12, food: 300 }, growth: 1.6, max: 13, needs: 'rival' },
   },
 };
 
@@ -246,7 +246,7 @@ export const RESEARCH = {
     shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Storerooms and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['teaching', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
     lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Storerooms, Silk lofts and Halls of elders hold another 50% more.' },
-    teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'],              desc: 'Opens the Techniques tab.' },
+    teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'],              desc: 'Opens the Techniques tab once your line has flown.' },
     worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'],  desc: 'Unlocks the Marching songs and Load bearing techniques.' },
     sharedlabour: { name: 'Shared labour',   age: 'forage', cost: { knowledge: 180, twig: 20 },           needs: ['worksongs', 'shelving'],  desc: 'Unlocks the Mandible grit and Shared stomach techniques.' },
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 120 },          pop: 0.06, needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },

@@ -289,7 +289,8 @@ export const jobs: GameSystem = {
 export const techniques: GameSystem = {
   id: 'techniques',
   init() {},
-  isUnlocked: (ctx) => ctx.flags.has('tech:teaching'),
+  // Techniques come after the first flight, so a first colony has less to buy.
+  isUnlocked: (ctx) => ctx.flags.has('tech:teaching') && ctx.flags.has('legacy:flown'),
   panel: (() => {
     let techs: ReturnType<typeof upgradeList>;
     return {
