@@ -149,7 +149,7 @@ export const town: GameSystem = {
         ups = upgradeList(ctx, () => S(ctx).ups, UPS);
         root.append(
           el('p.flavor', {}, 'A forest of table legs. A sea of floor. Food everywhere, and giants who hate to share.'),
-          el('p.muted', {}, 'Town foragers (Colony tab) share their work over every open site. Work in daylight and the humans notice; work at night and they sleep, but the dark is slow going.'),
+          el('p.muted', {}, 'Town foragers (Jobs tab) share their work over every open site. Work in daylight and the humans notice; work at night and they sleep, but the dark is slow going.'),
           cv, clockEl, el('div', {}, el('span.muted', {}, 'Human attention '), attBar.root), schedRow, ledger, el('div.row', {}, purge.root),
           el('h3', {}, 'Sites'), siteBox,
           el('h3', {}, 'Satellite nests'), satBox,

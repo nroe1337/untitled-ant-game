@@ -195,8 +195,8 @@ export const jobs: GameSystem = {
       if (d) ctx.bus.emit('jobs:change');
     };
     return {
-      title: 'Colony',
-      group: 'Home',
+      title: 'Jobs',
+      group: 'Colony',
       mount(root, ctx) {
         idleEl = el('strong');
         upkeepEl = el('p.muted');

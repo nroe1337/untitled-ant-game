@@ -73,7 +73,7 @@ export const garden: GameSystem = {
     let frame = 0;
     return {
       title: 'Garden',
-      group: 'Home',
+      group: 'Colony',
       mount(root, ctx) {
         weed = actionButton({
           ctx, label: 'Weed a mouldy bed', cooldown: GARDEN.weedCooldown,
