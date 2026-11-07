@@ -25,6 +25,8 @@ const R = (ctx: Context, id: keyof typeof BROOD.royal) => S(ctx).royal[id] ?? 0;
 const broodCap = (ctx: Context) => ctx.res.cap('egg');
 const broodUsed = (ctx: Context) => ctx.res.amt('egg') + ctx.res.amt('larva');
 const RB = BROOD.royal;
+/** Larvae the nest has living space for: workers plus larvae (and pupae) may not outgrow it. */
+const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt('ant')) - Math.floor(ctx.res.amt('larva'));
 // mods: 'brood' (lineage perks) speeds both; 'larvaGrowth' (fungus feeding) speeds larvae
 const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + RB.plates.per * R(ctx, 'plates') + ctx.mods.get('brood'));
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.jelly.per * R(ctx, 'jelly') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
@@ -51,7 +53,7 @@ export function broodFoodOutlook(ctx: Context) {
   if (!s) return { committed: 0, ongoing: 0 };
   const perLarva = larvaFood(ctx) * growTime(ctx) / Math.max(0.05, tendSpeed(ctx));
   const growing = Math.max(0, Math.floor(ctx.res.amt('larva')) - (s.pupae ?? 0));
-  const left = Math.max(0, growing - (growing >= 1 ? s.larvaProgress : 0)) + Math.floor(ctx.res.amt('egg'));
+  const left = Math.max(0, growing - (growing >= 1 ? s.larvaProgress : 0)) + Math.min(Math.floor(ctx.res.amt('egg')), Math.max(0, larvaRoom(ctx)));
   const laying = broodUsed(ctx) < broodCap(ctx) ? nurseRate(ctx) + queenRate(ctx) : 0;
   return { committed: left * perLarva, ongoing: laying * perLarva };
 }
@@ -103,11 +105,12 @@ export const brood: GameSystem = {
       if (s.nurseProgress >= 1) { const n = Math.floor(s.nurseProgress); addEggs(ctx, n); s.nurseProgress -= n; }
     }
 
-    // eggs hatch into larvae
+    // eggs hatch into larvae, but only when every larva will have living space to grow into
     const eggs = res.amt('egg');
     if (eggs >= 1) {
       s.eggProgress += (dt / hatchTime(ctx)) * eggs * tendSpeed(ctx);
-      while (s.eggProgress >= 1 && res.amt('egg') >= 1) {
+      if (larvaRoom(ctx) < 1) s.eggProgress = Math.min(s.eggProgress, 1); // a ready egg waits
+      while (s.eggProgress >= 1 && res.amt('egg') >= 1 && larvaRoom(ctx) >= 1) {
         res.add('egg', -1); res.add('larva', 1); s.eggProgress -= 1;
         if (!s.firstLarva) { s.firstLarva = true; ctx.flags.add('hungry'); ctx.log('An egg splits. A pale larva wriggles, and it is hungry.'); }
       }
@@ -190,7 +193,7 @@ export const brood: GameSystem = {
         // Lay opens after a few forages; it stays open after that
         if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
         layWrap.hidden = !ctx.flags.has('queen:lays');
-        eggTxt.textContent = `Eggs hatching: ${Math.floor(ctx.res.amt('egg'))}`;
+        eggTxt.textContent = ctx.res.amt('egg') >= 1 && larvaRoom(ctx) < 1 ? `Eggs waiting for room: ${Math.floor(ctx.res.amt('egg'))}` : `Eggs hatching: ${Math.floor(ctx.res.amt('egg'))}`;
         const pupae = s.pupae ?? 0, growingNow = Math.max(0, Math.floor(ctx.res.amt('larva')) - pupae);
         larvaTxt.textContent = `Larvae growing: ${growingNow}`;
         eggBar.set(ctx.res.amt('egg') >= 1 ? s.eggProgress % 1 : 0);
