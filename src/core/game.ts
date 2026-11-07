@@ -57,7 +57,7 @@ const SOURCE_LABELS: Record<string, string> = {
   garden: 'Fungus gardens', castes: 'Castes', waters: 'Boats', lineage: 'Swarm Spire', husbandry: 'Herds',
   champion: 'Hunts', town: 'Town', supercolony: 'Continent', migration: 'Migration',
 };
-const GROUP_ORDER = ['Home', 'Nest', 'Research', 'World', 'War', 'Lineage'];
+const GROUP_ORDER = ['Home', 'Research', 'World', 'War', 'Lineage'];
 function sortChildren(bar: HTMLElement) {
   const kids = Array.from(bar.children) as HTMLElement[];
   kids.sort((a, b) => Number(a.dataset.rank ?? 99) - Number(b.dataset.rank ?? 99));
