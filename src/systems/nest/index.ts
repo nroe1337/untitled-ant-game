@@ -133,7 +133,7 @@ export const nest: GameSystem = {
     const strip = queueStrip('Building queue');
     return {
       title: 'Nest',
-      group: 'Home',
+      group: 'Nest',
       mount(root, ctx) {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
         progress = el('p.muted');

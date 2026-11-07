@@ -324,7 +324,7 @@ export const war: GameSystem = {
         ledger.replaceChildren(...[
           ['Rival army', `about ${Math.round(s.rivalArmy)}`],
           ['Next fight', s.rivalDefeated ? 'none' : `wave ${waveOf(ctx)}: ${describeWave(waveOf(ctx))}`],
-          ['Your soldiers', `${soldiers(ctx)} (assign them on the Colony tab)`],
+          ['Your soldiers', `${soldiers(ctx)} (assign them on the Jobs tab)`],
           ['Nest defence', `${defence(ctx)} (guard posts, stone tiles, husk halls)`],
           ['Damage per second at the gate', fmt(hold)],
           ['Raids fought', `${s.raids}, ${s.won} without losses`],

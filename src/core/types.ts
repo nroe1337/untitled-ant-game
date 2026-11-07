@@ -39,7 +39,7 @@ export interface Context {
 
 export interface Panel {
   title: string;
-  /** Top-level tab this panel sits under (e.g. "Home", "World"). Panels in a group share a sub-tab row. */
+  /** Top-level tab this panel sits under (e.g. "Colony", "World"). Panels in a group share a sub-tab row. */
   group?: string;
   /** Never light this tab's new-content dot (it only shows things the player has already seen). */
   quiet?: boolean;

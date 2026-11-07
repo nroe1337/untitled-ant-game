@@ -1,5 +1,5 @@
 // Castes: chew food into royal jelly (or, with the Garden, let nurses make it from fungus), then spend jelly to breed new kinds of ant.
-// Each caste sets the flag "caste:<id>", which unlocks its job on the Colony tab.
+// Each caste sets the flag "caste:<id>", which unlocks its job on the Jobs tab.
 // Also: repletes raise food storage (reads ctx.state.jobs.assigned.replete),
 // and Jelly glands let nurses make jelly on their own (automation).
 import type { GameSystem, Context } from '../../core/types';
@@ -41,7 +41,7 @@ export const castes: GameSystem = {
     const rows = new Map<string, ReturnType<typeof tileButton>>();
     return {
       title: 'Castes',
-      group: 'Home',
+      group: 'Colony',
       mount(root, ctx) {
         chew = actionButton({
           ctx, label: 'Chew royal jelly', costs: () => CASTES.chew.cost, cooldown: CASTES.chew.cooldown,

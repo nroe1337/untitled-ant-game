@@ -417,7 +417,7 @@ export const ARCHIVE = {
     { id: 'basics',   track: 'earth',  n: 120,  cost: 3, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Storage chambers and Brood care.' },
     { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
     { id: 'surface',  track: 'trails', n: 80,   cost: 4, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
-    { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Colony tab, and new workers take jobs to match it.' },
+    { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Jobs tab, and new workers take jobs to match it.' },
     { id: 'plans',    track: 'wings',  n: 3,    cost: 4, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },
     { id: 'elders',   track: 'lore',   n: 60,   cost: 5, name: 'Deep roots',          desc: 'New colonies also start knowing Elder memory, Royal court and Teaching.' },
     { id: 'call',     track: 'hunt',   n: 1500, cost: 5, name: 'The champion\'s call', desc: 'Your champion hunts much faster while you are away (+30% idle speed).' },
