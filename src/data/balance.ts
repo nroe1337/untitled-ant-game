@@ -97,7 +97,7 @@ export const NEST = {
     rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, needs: 'tech:surface' },
     warmth:    { name: 'Warming chamber',  base: { soil: 40, food: 20 }, growth: 1.32,          desc: 'Brood grows 3% faster', mods: { brood: 0.03 }, max: 15, needs: 'tech:surface' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'tech:surface' },
-    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+50 twig storage', matCap: { twig: 50 }, needs: 'tech:surface' },
+    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'tech:surface' },
     seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+40 seed storage', matCap: { seed: 40 }, needs: 'tech:seeds' },
     resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+25 resin storage', matCap: { resin: 25 }, needs: 'tech:resin' },
     memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+80 knowledge storage, elders +3% speed', knowCap: 80, mods: { 'job:elder': 0.03 }, needs: 'tech:songs' },
