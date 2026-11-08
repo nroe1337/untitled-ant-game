@@ -293,7 +293,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tilehead { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .nestscroll.whole { max-height: none; overflow: visible; }
 /* Nest: compact chamber grid, a heading per row, so the nest view stays in sight */
-.tilegroups.compact { gap: 6px; max-width: none; margin-bottom: 10px; }
+.tilegroups.compact { gap: 6px; max-width: 640px; margin-bottom: 10px; }
 .tilegroups.compact .tilegroup { grid-template-columns: 92px minmax(0, 1fr); align-items: start; gap: 8px; }
 .tilegroups.compact .tilehead { font-size: 10px; padding-top: 7px; }
 .tilegroups.compact .tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; max-width: none; }
