@@ -19,6 +19,16 @@ type ChamberDef = {
   mods?: Record<string, number>;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
+/** How the chamber buttons are grouped on the Nest tab. Anything not listed goes in the last group. */
+const SECTIONS: [string, string[]][] = [
+  ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall']],
+  ['Brood', ['brood', 'nursery', 'warmth']],
+  ['Stores', ['store', 'storeroom', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'waxworks', 'pantry']],
+  ['Food', ['granary', 'cistern', 'rest', 'midden', 'fungus', 'sporecellar', 'stable']],
+  ['Knowledge', ['library', 'memory']],
+  ['Work', ['spoil', 'gland', 'chartroom', 'harbour', 'boatshed']],
+  ['War', ['barracks', 'husks', 'training', 'armory', 'den']],
+];
 const IDS = Object.keys(DEFS) as ChamberId[];
 
 interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[] }
@@ -143,7 +153,7 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement;
+    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement, grid: HTMLElement;
     const strip = queueStrip('Building queue');
     return {
       title: 'Nest',
@@ -152,7 +162,12 @@ export const nest: GameSystem = {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
         progress = el('p.muted');
         extra = el('p.muted');
-        const grid = el('div.tiles');
+        grid = el('div.tilegroups');
+        const sections = SECTIONS.map(([name, ids]) => {
+          const tiles = el('div.tiles'), box = el('div.tilegroup', { hidden: true }, el('div.tilehead', {}, name), tiles);
+          grid.append(box);
+          return { box, tiles, ids };
+        });
         for (const id of IDS) {
           const def = DEFS[id];
           const btn = tileButton({
@@ -169,7 +184,7 @@ export const nest: GameSystem = {
             },
           });
           btn.root.hidden = true;
-          grid.append(btn.root);
+          (sections.find((x) => x.ids.includes(id)) ?? sections[sections.length - 1]).tiles.append(btn.root);
           buttons.set(id, btn);
         }
         canvas.addEventListener('click', (ev) => {
@@ -194,6 +209,7 @@ export const nest: GameSystem = {
           b.root.hidden = !visible(ctx, id);
           b.update(ctx);
         }
+        grid.querySelectorAll<HTMLElement>('.tilegroup').forEach((g) => { g.hidden = !Array.from(g.querySelectorAll<HTMLElement>('.tilewrap')).some((t) => !t.hidden); });
         const n = totalChambers(ctx);
         progress.textContent = ctx.flags.has('surface')
           ? `${n} chambers. The nest is open to the surface.`

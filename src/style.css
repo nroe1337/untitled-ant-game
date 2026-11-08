@@ -286,3 +286,8 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tip .tnote { color: var(--muted); font-size: 12px; }
 .tip .teffect + .tnote { border-top: 0; margin-top: 3px; padding-top: 0; }
 .queue .qname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tilegroups { display: grid; gap: 14px; max-width: 720px; }
+.tilegroup { display: grid; gap: 6px; }
+.tilegroup[hidden] { display: none; }
+.tilehead { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
