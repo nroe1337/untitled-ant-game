@@ -597,6 +597,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     const rest = leg - walk;
     let x: number, y: number;
     if (sec < rest || len === 0) {                       // resting in a chamber, pottering about
+      if (A === entrance) continue;                      // out on the surface: off screen until it comes back
       x = A.x - 1 + Math.round(Math.sin(t * 0.4 + i * 1.3) * A.w);
       y = A.y;
     } else {
