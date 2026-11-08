@@ -291,3 +291,4 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tilegroup { display: grid; gap: 6px; }
 .tilegroup[hidden] { display: none; }
 .tilehead { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.nestscroll.whole { max-height: none; overflow: visible; }
