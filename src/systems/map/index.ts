@@ -4,7 +4,7 @@
 //   emit 'map:capture' { x, y }   -> tile becomes yours
 // and read ctx.state.map (tiles, selected) to know what is where.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, type ActionButton } from '../../core/ui';
+import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP } from '../../data/balance';
@@ -189,6 +189,8 @@ export const map: GameSystem = {
     let cv: HTMLCanvasElement, info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement;
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement;
     let hoverI: number | null = null;
+    const bar = progressBar();
+    let claimLine: HTMLElement, claimText: HTMLElement;
     return {
       title: 'Map',
       group: 'World',
@@ -205,6 +207,8 @@ export const map: GameSystem = {
         hover = el('p.muted.mono');
         info = el('div.ledger');
         summary = el('p.muted');
+        claimText = el('span');
+        claimLine = el('div.caption', { hidden: true }, claimText, bar.root);
         claim = actionButton({
           ctx, label: 'Send workers to claim', costs: () => claimCost(ctx),
           desc: `${MAP.claimParty} workers go out, mark the tile as ours, and come home. Farther tiles take longer.`,
@@ -226,7 +230,7 @@ export const map: GameSystem = {
         ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
         root.append(
           el('p.flavor', {}, 'The garden, as far as your scouts have seen. Click a tile to inspect it.'),
-          cv, hover, summary, el('div.row', {}, autoWrap),
+          cv, hover, summary, claimLine, el('div.row', {}, autoWrap),
           el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap,
           upsHead, ups.root,
         );
@@ -248,8 +252,9 @@ export const map: GameSystem = {
         for (const t of mine) for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * yieldMult(ctx);
         const c = s.claiming;
         summary.textContent = `You hold ${mine.length} tiles` + (outposts(ctx) ? `, with ${outposts(ctx)} outpost${outposts(ctx) > 1 ? 's' : ''}` : '') + '. ' +
-          (c ? `${c.ants} workers are out claiming ${xy(c.i).join(',')}: back in ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s. ` : '') +
           (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${v.toFixed(2)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
+        claimLine.hidden = !c;
+        if (c) { claimText.textContent = `${c.ants} workers claiming ${xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
         if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; return; }
         const t = s.tiles[i];
