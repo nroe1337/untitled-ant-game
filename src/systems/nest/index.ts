@@ -573,18 +573,19 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const hash = (a: number, b: number) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };
   const stopFor = (i: number, k: number) => { const h = hash(i, k); return h % 8 === 0 || !rooms.length ? entrance : rooms[(h >>> 3) % rooms.length]; };
   for (let i = 0; i < ants; i++) {
-    const leg = 12 + (i % 7);                            // seconds per leg: rest, then walk
-    const tt = t + i * 3.7, k = Math.floor(tt / leg), f = (tt % leg) / leg;
+    const leg = 50 + (i % 7) * 2;                       // seconds per leg: rest, then walk at a steady pace
+    const tt = t + i * 7.3, k = Math.floor(tt / leg), sec = tt % leg;
     const A = stopFor(i, k), B = stopFor(i, k + 1);
+    const a1 = Math.abs(A.x - shaftX), a2 = Math.abs(B.y - A.y), a3 = Math.abs(B.x - shaftX), len = a1 + a2 + a3;
+    const walk = Math.min(len / (6 + (i % 4)), leg * 0.9); // 6-9 px a second, like the old walkers
+    const rest = leg - walk;
     let x: number, y: number;
-    const rest = 0.45;
-    if (f < rest || (A.x === B.x && A.y === B.y)) {      // resting in a chamber, pottering about
-      x = A.x - 1 + Math.round(Math.sin(t * 0.7 + i * 1.3) * A.w);
+    if (sec < rest || len === 0) {                       // resting in a chamber, pottering about
+      x = A.x - 1 + Math.round(Math.sin(t * 0.4 + i * 1.3) * A.w);
       y = A.y;
     } else {
       // walk: A -> shaft, shaft from A.y to B.y, shaft -> B
-      const a1 = Math.abs(A.x - shaftX), a2 = Math.abs(B.y - A.y), a3 = Math.abs(B.x - shaftX);
-      let d = ((f - rest) / (1 - rest)) * (a1 + a2 + a3);
+      let d = ((sec - rest) / walk) * len;
       if (d <= a1) { x = A.x + Math.sign(shaftX - A.x) * d - 1; y = A.y; }
       else if ((d -= a1) <= a2) { x = shaftX - 1; y = A.y + Math.sign(B.y - A.y) * d; }
       else { d -= a2; x = shaftX + Math.sign(B.x - shaftX) * d - 1; y = B.y; }
