@@ -3,7 +3,7 @@
 import type { Context } from './types';
 import type { Costs } from './resources';
 import { el, tileButton } from './ui';
-import { fits, queueStrip, runQueue, type QueueItem } from './queue';
+import { dockQueue, fits, runQueue, type QueueItem } from './queue';
 
 /** Upgrade queue: unlocked late by the Work ledgers research. Keys are "<list>/<upgrade>", one per level. */
 export const upgradeSlots = (ctx: Context) => (ctx.flags.has('tech:ledgers') ? 2 + ctx.mods.get('upgradeSlots') : 0);
@@ -27,6 +27,7 @@ const rq = (ctx: Context) => { const r = (ctx.state.research ??= {}) as { queue?
 export const upgradeItem = (ctx: Context, qkey: string) => itemOf(ctx, qkey.slice(2));
 export const upgradeName = (qkey: string) => registry.get(qkey.slice(2))?.def.name ?? qkey.split('/').pop()!;
 /** Called once a tick (by research). */
+dockQueue('Upgrade queue', 2, (strip, ctx) => strip.update(upgradeSlots(ctx), uq(ctx), (k) => registry.get(k)?.def.name ?? k.split('/').pop()!, undefined, ctx, (k) => itemOf(ctx, k)?.cost()));
 export function runUpgradeQueue(ctx: Context) {
   if (upgradeSlots(ctx)) runQueue(ctx, uq(ctx), (k) => itemOf(ctx, k));
 }
@@ -73,8 +74,7 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
   const research = !!opts.research, pre = research ? 'u:' : '';
   const Q = (c: Context) => (research ? rq(c) : uq(c));
   const SL = (c: Context) => (research ? studySlots(c) : upgradeSlots(c));
-  const strip = queueStrip(research ? 'Research queue' : 'Upgrade queue');
-  const root = el('div', {}, strip.root, grid);
+  const root = el('div', {}, grid);
   const list = defs.map((d) => d.id).join('+');
   const keyOf = (def: UpgradeDef) => `${list}/${def.id}`;
   const qd = (c: Context, def: UpgradeDef) => Q(c).filter((k) => k === pre + keyOf(def)).length;
@@ -118,7 +118,6 @@ export function upgradeList(ctx: Context, levels: () => Record<string, number>, 
         r.tile.root.classList.toggle('queues', slots > q.length && lvl(r.def) + qd(c, r.def) < r.def.max);
         r.tile.update(c);
       }
-      strip.update(any ? slots : 0, q, (k) => registry.get(k.slice(pre.length))?.def.name ?? k, (k) => k.startsWith(pre + list + '/'), c, (k) => itemOf(c, k.slice(pre.length))?.cost());
       root.hidden = !any;
       return any;
     },

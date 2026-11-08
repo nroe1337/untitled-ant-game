@@ -4,6 +4,7 @@ import { EventBus } from './events';
 import { Mods } from './mods';
 import { el, costFocus } from './ui';
 import { queueOrder, setQueueOrder } from './options';
+import { queueDock, updateDock } from './queue';
 import { icon } from './sprites';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
@@ -207,7 +208,7 @@ export class Game {
       this.layoutEl = el('div.layout', {},
         el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList),
         el('main.main', {}, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
-        el('aside.story', {}, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
+        el('aside.story', {}, queueDock, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
   }
 
@@ -379,6 +380,7 @@ export class Game {
         tab.known = unlockKeys(tab.body);
       }
     }
+    updateDock(ctx);
     // Once a second, refresh the panels in the background and light up any tab that has
     // something the player hasn't seen there yet (a new chamber, job, upgrade or place to go).
     const now2 = performance.now();

@@ -80,3 +80,14 @@ export function queueStrip(title: string, _hint?: string) {
     },
   };
 }
+
+/** The queues live in one dock above the Chronicle, refreshed every frame whatever tab is open. */
+export const queueDock = el('div.queuedock');
+const docked: { rank: number; root: HTMLElement; run: (ctx: Context) => void }[] = [];
+export function dockQueue(title: string, rank: number, update: (strip: ReturnType<typeof queueStrip>, ctx: Context) => void) {
+  const strip = queueStrip(title);
+  docked.push({ rank, root: strip.root, run: (ctx) => update(strip, ctx) });
+  docked.sort((a, b) => a.rank - b.rank);
+  queueDock.replaceChildren(...docked.map((d) => d.root));
+}
+export function updateDock(ctx: Context) { for (const d of docked) d.run(ctx); }
