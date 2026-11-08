@@ -208,7 +208,7 @@ export const nest: GameSystem = {
           try { localStorage.setItem('formicarium-whole-nest', toggle.checked ? '1' : '0'); } catch { /* storage blocked */ }
         });
         root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, extra, strip.root, grid,
-          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), el('span.muted', {}, 'Click a chamber, then another, to swap them.')), scroller);
+          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), el('span.muted', {}, '|'), el('span.muted', {}, 'Click a chamber, then another, to swap them.')), scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
