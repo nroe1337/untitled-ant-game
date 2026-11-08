@@ -252,7 +252,7 @@ export const map: GameSystem = {
         for (const t of mine) for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * yieldMult(ctx);
         const c = s.claiming;
         summary.textContent = `You hold ${mine.length} tiles` + (outposts(ctx) ? `, with ${outposts(ctx)} outpost${outposts(ctx) > 1 ? 's' : ''}` : '') + '. ' +
-          (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${v.toFixed(2)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
+          (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${fmt(v)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
         claimLine.hidden = !c;
         if (c) { claimText.textContent = `${c.ants} workers claiming ${xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
@@ -261,7 +261,7 @@ export const map: GameSystem = {
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
         if (t.seen) {
-          const yl = (m: number) => Object.entries(y).map(([r, v]) => `+${+(v * m * yieldMult(ctx)).toFixed(4)} ${r}/s`).join(', ');
+          const yl = (m: number) => Object.entries(y).map(([r, v]) => `+${fmt(v * m * yieldMult(ctx))} ${r}/s`).join(', ');
           const boost = 1 + MAP.outpost.yieldBoost;
           rows.push(['Yield if held', Object.keys(y).length ? yl(1) : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
           if (!t.core && (t.o === null || t.o === 'you' || t.o === 'humans')) rows.push(['Yield with outpost', (Object.keys(y).length ? yl(boost) + ', ' : '') + `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence`]);
