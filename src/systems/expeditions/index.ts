@@ -260,7 +260,7 @@ export const expeditions: GameSystem = {
             return `Lay pheromone along the way. The next expedition to ${d.name.toLowerCase()} is ${Math.round(X.markTrailCut * 100)}% shorter. ` +
               'Longer trails take more pheromone to mark.';
           },
-          enabled: (c) => !S(c).marked, onBuy: (c) => { S(c).marked = S(c).dest; },
+          enabled: (c) => !S(c).marked && !S(c).autoMark && !S(c).parties.length, onBuy: (c) => { S(c).marked = S(c).dest; },
         });
         statusEl = el('p.muted');
         captions = el('div.captions');
