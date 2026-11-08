@@ -197,7 +197,18 @@ export const nest: GameSystem = {
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
           picked = null;
         });
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), el('p.muted', {}, 'Click a chamber, then another, to swap them. Layout is cosmetic only.'), el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas), progress, extra, strip.root, grid);
+        const scroller = el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas);
+        let whole = false;
+        try { whole = localStorage.getItem('formicarium-whole-nest') === '1'; } catch { /* storage blocked */ }
+        scroller.classList.toggle('whole', whole);
+        const toggle = el('input', { type: 'checkbox' }) as HTMLInputElement;
+        toggle.checked = whole;
+        toggle.addEventListener('change', () => {
+          scroller.classList.toggle('whole', toggle.checked);
+          try { localStorage.setItem('formicarium-whole-nest', toggle.checked ? '1' : '0'); } catch { /* storage blocked */ }
+        });
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, extra, strip.root, grid,
+          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), el('span.muted', {}, 'Click a chamber, then another, to swap them.')), scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
