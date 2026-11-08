@@ -87,6 +87,7 @@ export const research: GameSystem = {
             effect: () => t.desc + ((t.cost.knowledge ?? 0) > ctx.res.cap('knowledge') ? ' Needs more knowledge storage: build Halls of elders.' : ''),
             warn: () => (bigEnough(ctx, id) ? '' : `Needs a colony of ${popNeed(id)} workers. Largest so far: ${peak(ctx)}.`),
             costs: () => t.cost,
+            count: () => (RQ(ctx).includes(id) ? 'queued' : ''),
             enabled: (c) => available(c, id) && bigEnough(c, id),
             onBuy: (c) => learn(c, id),
             onQueue: (c) => {
@@ -109,10 +110,10 @@ export const research: GameSystem = {
         const slots = researchSlots(ctx), q = RQ(ctx);
         for (const id of IDS) {
           const r = rows.get(id)!;
-          const show = available(ctx, id) && !q.includes(id);
+          const show = available(ctx, id);
           r.root.hidden = !show;
           if (!show) continue;
-          r.root.classList.toggle('queues', slots > q.length && bigEnough(ctx, id));
+          r.root.classList.toggle('queues', slots > q.length && bigEnough(ctx, id) && !q.includes(id));
           any = true;
           shown.add(TECHS[id].age);
           r.update(ctx);

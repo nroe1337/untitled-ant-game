@@ -307,3 +307,4 @@ input[type=checkbox] { accent-color: var(--accent); }
 .queuedock { display: grid; gap: 8px; margin-bottom: 14px; }
 .queuedock:empty, .queuedock:not(:has(.queue:not([hidden]))) { display: none; }
 .queuedock .queue { margin: 0; max-width: none; }
+.action.tile .badge[hidden] { display: none; }

@@ -216,7 +216,7 @@ export function tileButton(opts: {
     root: wrap,
     update(ctx: Context) {
       btn.update(ctx);
-      if (opts.count) badge.textContent = String(opts.count());
+      if (opts.count) { badge.textContent = String(opts.count()); badge.hidden = !badge.textContent; }
       if (tipOwner === wrap) {
         if (!wrap.isConnected || wrap.offsetParent === null) hide();
         else { fill(ctx); placeTip(wrap); }
