@@ -73,13 +73,13 @@ export const NEST = {
   baseFoodCap: 40,
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Storerooms hold far more
-  /** Surface materials have small stores until you dig Storerooms (Evolve-style warehouses). */
+  /** Surface materials have small stores until you dig Twig lofts, Seed vaults and Resin vats. */
   baseMaterialCap: { twig: 40, seed: 25, resin: 15, silk: 20 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Tunnel',          base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3 },
     brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 }, growth: 1.28,           desc: '+4 brood space, +1 living space. Unlocks nurses', broodCap: 4, antCap: 1, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
-    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil, +6 twig, +6 seed, +4 resin storage', soilCap: 40, matCap: { twig: 6, seed: 6, resin: 4 }, needs: 'tech:storage' },
+    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: '+0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, needs: 'tech:resin' },
