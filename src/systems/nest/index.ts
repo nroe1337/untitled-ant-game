@@ -3,7 +3,7 @@
 import type { GameSystem, Context } from '../../core/types';
 import { el, tileButton } from '../../core/ui';
 import { queueOrder } from '../../core/options';
-import { queueStrip } from '../../core/queue';
+import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
 import { NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
@@ -52,6 +52,7 @@ function visible(ctx: Context, id: ChamberId) {
 
 /** Building queue slots: 2 from Digging plans, more from the Master plans lineage perk. */
 export const queueSlots = (ctx: Context) => (ctx.flags.has('tech:plans') ? 2 + ctx.mods.get('queueSlots') : 0);
+dockQueue('Building queue', 0, (strip, ctx) => strip.update(queueSlots(ctx), (S(ctx).queue ??= []), (id) => DEFS[id as ChamberId].name, undefined, ctx, (id) => costOf(ctx, id as ChamberId)));
 const totalCost = (c: Costs) => Object.values(c).reduce((a, b) => a + b, 0);
 const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx.res.has(r) && ctx.res.cap(r) >= n);
 const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && (!DEFS[id].max || count(ctx, id) < DEFS[id].max!);
@@ -153,15 +154,13 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, extra: HTMLElement, grid: HTMLElement;
-    const strip = queueStrip('Building queue');
+    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement;
     return {
       title: 'Nest',
       group: 'Nest',
       mount(root, ctx) {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
-        progress = el('p.muted');
-        extra = el('p.muted');
+        progress = el('p.muted.neststat');
         grid = el('div.tilegroups.compact');
         const sections = SECTIONS.map(([name, ids]) => {
           const tiles = el('div.tiles'), box = el('div.tilegroup', { hidden: true }, el('div.tilehead', {}, name), tiles);
@@ -207,13 +206,13 @@ export const nest: GameSystem = {
           scroller.classList.toggle('whole', toggle.checked);
           try { localStorage.setItem('formicarium-whole-nest', toggle.checked ? '1' : '0'); } catch { /* storage blocked */ }
         });
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, extra, strip.root, grid,
+        root.classList.add('nestpanel');
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid,
           el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), el('span.muted', {}, '|'), el('span.muted', {}, 'Click a chamber, then another, to swap them.')), scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
         const q = S(ctx).queue ?? [];
-        strip.update(slots, q, (id) => DEFS[id as ChamberId].name, undefined, ctx, (id) => costOf(ctx, id as ChamberId));
         for (const id of IDS) {
           const b = buttons.get(id)!;
           b.root.classList.toggle('queues', slots > q.length);
@@ -222,15 +221,13 @@ export const nest: GameSystem = {
         }
         grid.querySelectorAll<HTMLElement>('.tilegroup').forEach((g) => { g.hidden = !Array.from(g.querySelectorAll<HTMLElement>('.tilewrap')).some((t) => !t.hidden); });
         const n = totalChambers(ctx);
-        progress.textContent = ctx.flags.has('surface')
-          ? `${n} chambers. The nest is open to the surface.`
-          : ctx.flags.has('tech:surface') ? `${n} of ${NEST.surfaceAtChambers} chambers. Something waits above.` : `${n} chambers. Research Upward tunnels to dig toward the surface.`;
+        const bits = [ctx.flags.has('surface') ? `${n} chambers`
+          : ctx.flags.has('tech:surface') ? `${n} of ${NEST.surfaceAtChambers} chambers to the surface` : `${n} chambers. Research Upward tunnels to reach the surface`];
         const def = ctx.mods.get('defence'), up = -ctx.mods.get('upkeep');
-        const bits = [];
-        if (def) bits.push(`Nest defence ${def}`);
+        if (def) bits.push(`defence ${def}`);
         if (up) bits.push(`upkeep reduced ${Math.round(up * 100)}%`);
         if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0)).toFixed(2)} food/s`);
-        extra.textContent = bits.join(', ');
+        progress.textContent = bits.join(' · ');
         drawNest(canvas, ctx);
       },
     };

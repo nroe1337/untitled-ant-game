@@ -3,7 +3,7 @@
 import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip, tileButton } from '../../core/ui';
 import { COLONY, RESEARCH } from '../../data/balance';
-import { fits, queueStrip, runQueue } from '../../core/queue';
+import { dockQueue, fits, runQueue } from '../../core/queue';
 import { runUpgradeQueue, upgradeItem, upgradeName } from '../../core/upgrades';
 
 const TECHS = RESEARCH.techs;
@@ -22,6 +22,7 @@ const bigEnough = (ctx: Context, id: string) => peak(ctx) >= popNeed(id);
 /** Research queue: 2 slots from Study plans, more from the Master plans lineage perk. */
 export const researchSlots = (ctx: Context) => (ctx.flags.has('tech:studyplans') ? 2 + ctx.mods.get('queueSlots') : 0);
 const RQ = (ctx: Context) => { const s = ctx.state.research as { queue?: string[] }; return (s.queue ??= []); };
+dockQueue('Research queue', 1, (strip, ctx) => strip.update(researchSlots(ctx), RQ(ctx), (id) => (id.startsWith('u:') ? upgradeName(id) : TECHS[id]?.name ?? id), undefined, ctx, (id) => (id.startsWith('u:') ? upgradeItem(ctx, id)?.cost() : TECHS[id]?.cost)));
 function learn(ctx: Context, id: string) {
   ctx.flags.add('tech:' + id);
   ctx.log(`Researched ${TECHS[id].name}. ${TECHS[id].desc}`, 'info');
@@ -62,7 +63,6 @@ export const research: GameSystem = {
     const rows = new Map<string, ReturnType<typeof tileButton>>();
     const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
     let empty: HTMLElement, ageEl: HTMLElement;
-    const strip = queueStrip('Research queue');
     return {
       title: 'Research',
       group: 'Research',
@@ -72,7 +72,6 @@ export const research: GameSystem = {
           el('p.flavor', {}, 'Elders remember. What one ant learns, the colony keeps.'),
           ageEl,
           el('p.muted', {}, 'Put workers on the Elder job to gather knowledge.'),
-          strip.root,
         );
         // one group per age, in order
         for (const age of RESEARCH.ages) {
@@ -108,7 +107,6 @@ export const research: GameSystem = {
         let any = false;
         const shown = new Set<string>();
         const slots = researchSlots(ctx), q = RQ(ctx);
-        strip.update(slots, q, (id) => (id.startsWith('u:') ? upgradeName(id) : TECHS[id]?.name ?? id), undefined, ctx, (id) => (id.startsWith('u:') ? upgradeItem(ctx, id)?.cost() : TECHS[id]?.cost));
         for (const id of IDS) {
           const r = rows.get(id)!;
           const show = available(ctx, id) && !q.includes(id);
