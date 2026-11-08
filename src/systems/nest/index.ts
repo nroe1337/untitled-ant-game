@@ -564,19 +564,31 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
 
   drawQueen(c, shaftX, qy, look, t);
 
-  // workers walk real paths: down the shaft, along a side tunnel to a chamber, and back
+  // Workers go about the nest: each one rests a while in a chamber, then walks the real tunnels
+  // (out to the shaft, along it, into the next chamber). Only a few trips go to the entrance.
   const ants = Math.min(48, Math.floor(ctx.res.amt('ant')));
   const y0 = surface ? 2 : 18;
-  const stops = [...spots, { x: shaftX, y: qy - Math.ceil(qs.h / 2) - 1 }]; // every chamber, plus a visit to the queen
+  const entrance = { x: shaftX, y: y0, w: 0 };
+  const rooms = [...spots.map((p) => ({ x: p.x, y: p.y - 1, w: 14 })), { x: shaftX, y: qy - Math.ceil(qs.h / 2) - 1, w: 6 }];
+  const hash = (a: number, b: number) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0; };
+  const stopFor = (i: number, k: number) => { const h = hash(i, k); return h % 8 === 0 || !rooms.length ? entrance : rooms[(h >>> 3) % rooms.length]; };
   for (let i = 0; i < ants; i++) {
-    const speed = 6 + (i % 5);
-    const spot = stops[i % stops.length];
-    const down = spot.y - y0, side = Math.abs(spot.x - shaftX);
-    const len = down + side;
-    let d = (i * 37 + t * speed) % (2 * len);
-    if (d > len) d = 2 * len - d;                       // walking back
-    const x = d <= down ? shaftX - 1 : shaftX - 1 + Math.sign(spot.x - shaftX) * (d - down);
-    const y = d <= down ? y0 + d : spot.y - 1;
+    const leg = 12 + (i % 7);                            // seconds per leg: rest, then walk
+    const tt = t + i * 3.7, k = Math.floor(tt / leg), f = (tt % leg) / leg;
+    const A = stopFor(i, k), B = stopFor(i, k + 1);
+    let x: number, y: number;
+    const rest = 0.45;
+    if (f < rest || (A.x === B.x && A.y === B.y)) {      // resting in a chamber, pottering about
+      x = A.x - 1 + Math.round(Math.sin(t * 0.7 + i * 1.3) * A.w);
+      y = A.y;
+    } else {
+      // walk: A -> shaft, shaft from A.y to B.y, shaft -> B
+      const a1 = Math.abs(A.x - shaftX), a2 = Math.abs(B.y - A.y), a3 = Math.abs(B.x - shaftX);
+      let d = ((f - rest) / (1 - rest)) * (a1 + a2 + a3);
+      if (d <= a1) { x = A.x + Math.sign(shaftX - A.x) * d - 1; y = A.y; }
+      else if ((d -= a1) <= a2) { x = shaftX - 1; y = A.y + Math.sign(B.y - A.y) * d; }
+      else { d -= a2; x = shaftX + Math.sign(B.x - shaftX) * d - 1; y = B.y; }
+    }
     rect(c, x, y, 2, 2, PAL.bone);
   }
 }
