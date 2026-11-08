@@ -162,7 +162,7 @@ export const nest: GameSystem = {
         canvas = el('canvas.nestview', { width: 320, height: 160, 'aria-label': 'Cross-section of your nest' }) as HTMLCanvasElement;
         progress = el('p.muted');
         extra = el('p.muted');
-        grid = el('div.tilegroups');
+        grid = el('div.tilegroups.compact');
         const sections = SECTIONS.map(([name, ids]) => {
           const tiles = el('div.tiles'), box = el('div.tilegroup', { hidden: true }, el('div.tilehead', {}, name), tiles);
           grid.append(box);

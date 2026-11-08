@@ -292,3 +292,12 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tilegroup[hidden] { display: none; }
 .tilehead { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .nestscroll.whole { max-height: none; overflow: visible; }
+/* Nest: compact chamber grid, a heading per row, so the nest view stays in sight */
+.tilegroups.compact { gap: 6px; max-width: none; margin-bottom: 10px; }
+.tilegroups.compact .tilegroup { grid-template-columns: 92px minmax(0, 1fr); align-items: start; gap: 8px; }
+.tilegroups.compact .tilehead { font-size: 10px; padding-top: 7px; }
+.tilegroups.compact .tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; max-width: none; }
+.tilegroups.compact .action.tile { min-height: 28px; padding: 4px 26px 4px 8px; font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+.tilegroups.compact .action.tile .badge { font-size: 11px; line-height: 14px; min-width: 20px; }
+@media (hover: none) { .tilegroups.compact .action.tile { padding: 4px 24px 4px 8px; } .tilegroups.compact .action.tile .cost { font-size: 10px; } }
+@media (max-width: 520px) { .tilegroups.compact .tilegroup { grid-template-columns: 1fr; gap: 3px; } .tilegroups.compact .tilehead { padding-top: 2px; } }
