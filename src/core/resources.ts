@@ -157,7 +157,7 @@ export function fmt(n: number, integer = false) {
   if (integer) return Math.floor(n).toString();
   if (a >= 100) return n.toFixed(0);
   if (a >= 10) return n.toFixed(1);
-  if (a > 0 && a < 0.01) return n.toFixed(3); // tiny rates, e.g. one slow worker
+  if (a > 0 && a < 0.01) return n.toFixed(Math.min(6, 1 - Math.floor(Math.log10(a)))); // tiny rates: two significant digits, e.g. 0.0040
   return n.toFixed(2);
 }
 
