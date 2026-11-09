@@ -87,7 +87,7 @@ button { font: inherit; color: inherit; }
 .bar .fill { display: block; height: 100%; width: 0; background: var(--good); transition: width .1s linear; }
 
 .jobs { display: grid; gap: 6px; }
-.job { display: grid; grid-template-columns: 110px auto auto auto 1fr; gap: 8px; align-items: center; animation: appear .5s ease-out; }
+.job { display: grid; grid-template-columns: 110px auto 7ch auto 1fr; gap: 8px; align-items: center; animation: appear .5s ease-out; }
 .jname { font-weight: 600; }
 
 .build { display: grid; gap: 8px; }
