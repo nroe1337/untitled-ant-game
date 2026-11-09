@@ -66,7 +66,7 @@ const away = (ctx: Context) => onTrail(ctx) + (S(ctx).reserve ? S(ctx).reserved 
 const ready = (ctx: Context) => idle(ctx) + (S(ctx).reserve ? S(ctx).reserved ?? 0 : 0);
 const idle = (ctx: Context) => {
   const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-  const busy = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions').reduce((a, [, b]) => a + b, 0);
+  const busy = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions' && !k.startsWith('job:')).reduce((a, [, b]) => a + b, 0);
   return Math.floor(ctx.res.amt('ant')) - assigned - busy - away(ctx);
 };
 const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns');
@@ -137,6 +137,8 @@ function befall(ctx: Context, p: Party) {
   ctx.res.add('ant', -n);
   s.perished = (s.perished ?? 0) + n;
   p.ants -= n;
+  // with Reserve workers on, idle workers step in for the ones lost so the next party is still full
+  if (s.reserve) s.reserved = (s.reserved ?? 0) + Math.max(0, Math.min(n, idle(ctx)));
   if (f.wipe) {
     const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
     ctx.log(`The party to ${place} is gone. ${why} ${n} workers lost.`, 'warn');
@@ -220,7 +222,7 @@ export const expeditions: GameSystem = {
     }
     if (s.reserve) {
       // starvation or raids can leave fewer workers than are held back
-      const others = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions').reduce((a, [, b]) => a + b, 0);
+      const others = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions' && !k.startsWith('job:')).reduce((a, [, b]) => a + b, 0);
       const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
       s.reserved = Math.max(0, Math.min(s.reserved ?? 0, Math.floor(ctx.res.amt('ant')) - onTrail(ctx) - others - assigned));
     } else s.reserved = 0;
@@ -274,7 +276,7 @@ export const expeditions: GameSystem = {
         markWrap = el('label', { for: 'exp-automark', title: 'Mark the trail before every trip, whenever you have the pheromone for it.' }, markBox, ' Mark every trip');
         reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
         reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) s.reserved = 0; });
-        reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced from idle workers." },
+        reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced from idle workers right away." },
           reserveBox, ' Reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
