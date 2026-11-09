@@ -155,9 +155,7 @@ function finish(ctx: Context, p: Party) {
   s.lastDest = p.dest;
   // a party lost on the trail still holds its column until its time is up
   if (p.ants <= 0) { s.runs += 1; return; }
-  // the haul is what the full party would carry, cut by the share of it that died on the trail
-  const sent = p.sent ?? p.ants;
-  const mult = partyMult(sent) * (p.ants / sent) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
     const n = Math.round((lo + Math.random() * (hi - lo)) * mult);
@@ -174,6 +172,7 @@ function finish(ctx: Context, p: Party) {
   }
   s.runs += 1;
   ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
+  const sent = p.sent ?? p.ants;
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: sent, lost: sent - p.ants });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
