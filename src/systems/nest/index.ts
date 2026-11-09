@@ -255,6 +255,7 @@ function mix(a: string, b: string, f: number) {
 // colours for the later chambers, kept here so the shared palette stays small
 const TWIG = '#7a5a38', RESIN_DARK = '#6b3f16', WARM_DIM = '#4a2a18', DEW = '#b8d4e0', MEMORY = '#8fb4c9', JELLY = '#e8d27a';
 const DEEP = '#1f3442', LEAF = '#4f6a2e', LEAF_RIB = '#6f8a3a';
+const LARVA = '#d9cfae', FOOD_DARK = '#6f8044', WASTE_DARK = '#3a332b', HUSK_DARK = '#5a4f9a';
 const CHITIN = '#a8452e', CAP = '#8a6a5a', APHID = '#a8c060', CRUMB = '#c8a878', CRUST = '#9a6e40', PAPER = '#9e988c';
 /** 0..1 and back, smoothly, over `period` seconds. */
 const wave = (t: number, period: number, phase = 0) => 0.5 - 0.5 * Math.cos(((t + phase) / period) * Math.PI * 2);
@@ -328,16 +329,19 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         for (let e = 0; e < 3; e++) { const sx = cx - 9 + e * 7 + ((k + e) % 2); rect(c, sx, y + 1, 3, 2, ANT_TINT); rect(c, sx + 3, y + 2, 1, 1, ANT_TINT); }
         break;
       }
-      case 'brood': { // eggs in rows, more as the brood grows
+      case 'brood': { // the brood chamber: eggs in a cluster, a curled larva or two, and a nurse leaning over them
         blob(c, cx, y, 16, 5, PAL.hole);
-        const n = Math.min(10, Math.ceil(broodCount / Math.max(1, count(ctx, 'brood'))) || 1);
-        for (let e = 0; e < n; e++) rect(c, cx - 12 + (e % 5) * 5, y - 2 + Math.floor(e / 5) * 3, 2, 2, PAL.bone);
+        const n = Math.min(10, Math.max(3, Math.ceil(broodCount / Math.max(1, count(ctx, 'brood')))));
+        for (let e = 0; e < n; e++) rect(c, cx - 11 + (e % 5) * 4, y + 1 - Math.floor(e / 5) * 2, 2, 2, e % 3 === 2 ? LARVA : PAL.bone);
+        rect(c, cx + 9, y - 1, 3, 2, ANT_TINT); rect(c, cx + 8, y, 1, 1, ANT_TINT); rect(c, cx + 10, y + 1, 1, 2, ANT_TINT); // the nurse
         break;
       }
-      case 'store': { // a pile of food that rises and falls with your stores
+      case 'store': { // a food store: a heap that rises and falls with your stores, seeds and crumbs mixed in
         blob(c, cx, y, 16, 5, PAL.hole);
         const h = Math.max(1, Math.round(fillFood * 5));
-        rect(c, cx - 10, y + 4 - h, 20, h, PAL.food);
+        for (let r = 0; r < h; r++) rect(c, cx - 11 + r, y + 4 - r - 1, 22 - r * 2, 1, r % 2 ? FOOD_DARK : PAL.food);
+        if (h > 1) { rect(c, cx - 6, y + 3 - h + 1, 2, 1, PAL.seed); rect(c, cx + 3, y + 3 - Math.max(1, h - 1), 2, 1, CRUMB); }
+        rect(c, cx - 14, y + 1, 2, 1, PAL.food); rect(c, cx + 12, y + 2, 1, 1, PAL.food); // a few spilled bits
         break;
       }
       case 'granary': { // seeds with sprouts that sway
@@ -346,13 +350,18 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         for (let e = 0; e < 3; e++) { const w = wave(t, 3, e * 0.9 + k); rect(c, cx - 8 + e * 8, y - 1, 1, 3, PAL.food); rect(c, cx - 8 + e * 8, y - 3, 1, 2, mix(PAL.hole, PAL.food, 1 - w)); rect(c, cx - 7 + e * 8, y - 3, 1, 2, mix(PAL.hole, PAL.food, w)); }
         break;
       }
-      case 'gallery': // a big chamber sealed with an amber resin rim
+      case 'gallery': { // a resin gallery: a big chamber sealed with an amber rim, a few drips hanging from the roof
         blob(c, cx, y, 22, 7, PAL.amber);
         blob(c, cx, y, 19, 5, PAL.hole);
+        rect(c, cx - 17, y - 5, 34, 1, RESIN_DARK);
+        for (const [dx, h] of [[-11, 2], [-3, 3], [6, 1], [13, 2]] as const) { rect(c, cx + dx, y - 4, 1, h, PAL.amber); rect(c, cx + dx, y - 4 + h, 1, 1, mix(PAL.amber, PAL.hole, 0.5)); }
+        rect(c, cx - 15, y + 3, 30, 1, mix(PAL.hole, PAL.amber, 0.25)); // the sealed floor
         break;
+      }
       case 'gland': { // a scent chamber whose motes slowly glow and fade, out of step with each other
         blob(c, cx, y, 14, 5, PAL.hole);
-        const glow = (phase: number) => mix(PAL.hole, PAL.scent, 0.5 - 0.5 * Math.cos((t * 0.8 + k * 0.37 + phase) * Math.PI * 2 / 2.4));
+        const glow = (phase: number) => mix(PAL.hole, PAL.scent, 0.2 + 0.5 * (0.5 - 0.5 * Math.cos((t * 0.8 + k * 0.37 + phase) * Math.PI * 2 / 2.4)));
+        for (let e = 0; e < 7; e++) rect(c, cx - 12 + e * 4, y + 3 - (e % 2), 2, 1, mix(PAL.hole, PAL.scent, 0.3)); // a scent trail laid along the floor
         rect(c, cx - 1, y - 1, 2, 2, mix(PAL.hole, PAL.scent, 0.55 + 0.45 * Math.sin((t * 0.8 + k) * Math.PI * 2 / 3)));
         rect(c, cx - 7, y - 3, 2, 2, glow(0));
         rect(c, cx + 5, y + 1, 2, 2, glow(1.2));
@@ -360,11 +369,14 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         rect(c, cx - 10, y + 1, 1, 1, glow(1.8));
         break;
       }
-      case 'barracks': { // a guard post with soldiers standing in line
+      case 'barracks': { // a guard post: a squared chamber, a row of sharpened twig stakes, and soldiers standing in line
         rect(c, cx - 16, y - 5, 32, 10, PAL.hole);
         rect(c, cx - 16, y - 6, 32, 1, PAL.dirt);
-        const n = Math.min(6, Math.ceil(soldiers / Math.max(1, count(ctx, 'barracks'))));
-        for (let e = 0; e < n; e++) rect(c, cx - 13 + e * 5, y - 2, 2, 4, PAL.you);
+        const n = Math.max(2, Math.min(6, Math.ceil(soldiers / Math.max(1, count(ctx, 'barracks')))));
+        for (let e = 0; e < n; e++) { rect(c, cx - 13 + e * 5, y - 2, 2, 4, PAL.you); rect(c, cx - 13 + e * 5, y - 3, 2, 1, mix(PAL.you, PAL.bone, 0.3)); }
+        const sx = lane > 0 ? cx - 16 : cx + 14; // stakes on the side facing the shaft
+        for (let e = 0; e < 3; e++) { rect(c, sx, y - 3 + e * 3, 2, 1, TWIG); rect(c, sx + (lane > 0 ? -1 : 2), y - 3 + e * 3, 1, 1, PAL.bone); }
+        rect(c, cx - 14, y + 4, 28, 1, PAL.dirt);
         break;
       }
       case 'fungus': { // a fungus bed: green tufts on a mat of cut leaves, grey if mould has it
@@ -374,10 +386,13 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         for (let e = 0; e < 5; e++) { const col = mouldy ? '#8a8a80' : PAL.food; rect(c, cx - 10 + e * 5, y - 2, 3, 3, col); rect(c, cx - 10 + e * 5, y - 3, 3, 1, mix(PAL.hole, col, mouldy ? 1 : 0.35 + 0.65 * wave(t, 4, e * 0.8 + k))); }
         break;
       }
-      case 'midden': // a growing heap of waste
+      case 'midden': { // the midden: a layered heap of waste, husks and old food, kept well away from the brood
         blob(c, cx, y, 15, 5, PAL.hole);
-        for (let r = 0; r < 5; r++) rect(c, cx - 2 - r * 2, y - 2 + r, 4 + r * 4, 1, PAL.waste);
+        for (let r = 0; r < 5; r++) rect(c, cx - 2 - r * 2, y - 2 + r, 4 + r * 4, 1, r % 2 ? WASTE_DARK : PAL.waste);
+        rect(c, cx - 5, y + 1, 2, 1, FOOD_DARK); rect(c, cx + 4, y, 2, 1, CHITIN); rect(c, cx + 1, y + 2, 1, 1, PAL.bone);
+        rect(c, cx - 11, y + 3, 1, 1, PAL.waste); rect(c, cx + 11, y + 3, 2, 1, PAL.waste);
         break;
+      }
       case 'silkroom': // a silk loft: pale threads hung from the roof
         blob(c, cx, y, 15, 5, PAL.hole);
         for (let e = 0; e < 6; e++) { const h = 3 + ((e + k) % 3); rect(c, cx - 11 + e * 4, y - 4, 1, h, PAL.bone); rect(c, cx - 11 + e * 4, y - 4 + h, 1, 1, mix(PAL.hole, PAL.bone, wave(t, 5, e * 0.7))); }
@@ -389,14 +404,22 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         rect(c, cx + 9, y, 4, 3, PAL.amber);
         break;
       }
-      case 'library': // the hall of elders: rows of pale scent marks on the walls
+      case 'library': { // the hall of elders: scent marks along the walls, and two old workers reading them
         blob(c, cx, y, 17, 6, PAL.hole);
-        for (let r = 0; r < 2; r++) for (let e = 0; e < 6; e++) if ((e + r + k) % 3) rect(c, cx - 12 + e * 5, y - 3 + r * 4, 3, 1, PAL.bone);
+        for (let r = 0; r < 2; r++) for (let e = 0; e < 6; e++) if ((e + r + k) % 3) rect(c, cx - 13 + e * 5, y - 4 + r * 3, 2 + ((e + r) % 2), 1, r ? MEMORY : PAL.bone);
+        for (const ex of [cx - 6, cx + 5]) { rect(c, ex, y + 2, 3, 2, ANT_TINT); rect(c, ex + 3, y + 2, 1, 1, ANT_TINT); rect(c, ex + 3, y + 1, 1, 1, mix(PAL.hole, ANT_TINT, 0.6)); } // antennae raised to the wall
         break;
-      case 'husks': // walls shored with raider shells
+      }
+      case 'husks': { // the hall of husks: walls shored up with curved raider shells, dark seams between them
         blob(c, cx, y, 17, 6, PAL.hole);
-        for (let e = 0; e < 4; e++) { rect(c, cx - 15 + e * 9, y - 5, 6, 2, PAL.rival); rect(c, cx - 14 + e * 9, y + 4, 5, 2, PAL.rival); }
+        for (let e = 0; e < 4; e++) {
+          const x = cx - 15 + e * 8;
+          rect(c, x + 1, y - 5, 5, 1, PAL.rival); rect(c, x, y - 4, 7, 1, PAL.rival); rect(c, x + 1, y - 3, 5, 1, HUSK_DARK);
+          rect(c, x + 1, y + 4, 5, 1, PAL.rival); rect(c, x, y + 3, 7, 1, HUSK_DARK);
+        }
+        rect(c, cx - 2, y - 1, 4, 2, mix(PAL.rival, PAL.bone, 0.3)); // one whole head, kept as a trophy
         break;
+      }
       case 'harbour': { // a harbour: a still pool with a twig jetty, a leaf raft tied up, and ripples that come and go
         rect(c, cx - 18, y - 5, 36, 11, PAL.hole);
         rect(c, cx - 18, y + 1, 36, 5, PAL.water);
@@ -413,9 +436,11 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         rect(c, rx + 1, y + 1, 8, 1, mix(PAL.water, DEEP, 0.6)); // the raft's shadow
         break;
       }
-      case 'hall': { // a long sleeping hall: a wide low chamber with resting workers in a row
+      case 'hall': { // a worker hall: a long low chamber held up by two pillars, workers asleep in a row
         rect(c, cx - 18, y - 3, 36, 7, PAL.hole);
-        for (let i = 0; i < 6; i++) rect(c, cx - 15 + i * 6, y + 1, 3, 1, PAL.bone);
+        rect(c, cx - 18, y - 4, 36, 1, mix(PAL.hole, PAL.dirt, 0.5));
+        for (const px of [cx - 7, cx + 6]) rect(c, px, y - 3, 2, 7, PAL.dirt);
+        for (let i = 0; i < 6; i++) { const sx = cx - 16 + i * 6 + (i >= 2 ? 2 : 0) + (i >= 4 ? 2 : 0); rect(c, sx, y + 1, 3, 2, ANT_TINT); rect(c, sx + 3, y + 2, 1, 1, ANT_TINT); }
         break;
       }
       case 'waxworks': // a wax store: a honeycomb of yellow cells
@@ -479,9 +504,11 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         rect(c, cx + 2, y + 1, 3, 1, mix(RESIN_DARK, PAL.amber, 0.25 + 0.6 * (1 - sheen)));
         break;
       }
-      case 'memory': { // a memory vault: tall columns of stored scent, pale blue
+      case 'memory': { // a memory vault: tall columns of stored scent on stone footings, one slowly brightening at a time
         rect(c, cx - 16, y - 5, 32, 10, PAL.hole);
-        for (let e = 0; e < 6; e++) { const h = 4 + ((e * 3 + k) % 4); rect(c, cx - 14 + e * 5, y + 4 - h, 3, h, MEMORY); }
+        rect(c, cx - 15, y + 4, 30, 1, PAL.stone);
+        const lit = Math.floor(t / 4 + k) % 6, glow = 0.5 - 0.5 * Math.cos(((t / 4 + k) % 1) * Math.PI * 2);
+        for (let e = 0; e < 6; e++) { const h = 4 + ((e * 3 + k) % 4); rect(c, cx - 14 + e * 5, y + 4 - h, 3, h, e === lit ? mix(MEMORY, PAL.bone, 0.35 * glow) : MEMORY); rect(c, cx - 14 + e * 5, y + 4 - h, 3, 1, mix(MEMORY, PAL.bone, 0.4)); }
         break;
       }
       case 'nursery': { // the royal nursery: three alcoves, each with a big royal larva and a bead of jelly
