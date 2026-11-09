@@ -101,7 +101,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   } },
   { id: 'allhands', name: 'All hands', desc: 'Have no idle workers while 100 or more have jobs.', test: (c) => {
     const assigned = Object.values((st(c).jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-    const busy = Object.values(c.busy).reduce((a, b) => a + b, 0);
+    const busy = Object.entries(c.busy).reduce((a, [k, b]) => (k.startsWith('job:') ? a : a + b), 0);
     return assigned >= 100 && Math.floor(c.res.amt('ant')) - assigned - busy <= 0;
   } },
   { id: 'council', name: "Elders' council", desc: 'Have more elders than foragers, with at least 10 elders.', test: (c) => job(c, 'elder') >= 10 && job(c, 'elder') > job(c, 'forager') },
@@ -153,6 +153,35 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'antfarm', name: 'Ant farm', desc: 'Leave the colony paused for 10 minutes.', hidden: true, test: () => false },
   { id: 'patient', name: 'The patient queen', desc: 'Fly from a colony where the queen never laid by hand.', test: () => false },
   { id: 'fiddly', name: 'Overthinking it', desc: 'Move workers between jobs 500 times in one colony.', test: (c) => T(c).jobChanges >= 500 },
+  // Stores, building and research
+  { id: 'pantry', name: 'A full pantry', desc: 'Have 1,000 food at once.', test: (c) => c.res.amt('food') >= 1000 },
+  { id: 'dirtpile', name: 'Mountain of dirt', desc: 'Have 500 soil at once.', test: (c) => c.res.amt('soil') >= 500 },
+  { id: 'wellread', name: 'Well read', desc: 'Have 1,000 knowledge at once.', test: (c) => c.res.amt('knowledge') >= 1000 },
+  { id: 'sticks', name: 'Bundle of sticks', desc: 'Have 100 twigs at once.', test: (c) => c.res.has('twig') && c.res.amt('twig') >= 100 },
+  { id: 'rooms10', name: 'Moving in', desc: 'Dig 10 chambers in one colony.', test: (c) => (st(c).nest?.order?.length ?? 0) >= 10 },
+  { id: 'warren', name: 'A warren', desc: 'Dig 100 chambers in one colony.', test: (c) => (st(c).nest?.order?.length ?? 0) >= 100 },
+  { id: 'studious', name: 'Studious', desc: 'Learn 10 researches in one colony.', test: (c) => techs(c).length >= 10 },
+  { id: 'scholars', name: 'A colony of scholars', desc: 'Learn 30 researches in one colony.', test: (c) => techs(c).length >= 30 },
+  { id: 'jelly10', name: 'Royal treatment', desc: 'Have 10 royal jelly at once.', test: (c) => c.res.has('jelly') && c.res.amt('jelly') >= 10 },
+  { id: 'spun', name: 'Spinning', desc: 'Make your first silk.', test: (c) => c.res.has('silk') && c.res.amt('silk') >= 1 },
+  // Jobs and castes
+  { id: 'eyes', name: 'Eyes everywhere', desc: 'Have 10 scouts at once.', test: (c) => job(c, 'scout') >= 10 },
+  { id: 'army', name: 'A standing army', desc: 'Have 50 soldiers at once.', test: (c) => job(c, 'soldier') >= 50 },
+  { id: 'bigheads', name: 'Big heads', desc: 'Have 5 majors at once.', test: (c) => job(c, 'major') >= 5 },
+  { id: 'larder', name: 'Living larder', desc: 'Have every replete slot filled.', test: (c) => job(c, 'replete') >= 8 },
+  // Surface, map and hunts
+  { id: 'claim5', name: 'Staking a claim', desc: 'Hold 5 tiles on the map.', test: (c) => ((st(c).map?.tiles ?? []) as { o?: string }[]).filter((t) => t.o === 'you').length >= 5 },
+  { id: 'claim25', name: 'Landholders', desc: 'Hold 25 tiles on the map.', test: (c) => ((st(c).map?.tiles ?? []) as { o?: string }[]).filter((t) => t.o === 'you').length >= 25 },
+  { id: 'outpost', name: 'The frontier', desc: 'Build an outpost.', test: (c) => ((st(c).map?.tiles ?? []) as { outpost?: boolean }[]).some((t) => t.outpost) },
+  { id: 'trips25', name: 'Seasoned trail', desc: 'Send 25 expeditions in one colony.', test: (c) => (st(c).expeditions?.runs ?? 0) >= 25 },
+  { id: 'toll', name: 'The trail takes its toll', desc: 'Lose 50 workers on the trail in one colony.', test: (c) => (st(c).expeditions?.perished ?? 0) >= 50 },
+  { id: 'lvl100', name: 'Living legend', desc: 'Raise the champion to level 100.', test: (c) => (st(c).champion?.level ?? 0) >= 100 },
+  // Numbers
+  { id: 'nice', name: 'Nice', desc: 'Have exactly 69 workers.', hidden: true, test: (c) => Math.floor(c.res.amt('ant')) === 69 },
+  { id: 'blaze', name: 'Blaze it', desc: 'Have exactly 420 food.', hidden: true, test: (c) => Math.floor(c.res.amt('food')) === 420 },
+  { id: 'jackpot', name: 'Jackpot', desc: 'Have exactly 777 soil.', hidden: true, test: (c) => Math.floor(c.res.amt('soil')) === 777 },
+  { id: 'leet', name: 'Leet', desc: 'Have exactly 1,337 knowledge.', hidden: true, test: (c) => Math.floor(c.res.amt('knowledge')) === 1337 },
+  { id: 'answer', name: 'The answer', desc: 'Dig exactly 42 chambers.', hidden: true, test: (c) => (st(c).nest?.order?.length ?? 0) === 42 },
 ];
 
 function earn(ctx: Context, id: string) {
