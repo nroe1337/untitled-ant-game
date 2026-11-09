@@ -58,7 +58,14 @@ const fmtEach = (n: number) => (Math.abs(n) < 1 && n !== 0 ? String(Number(n.toP
 
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
 /** Most workers a job can take. */
-const jobMax = (ctx: Context, id: string) => (id === 'replete' ? CASTES.replete.max : id === 'major' ? Math.floor((S(ctx).assigned.soldier ?? 0) / CASTES.major.perSoldiers) : Infinity);
+const jobMax = (ctx: Context, id: string) => {
+  if (id === 'replete') return CASTES.replete.max;
+  if (id === 'major') return Math.floor((S(ctx).assigned.soldier ?? 0) / CASTES.major.perSoldiers);
+  const slot = COLONY.jobSlots[id];
+  if (!slot) return Infinity;
+  const built = (ctx.state.nest as { built?: Record<string, number> } | undefined)?.built?.[slot[0]] ?? 0;
+  return slot[2] + slot[1] * built;
+};
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
 const busySum = (ctx: Context) => Object.values(ctx.busy).reduce((a, b) => a + b, 0);
 /** Soldiers and majors at home with no raid on: they hunt. A campaign takes all of them away. */
@@ -298,6 +305,8 @@ export const jobs: GameSystem = {
             if (offDutyFighters(ctx)) parts.push(`+${tot(JOBS.forager.food * WAR.battle.offDuty * s.assigned.soldier * jobMult(ctx, 'forager'))} food/s hunting`);
           }
           r.out.textContent = parts.join(', ');
+          const slot = COLONY.jobSlots[j.id];
+          if (slot) r.row.dataset.tip += `\nSlots: ${jobMax(ctx, j.id)}. Each ${(NEST.chambers as Record<string, { name: string }>)[slot[0]]?.name.toLowerCase() ?? slot[0]} adds ${slot[1]}.`;
         }
         const busy = busySum(ctx);
         const hungry = (s.hunger ?? 0) > 0 ? 'Workers are starving and will die one by one until food comes in.' : '';
