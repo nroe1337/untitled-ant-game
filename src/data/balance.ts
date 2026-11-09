@@ -111,7 +111,7 @@ export const NEST = {
     twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'tech:surface' },
     seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+15 seed storage', matCap: { seed: 15 }, needs: 'tech:seeds' },
     resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, needs: 'tech:resin' },
-    memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+80 knowledge storage, elders +3% speed', knowCap: 80, mods: { 'job:elder': 0.03 }, needs: 'tech:songs' },
+    memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+60 knowledge storage, elders +3% speed', knowCap: 60, mods: { 'job:elder': 0.03 }, needs: 'tech:songs' },
     nursery:   { name: 'Royal nursery',    base: { soil: 60, food: 40 }, growth: 1.32,          desc: '+6 brood space', broodCap: 6, needs: 'tech:royal' },
     chartroom: { name: 'Chart room',       base: { soil: 60, pheromone: 15 }, growth: 1.32,     desc: 'Expeditions +3% loot', mods: { expLoot: 0.03 }, max: 15, needs: 'tech:cartography' },
     training:  { name: 'Training ground',  base: { soil: 80, chitin: 4 }, growth: 1.32,         desc: 'Soldiers +3% strength', mods: { soldierPower: 0.03 }, max: 20, needs: 'tech:martial' },
@@ -301,6 +301,16 @@ export const RESEARCH = {
     { id: 'orbital', name: 'Age of Orbit', note: 'Up.' },
   ],
 };
+
+/**
+ * Memory vaults raise the knowledge cap quickly in the middle of the Age of Forage, so the
+ * research after them costs more knowledge to keep the cap meaningful.
+ */
+export const LATE_KNOWLEDGE = { from: 200, mult: 1.3 };
+for (const t of Object.values(RESEARCH.techs)) {
+  const k = t.cost.knowledge;
+  if (t.age !== 'dirt' && k !== undefined && k >= LATE_KNOWLEDGE.from) t.cost.knowledge = Math.round(k * LATE_KNOWLEDGE.mult / 10) * 10;
+}
 
 /** Fungus farming. Beds come from the Fungus garden chamber. */
 export const GARDEN = {
