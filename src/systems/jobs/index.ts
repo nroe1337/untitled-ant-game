@@ -48,7 +48,7 @@ const TECH_MODS: Record<string, [string, number]> = {
 };
 
 interface JobsState {
-  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; warned?: boolean; lowest?: number;
+  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; lowest?: number;
   /** The queen's decree (an archive accord): the worker mix new workers are sent to match. Kept across colonies. */
   decree?: Record<string, number>; decreeOn?: boolean;
 }
@@ -142,7 +142,18 @@ export const jobs: GameSystem = {
       s.assigned[j.id] -= take; over -= take;
     }
 
-    for (const j of JOB_DEFS) s.assigned[j.id] = Math.min(s.assigned[j.id], jobMax(ctx, j.id)); // older saves may hold more
+    // over a job's limit (older saves, or majors after soldiers leave): step down. Majors wait on the bench
+    // and step back up by themselves once there are soldiers enough again.
+    for (const j of JOB_DEFS) {
+      const over = s.assigned[j.id] - jobMax(ctx, j.id);
+      if (over <= 0) continue;
+      s.assigned[j.id] -= over;
+      if (j.id === 'major') s.bench = (s.bench ?? 0) + over;
+    }
+    if (s.bench) {
+      const back = Math.max(0, Math.min(s.bench, jobMax(ctx, 'major') - s.assigned.major, idleAnts(ctx)));
+      s.assigned.major += back; s.bench -= back;
+    }
     followDecree(ctx);
 
     // upkeep. Whatever can't be paid builds up as hunger, and hunger slowly kills workers.
@@ -199,7 +210,7 @@ export const jobs: GameSystem = {
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
       if (d > 0) d = Math.max(0, Math.min(d, idleAnts(ctx), jobMax(ctx, id) - s.assigned[id]));
-      else d = -Math.min(-d, s.assigned[id]);
+      else { d = -Math.min(-d, s.assigned[id]); if (id === 'major') s.bench = 0; }
       s.assigned[id] += d;
       if (d) ctx.bus.emit('jobs:change');
     };
