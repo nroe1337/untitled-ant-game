@@ -20,6 +20,8 @@ type ChamberDef = {
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 /** How the chamber buttons are grouped on the Nest tab. Anything not listed goes in the last group. */
+/** Walking ants: a soft amber-tan, so they read as ants instead of white specks. */
+const ANT_TINT = '#d6b98c';
 const SECTIONS: [string, string[]][] = [
   ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall']],
   ['Brood', ['brood', 'nursery', 'warmth']],
@@ -617,6 +619,6 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       else if ((d -= a1) <= a2) { x = shaftX - 1; y = A.y + Math.sign(B.y - A.y) * d; }
       else { d -= a2; x = shaftX + Math.sign(B.x - shaftX) * d - 1; y = B.y; }
     }
-    rect(c, x, y, 2, 2, PAL.bone);
+    rect(c, x, y, 2, 2, ANT_TINT);
   }
 }
