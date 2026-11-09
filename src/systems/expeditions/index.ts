@@ -154,6 +154,7 @@ function finish(ctx: Context, p: Party) {
   const d = X.destinations.find((x) => x.id === p.dest)!;
   s.lastDest = p.dest;
   // a party lost on the trail still holds its column until its time is up
+  ctx.ping('expeditions');
   if (p.ants <= 0) { s.runs += 1; return; }
   const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   const got: string[] = [];

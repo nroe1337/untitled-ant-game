@@ -35,6 +35,8 @@ export interface Context {
    * and only flags starting with "legacy:" survive. The page reloads into the new colony.
    */
   rebirth(): void;
+  /** Light a system's tab with the red dot, e.g. when a party it sent comes home. Ignored while that tab is open. */
+  ping(id: string): void;
 }
 
 export interface Panel {

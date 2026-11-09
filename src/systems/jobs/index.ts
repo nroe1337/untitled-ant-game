@@ -67,7 +67,8 @@ const jobMax = (ctx: Context, id: string) => {
   return slot[2] + slot[1] * built;
 };
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
-const busySum = (ctx: Context) => Object.values(ctx.busy).reduce((a, b) => a + b, 0);
+/** busy['job:<id>'] counts workers of that job who are away (they make nothing), not idle ones. */
+const busySum = (ctx: Context) => Object.entries(ctx.busy).reduce((a, [k, b]) => (k.startsWith('job:') ? a : a + b), 0);
 /** Soldiers and majors at home with no raid on: they hunt. A campaign takes all of them away. */
 const offDutyFighters = (ctx: Context) => {
   const w = ctx.state.war as { battle?: unknown; campaign?: unknown } | undefined;
@@ -197,7 +198,7 @@ export const jobs: GameSystem = {
     const mult = starving ? COLONY.starvingPenalty : 1;
 
     for (const j of JOB_DEFS) {
-      const n = s.assigned[j.id] ?? 0;
+      const n = Math.max(0, (s.assigned[j.id] ?? 0) - (ctx.busy['job:' + j.id] ?? 0));
       if (!n) continue;
       ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
@@ -312,7 +313,7 @@ export const jobs: GameSystem = {
         const hungry = (s.hunger ?? 0) > 0 ? 'Workers are starving and will die one by one until food comes in.' : '';
         upkeepEl.textContent = hungry + ` The colony eats ${fmt(totalAnts(ctx) * COLONY.antFoodPerSecond * upkeepMult(ctx))} food/s.` +
           ' Shift-click moves 10, Ctrl-click moves all.';
-        const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'claiming' ? 'Claiming land' : k === 'campaign' ? 'On campaign' : k, String(n)]);
+        const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'job:scout' ? 'Scouts claiming land' : k === 'campaign' ? 'On campaign' : k, String(n)]);
         census.replaceChildren(...[['Total workers', String(totalAnts(ctx))], ...away].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         census.hidden = !busy;
       },
