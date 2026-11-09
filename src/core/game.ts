@@ -6,6 +6,7 @@ import { el, costFocus } from './ui';
 import { queueOrder, setQueueOrder } from './options';
 import { queueDock, updateDock } from './queue';
 import { icon } from './sprites';
+import { RES_DESC } from '../data/balance';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
 interface Tab {
@@ -336,7 +337,7 @@ export class Game {
       const held = ctx.res.held(r.id);
       const rtip = r.sources.length && !r.stepped ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
       if ((row.rate.dataset.tip ?? '') !== rtip) row.rate.dataset.tip = rtip;
-      const tip = held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : '';
+      const tip = [RES_DESC[r.id] ?? '', held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : ''].filter(Boolean).join('\n');
       if ((row.row.dataset.tip ?? '') !== tip) { row.row.dataset.tip = tip; row.row.classList.toggle('held', held > 0); }
     }
 
