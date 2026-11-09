@@ -230,7 +230,7 @@ export class Game {
       el('p', {}, el('strong', {}, 'Formicarium'), el('span.muted', {}, ` · version ${__VERSION__} (${__BUILD_DATE__})`)),
       el('p', {}, 'An idle game about an ant colony. Start with one queen in the dark, dig a nest, raise workers, and grow out across the surface, the garden and beyond.'),
       el('p.muted', {}, 'Made with AI: much of the code and writing was produced with Claude, an AI model, and checked by a person. Mistakes are possible.'),
-      el('p', {}, 'Feedback: ', el('a', { href: 'mailto:nroe1337@gmail.com' }, 'nroe1337@gmail.com')),
+      el('p', {}, 'Feedback: ', el('a', { href: 'mailto:nroe1337@gmail.com' }, 'nroe1337@gmail.com'), ' · Discord: nroe1337'),
       el('div.row', {}, el('button.ghost', { type: 'button', onclick: () => box.remove() }, 'Close')));
     document.querySelector('.main')!.prepend(box);
   }
