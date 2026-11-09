@@ -152,7 +152,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   // Odd and playful
   { id: 'antfarm', name: 'Ant farm', desc: 'Leave the colony paused for 10 minutes.', hidden: true, test: () => false },
   { id: 'patient', name: 'The patient queen', desc: 'Fly from a colony where the queen never laid by hand.', test: () => false },
-  { id: 'fiddly', name: 'Overthinking it', desc: 'Move workers between jobs 100 times in one colony.', test: (c) => T(c).jobChanges >= 100 },
+  { id: 'fiddly', name: 'Overthinking it', desc: 'Move workers between jobs 500 times in one colony.', test: (c) => T(c).jobChanges >= 500 },
 ];
 
 function earn(ctx: Context, id: string) {
