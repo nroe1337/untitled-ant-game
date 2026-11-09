@@ -110,6 +110,8 @@ select { background: var(--raise); color: var(--fg); border: 1px solid var(--lin
 .savebox { border: 1px solid var(--line); background: var(--panel); padding: 12px; display: grid; gap: 8px; margin-bottom: 16px; }
 .savebox p { margin: 0; }
 .aboutbox a { color: var(--accent, inherit); }
+.overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.55); display: grid; place-items: center; padding: 16px; }
+.overlay .aboutbox { max-width: 460px; width: 100%; margin: 0; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
 .savebox textarea { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); font: 12px monospace; }
 
 @keyframes appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
