@@ -71,7 +71,7 @@ const HAPPENINGS: Happening[] = [
   { text: 'A worker falls asleep mid-step in the main shaft. Traffic flows around her.', when: (c) => ants(c) >= 15 },
   { text: 'Two diggers tunnel toward each other and meet almost exactly.', when: (c) => job(c, 'digger') >= 2 },
   { text: 'An old worker stops working. The young ones feed her anyway.', when: (c) => ants(c) >= 30 },
-  { text: 'The storeroom smells of seeds and dust.', when: (c) => (c.state.nest?.built?.storeroom ?? 0) >= 1 },
+  { text: 'The soil pit smells of damp earth and dust.', when: (c) => (c.state.nest?.built?.storeroom ?? 0) >= 1 },
   { text: 'A mite rides in on a forager. The groomers make short work of it.', when: has('surface') },
   { text: 'An earthworm tunnel crosses one of yours. It smells strange for days.', when: (c) => chambers(c) >= 8 },
   { text: 'Thunder. The soil hums. The brood is moved deeper, just in case.', when: has('surface') },
