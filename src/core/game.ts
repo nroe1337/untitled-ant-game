@@ -178,6 +178,7 @@ export class Game {
     const saveBtn = el('button.ghost', { type: 'button', onclick: () => { saveLocal(this.ctx, this.time); this.log('Saved.', 'info'); } }, 'Save');
     const exportBtn = el('button.ghost', { type: 'button', onclick: () => this.openSaveBox() }, 'Export / import');
     const resetBtn = el('button.ghost', { type: 'button', onclick: () => this.confirmReset(resetBtn) }, 'Reset');
+    const aboutBtn = el('button.ghost', { type: 'button', onclick: () => this.openAbout() }, 'About');
 
     // Save, export and reset live in a small menu; pause and speed stay out in the open.
     // Building queue order: dig strictly in order, or whatever queued chamber is cheapest and affordable.
@@ -186,7 +187,7 @@ export class Game {
       setQueueOrder(queueOrder() === 'cheapest' ? 'order' : 'cheapest');
       queueBtn.textContent = queueLabel();
     } }, queueLabel()) as HTMLButtonElement;
-    const menu = el('div.menu', { hidden: true, role: 'menu' }, saveBtn, exportBtn, queueBtn, resetBtn);
+    const menu = el('div.menu', { hidden: true, role: 'menu' }, saveBtn, exportBtn, queueBtn, aboutBtn, resetBtn);
     const menuBtn = el('button.ghost', { type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false' }, 'Menu ▾') as HTMLButtonElement;
     const setMenu = (open: boolean) => { queueBtn.hidden = !this.ctx.flags.has('tech:plans'); menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
     menuBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(menu.hidden); });
@@ -220,6 +221,18 @@ export class Game {
     btn.dataset.armed = '1';
     btn.textContent = 'Really reset?';
     setTimeout(() => { delete btn.dataset.armed; btn.textContent = 'Reset'; }, 3000);
+  }
+
+  private openAbout() {
+    const existing = document.querySelector('.aboutbox');
+    if (existing) { existing.remove(); return; }
+    const box = el('div.savebox.aboutbox', {},
+      el('p', {}, el('strong', {}, 'Formicarium'), el('span.muted', {}, ` · version ${__VERSION__} (${__BUILD_DATE__})`)),
+      el('p', {}, 'An idle game about an ant colony. Start with one queen in the dark, dig a nest, raise workers, and grow out across the surface, the garden and beyond.'),
+      el('p.muted', {}, 'Made with AI: much of the code and writing was produced with Claude, an AI model, and checked by a person. Mistakes are possible.'),
+      el('p', {}, 'Feedback: ', el('a', { href: 'mailto:nroe1337@gmail.com' }, 'nroe1337@gmail.com'), ' · Discord: nroe1337'),
+      el('div.row', {}, el('button.ghost', { type: 'button', onclick: () => box.remove() }, 'Close')));
+    document.querySelector('.main')!.prepend(box);
   }
 
   private openSaveBox() {
