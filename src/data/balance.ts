@@ -253,7 +253,7 @@ export const RESEARCH = {
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
     royal:      { name: 'Royal court',       age: 'forage', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['resin'],               desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
-    surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 40, soil: 45 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
+    surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Tunnel gives +1 more living space.' },
     shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
