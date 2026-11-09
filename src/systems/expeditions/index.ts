@@ -37,8 +37,8 @@ interface ExpState {
 const S = (ctx: Context) => ctx.state.expeditions as ExpState;
 const U = X.upgrades;
 const lvl = (ctx: Context, id: keyof typeof U) => S(ctx).ups[id] ?? 0;
-/** Marks earned so far. Older saves only counted trips, which were one mark each. */
-const earned = (ctx: Context) => S(ctx).earned ?? S(ctx).runs;
+/** Marks earned so far. Only parties that come home earn them; a lost party adds nothing. */
+const earned = (ctx: Context) => S(ctx).earned ?? 0;
 /** Marks a trip pays: one per secondsPerMark of the place's base time, so Sure feet and marked trails don't cut it. */
 const marksFor = (time: number) => Math.max(1, Math.round(time / X.secondsPerMark));
 // Trail upgrades unfold one by one as marks come in ("marks:N" = after N marks earned).
@@ -157,7 +157,7 @@ function finish(ctx: Context, p: Party) {
   s.lastDest = p.dest;
   // a party lost on the trail still holds its column until its time is up
   ctx.ping('expeditions');
-  if (p.ants <= 0) { s.runs += 1; return; }
+  if (p.ants <= 0) { s.runs += 1; return; } // a wiped party earns no marks
   const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
@@ -194,7 +194,7 @@ export const expeditions: GameSystem = {
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'amber', name: 'Amber', order: 24, integer: true, stepped: true, group: 'Surface' });
     ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 25, integer: true, stepped: true, group: 'Surface' });
-    ctx.state.expeditions = { runs: 0, party: X.minParty, dest: 'grass', parties: [], ups: {}, marked: false, auto: true, rare: 0 } satisfies ExpState;
+    ctx.state.expeditions = { runs: 0, party: X.minParty, dest: 'grass', parties: [], ups: {}, marked: false, auto: true, rare: 0, earned: 0 } satisfies ExpState;
     ctx.bus.on('loaded', () => {
       const s = S(ctx);
       if (s.active) { s.parties = [s.active]; s.active = null; }
