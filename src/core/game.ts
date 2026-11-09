@@ -99,6 +99,7 @@ export class Game {
       log: (m, k) => this.log(m, k),
       alert: (id, m) => { if (m) this.alerts.set(id, m); else this.alerts.delete(id); },
       rebirth: () => this.rebirth(),
+      ping: (id) => { const t = this.tabs.get(id); if (t && this.active !== id) t.btn.classList.add('new'); },
     };
   }
 

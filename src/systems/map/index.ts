@@ -53,7 +53,6 @@ function generate(seed: number): Tile[] {
   tiles.forEach((tile, i) => {
     const [x, y] = xy(i);
     if (tile.t === 'paved') tile.o = 'humans';
-    if (d(x, y, nx, ny) < 1.6 && tile.t !== 'water') tile.o = 'you';
     if (d(x, y, rx, ry) < 4.2 && tile.t !== 'water') tile.o = 'rival';
     if (d(x, y, sx, sy) < 2.2) tile.o = 'spider';
     if (d(x, y, nx, ny) < MAP.startReveal + 0.5) tile.seen = true;
@@ -97,13 +96,17 @@ export const canClaim = (ctx: Context, i: number | null) => {
   const t = S(ctx).tiles[i];
   return t.seen && openGround(ctx, t) && adjacentToYou(ctx, i);
 };
-const canSend = (ctx: Context) => !S(ctx).claiming && freeWorkers(ctx) >= MAP.claimParty;
+/** Scouts a claiming party needs: more for tiles farther from the nest. */
+const claimScouts = (i: number) => { const [x, y] = xy(i), [nx, ny] = MAP.nest; return MAP.claimParty + Math.floor(MAP.claimScoutsPerTile * Math.hypot(x - nx, y - ny)); };
+const scouts = (ctx: Context) => Math.floor((ctx.state.jobs?.assigned?.scout ?? 0) as number);
+const canSend = (ctx: Context, i: number | null) => !S(ctx).claiming && i !== null && scouts(ctx) >= claimScouts(i);
 function sendClaim(ctx: Context, i: number) {
-  S(ctx).claiming = { i, elapsed: 0, duration: claimTime(i), ants: MAP.claimParty };
+  S(ctx).claiming = { i, elapsed: 0, duration: claimTime(i), ants: claimScouts(i) };
 }
 function finishClaim(ctx: Context) {
   const s = S(ctx), c = s.claiming!;
   s.claiming = null;
+  ctx.ping('map');
   const t = s.tiles[c.i];
   if (!canClaim(ctx, c.i)) { ctx.log('The claiming party comes home. Someone else holds that ground now.', 'warn'); return; }
   t.o = 'you'; s.claims += 1;
@@ -113,19 +116,14 @@ function finishClaim(ctx: Context) {
 /** Expand on its own: send a party to the claimable tile nearest the nest, when workers and food allow. */
 function autoExpand(ctx: Context) {
   const s = S(ctx);
-  if (!canSend(ctx) || !ctx.res.canAfford(claimCost(ctx))) return;
+  if (S(ctx).claiming || !ctx.res.canAfford(claimCost(ctx))) return;
   const [nx, ny] = MAP.nest;
   let best = -1, dist = Infinity;
-  s.tiles.forEach((_, i) => { if (!canClaim(ctx, i)) return; const [x, y] = xy(i); const d = Math.hypot(x - nx, y - ny); if (d < dist) { dist = d; best = i; } });
+  s.tiles.forEach((_, i) => { if (!canClaim(ctx, i) || !canSend(ctx, i)) return; const [x, y] = xy(i); const d = Math.hypot(x - nx, y - ny); if (d < dist) { dist = d; best = i; } });
   if (best < 0 || !ctx.res.spend(claimCost(ctx))) return;
   sendClaim(ctx, best);
 }
 const owned = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you');
-const freeWorkers = (ctx: Context) => {
-  const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-  const busy = Object.values(ctx.busy).reduce((a, b) => a + b, 0);
-  return Math.floor(ctx.res.amt('ant')) - assigned - busy;
-};
 
 export const map: GameSystem = {
   id: 'map',
@@ -170,7 +168,8 @@ export const map: GameSystem = {
     const mine = owned(ctx);
     const s = S(ctx);
     delete ctx.busy.outposts;
-    ctx.busy.claiming = s.claiming?.ants ?? 0;
+    delete ctx.busy.claiming;
+    ctx.busy['job:scout'] = s.claiming?.ants ?? 0; // scouts out claiming don't make pheromone
     if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
     if (s.auto && ctx.flags.has('tech:frontier')) {
       s.autoCd = (s.autoCd ?? 0) - dt;
@@ -210,9 +209,9 @@ export const map: GameSystem = {
         claimText = el('span');
         claimLine = el('div.caption', { hidden: true }, claimText, bar.root);
         claim = actionButton({
-          ctx, label: 'Send workers to claim', costs: () => claimCost(ctx),
-          desc: `${MAP.claimParty} workers go out, mark the tile as ours, and come home. Farther tiles take longer.`,
-          enabled: (c) => canClaim(c, S(c).selected) && canSend(c),
+          ctx, label: 'Send scouts to claim', costs: () => claimCost(ctx),
+          desc: `Scouts go out, mark the tile as ours, and come home. Farther tiles need more scouts and take longer. Scouts make no pheromone while away.`,
+          enabled: (c) => canClaim(c, S(c).selected) && canSend(c, S(c).selected),
           onBuy: (c) => sendClaim(c, S(c).selected!),
         });
         build = actionButton({
@@ -224,7 +223,7 @@ export const map: GameSystem = {
         buildWrap = el('div.row', {}, build.root);
         autoBox = el('input', { type: 'checkbox', id: 'map-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { S(ctx).auto = autoBox.checked; });
-        autoWrap = el('label', { for: 'map-auto', style: 'white-space: nowrap', title: 'Send a party to claim the tile nearest the nest whenever no party is out and there are idle workers and food for it.' }, autoBox, ' Expand on its own');
+        autoWrap = el('label', { for: 'map-auto', style: 'white-space: nowrap', title: 'Send a party to claim the tile nearest the nest whenever no party is out and there are scouts and food for it.' }, autoBox, ' Expand on its own');
         claimWrap = el('div.row', {}, claim.root);
         upsHead = el('h3', {}, 'Outposts');
         ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
@@ -254,7 +253,7 @@ export const map: GameSystem = {
         summary.textContent = `You hold ${mine.length} tiles` + (outposts(ctx) ? `, with ${outposts(ctx)} outpost${outposts(ctx) > 1 ? 's' : ''}` : '') + '. ' +
           (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${fmt(v)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
         claimLine.hidden = !c;
-        if (c) { claimText.textContent = `${c.ants} workers claiming ${xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
+        if (c) { claimText.textContent = `${c.ants} scouts claiming ${xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
         if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; return; }
         const t = s.tiles[i];
@@ -266,7 +265,7 @@ export const map: GameSystem = {
           rows.push(['Yield if held', Object.keys(y).length ? yl(1) : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
           if (!t.core && (t.o === null || t.o === 'you' || t.o === 'humans')) rows.push(['Yield with outpost', (Object.keys(y).length ? yl(boost) + ', ' : '') + `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence`]);
           if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)
-            ? (s.claiming ? 'A party is already out claiming' : freeWorkers(ctx) >= MAP.claimParty ? `Yes. The trip takes about ${claimTime(i)}s.` : `Needs ${MAP.claimParty} idle workers`)
+            ? (s.claiming ? 'A party is already out claiming' : scouts(ctx) >= claimScouts(i) ? `Yes. ${claimScouts(i)} scouts, about ${claimTime(i)}s.` : `Needs ${claimScouts(i)} scouts (you have ${scouts(ctx)})`)
             : !openGround(ctx, t) ? (t.t === 'water' ? 'Needs Leaf rafts' : t.o === 'humans' ? 'Needs Street fighting' : 'No') : 'Only tiles next to your territory']);
           if (t.o === 'you' && t.outpost) rows.push(['Outpost', 'Built']);
           if (t.o === 'rival' || t.o === 'spider') rows.push(['Enemy ground', 'Take it with a campaign from the War tab']);

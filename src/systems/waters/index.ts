@@ -72,6 +72,7 @@ function arrive(ctx: Context, b: Boat) {
   for (const [rid, n] of Object.entries(v.bonus)) if (!(rid in d.loot) && ctx.res.has(rid)) { ctx.res.add(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
   if (v.lostCrew) ctx.res.add('ant', -v.lostCrew);
   ctx.bus.emit('expedition:return', { dest: 'voyage:' + d.id, tile: d.tile });
+  ctx.ping('waters');
   if (!s.reached.includes(d.id)) {
     s.reached.push(d.id);
     if (d.settle) ctx.log(`The crew say there is good ground at ${d.name.toLowerCase()}. You could found a settlement there. (Waters tab)`, 'story');

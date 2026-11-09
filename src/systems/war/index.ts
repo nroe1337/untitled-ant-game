@@ -89,6 +89,7 @@ function refill(ctx: Context) {
 /** The end of a fight: a small banner over the page, like the new-age one but lighter. */
 function showResult(ctx: Context, kicker: string, r: { win: boolean; title: string; lines: string[] }) {
   ctx.announce(r.title, '', { small: true, kicker, lines: r.lines, loss: !r.win });
+  ctx.ping('war');
 }
 
 // ---- the entrance battle ----

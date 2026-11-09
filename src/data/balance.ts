@@ -166,8 +166,9 @@ export const MAP = {
   startReveal: 2,
   claimCost: { food: 40, twig: 4 },
   claimStep: 0.08,          // each tile held past the start makes the next claim 8% of the base dearer (linear, so the whole map stays in reach)
-  startTiles: 9,
-  claimParty: 3,            // workers who go out to claim a tile; they come home when it's done
+  startTiles: 1,            // the colony starts holding only the nest tile
+  claimParty: 2,            // scouts who go out to claim a tile next to the nest; they come home when it's done
+  claimScoutsPerTile: 0.5,  // extra scouts per tile of distance from the nest
   claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nest
   claimTimePerTile: 4,
   /** Outposts: built on a tile you hold, with resources only. Dear, and dearer each time. */
