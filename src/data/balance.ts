@@ -83,14 +83,14 @@ export const NEST = {
   surfaceAtChambers: 10,
   baseFoodCap: 40,
   baseSoilCap: 50,
-  soilPerChamber: 4,        // every chamber stores a little soil; Storerooms hold far more
+  soilPerChamber: 4,        // every chamber stores a little soil; Soil pits hold far more
   /** Surface materials have small stores until you dig Twig lofts, Seed vaults and Resin vats. */
   baseMaterialCap: { twig: 40, seed: 25, resin: 15, silk: 20 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Tunnel',          base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3 },
     brood:    { name: 'Brood chamber',   base: { soil: 15, food: 10 }, growth: 1.28,           desc: '+4 brood space, +1 living space. Unlocks nurses', broodCap: 4, antCap: 1, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
-    storeroom:{ name: 'Storeroom',       base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, needs: 'tech:storage' },
+    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: '+0.05 food/s',       foodRate: 0.05, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, needs: 'tech:resin' },
@@ -248,15 +248,15 @@ export const RESEARCH = {
    */
   techs: {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
-    storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Storeroom.' },
+    storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
     royal:      { name: 'Royal court',       age: 'forage', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['resin'],               desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores and speeds up knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 40, soil: 45 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Tunnel gives +1 more living space.' },
-    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Storerooms and Silk lofts hold 50% more.' },
+    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
-    lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Storerooms, Silk lofts and Halls of elders hold another 50% more.' },
+    lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'], flag: 'legacy:flown', desc: 'Opens the Techniques tab.' },
     worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'], flag: 'legacy:flown', desc: 'Unlocks the Marching songs and Load bearing techniques.' },
     sharedlabour: { name: 'Shared labour',   age: 'forage', cost: { knowledge: 180, twig: 20 },           needs: ['worksongs', 'shelving'], flag: 'legacy:flown', desc: 'Unlocks the Mandible grit and Shared stomach techniques.' },
