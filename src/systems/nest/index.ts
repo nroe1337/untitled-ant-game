@@ -5,7 +5,7 @@ import { el, tileButton } from '../../core/ui';
 import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
-import { NEST, RESEARCH } from '../../data/balance';
+import { COLONY, NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
 import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
@@ -100,6 +100,8 @@ function liveDesc(ctx: Context, id: ChamberId) {
   let d = DEFS[id].desc.replace(/\+(\d+) living space/, (_, n) =>
     `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx))} living space`);
   if (m !== 1) d = d.replace(/\+(\d+)(?![\d.]*%)(?! living)/g, (_, n) => `+${num(Number(n) * m)}`);
+  // job slots this room gives (see COLONY.jobSlots)
+  for (const [job, [room, per]] of Object.entries(COLONY.jobSlots)) if (room === id) d += `, +${per} ${job} slots`;
   return d;
 }
 

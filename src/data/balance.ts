@@ -32,6 +32,17 @@ export const BROOD = {
 };
 
 export const COLONY = {
+  /** Specialist jobs are limited by rooms: [chamber, slots per chamber, slots with none]. Foragers and diggers have no limit. */
+  jobSlots: {
+    soldier:    ['barracks', 4, 2],
+    nurse:      ['brood', 3, 0],
+    elder:      ['library', 3, 3],
+    scout:      ['gland', 3, 2],
+    leafcutter: ['fungus', 2, 2],
+    gardener:   ['fungus', 2, 0],
+    weaver:     ['silkroom', 3, 2],
+    herder:     ['stable', 2, 2],
+  } as Record<string, [string, number, number]>,
   baseAntCap: 6,            // living space before tunnels
   /** The colony size the first nuptial flight aims for. Big research asks for a share of it (see RESEARCH pop). */
   targetColony: 300,
