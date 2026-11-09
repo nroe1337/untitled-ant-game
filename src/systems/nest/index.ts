@@ -421,7 +421,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         blob(c, cx, y, 15, 5, PAL.hole);
         for (let r = 0; r < 2; r++) for (let e = 0; e < 4; e++) rect(c, cx - 10 + e * 6 + r * 3, y - 3 + r * 4, 4, 3, PAL.seed);
         break;
-      case 'spoil': { // a spoil heap: loose soil piled up the far wall, a few clods rolled down
+      case 'spoil': { // a digging gallery: loose soil piled up the far wall, a few clods rolled down
         blob(c, cx, y, 15, 5, PAL.hole);
         const mx = cx + (lane > 0 ? 6 : -6);
         for (let r = 0; r < 5; r++) rect(c, mx - 1 - r, y - 3 + r, 2 + r * 2, 1, PAL.dirt);
