@@ -21,8 +21,8 @@ const WORDS: Record<string, string[]> = {
   // Workers are left plain: "ants" is in nearly every sentence.
 };
 
-/** Text inside these is left alone: the Stores list (already tinted), section labels, names on buttons and tabs, headings, inputs. */
-const SKIP = '.rn, .res-list, .tilehead, button, .gtab, .tab, h1, h2, h3, input, textarea, select, script, style, canvas, svg';
+/** Text inside these is left alone: the Stores list (already tinted), section labels, flavour lines and age titles, names on buttons and tabs, headings, inputs. */
+const SKIP = '.rn, .res-list, .tilehead, .flavor, .age, .fanfare, button, .gtab, .tab, h1, h2, h3, input, textarea, select, script, style, canvas, svg';
 
 /**
  * Colours resource names wherever they appear in the page's text. Only resources the
