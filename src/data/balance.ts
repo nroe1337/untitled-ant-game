@@ -104,7 +104,7 @@ export const NEST = {
     hall:     { name: 'Worker hall',     base: { soil: 120, twig: 30 }, growth: 1.3,           desc: '+12 living space',  antCap: 12, needs: 'tech:halls' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
-    spoil:     { name: 'Spoil heap',       base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, needs: 'tech:surface' },
+    spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, needs: 'tech:surface' },
     rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, needs: 'tech:surface' },
     warmth:    { name: 'Warming chamber',  base: { soil: 40, food: 20 }, growth: 1.32,          desc: 'Brood grows 3% faster', mods: { brood: 0.03 }, max: 15, needs: 'tech:surface' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'tech:surface' },
