@@ -6,6 +6,7 @@ import { el, costFocus } from './ui';
 import { queueOrder, setQueueOrder } from './options';
 import { queueDock, updateDock } from './queue';
 import { icon } from './sprites';
+import { RES_TINT, watchResourceNames } from './restint';
 import { RES_DESC } from '../data/balance';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
@@ -43,15 +44,6 @@ const STEPS_PER_FRAME = 200;
 const ALERT_ROTATE_S = 5;
 
 /** Top tabs always sit in this order, whatever order they unlock in. Unlisted groups go last. */
-/** A muted colour for each resource name in Stores. */
-const RES_TINT: Record<string, string> = {
-  ant: '#e2d6c2', food: '#a8b872', soil: '#b48e68', pheromone: '#a69be6', knowledge: '#93b6dc',
-  egg: '#efe6d2', larva: '#e3d2ad', jelly: '#e6c76c',
-  leaf: '#86b062', fungus: '#cdb7a2', honeydew: '#d9c274', wax: '#e8cb8e',
-  twig: '#b8966a', seed: '#cfa848', resin: '#c48f42', amber: '#e39f45', silk: '#d6d2e8', trailmark: '#a69be6',
-  chitin: '#a98264', venom: '#a6c873',
-  lineage: '#d8a85e', heritage: '#cf8461', memory: '#aea6cc', unity: '#93c4b4',
-};
 
 /** How each system shows up when you hover a resource's rate (systems can name finer sources themselves). */
 const SOURCE_LABELS: Record<string, string> = {
@@ -112,6 +104,7 @@ export class Game {
 
   start(root: HTMLElement) {
     this.buildLayout(root);
+    watchResourceNames(document.body, this.ctx);
     for (const s of this.systems) s.init(this.ctx);
     const save = readLocal();
     if (save) {
