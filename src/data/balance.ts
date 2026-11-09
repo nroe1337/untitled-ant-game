@@ -314,11 +314,13 @@ export const GARDEN = {
 export const CASTES = {
   jellyCap: 20,
   chew: { cost: { food: 25 }, cooldown: 4 },  // manual: make 1 royal jelly from food (fungus-fed Jelly glands come with the Garden, after the first flight)
-  replete: 12,               // food storage per replete
+  // each replete banks up to `hold` food, filling at `fill`/s from surplus, and feeds it back when stores run dry;
+  // once the reserve is full they turn surplus into a trickle of royal jelly (`food` per drop). At most `max` repletes.
+  replete: { hold: 20, fill: 0.2, jelly: 0.004, food: 25, max: 8 },
   major: { hp: 3, atk: 3 },  // a major has this many times a soldier's hp and bite
   types: {
     minim:   { name: 'Minims',   cost: { jelly: 3, fungus: 10 },  desc: 'Tiny gardeners. Unlocks the Gardener job, which keeps fungus beds free of mould.' },
-    replete: { name: 'Repletes', cost: { jelly: 5, food: 40 },    desc: 'Living food jars. Unlocks the Replete job: each holds +12 food.' },
+    replete: { name: 'Repletes', cost: { jelly: 5, food: 40 },    desc: 'Living food jars. Unlocks the Replete job: they bank surplus food, feed it back when stores run dry, and turn spare food into a little jelly.' },
     major:   { name: 'Majors',   cost: { jelly: 8, chitin: 10 },  desc: 'Huge-headed fighters. Unlocks the Major job: each fights like 3 soldiers at the gate.' },
     weaver:  { name: 'Weavers',  cost: { jelly: 6, leaf: 30 },    desc: 'Larvae spin silk while weavers hold them. Unlocks the Weaver job and Silk.' },
   } as Record<string, { name: string; cost: Record<string, number>; desc: string }>,

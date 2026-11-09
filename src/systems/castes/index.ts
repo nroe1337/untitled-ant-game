@@ -1,6 +1,6 @@
 // Castes: chew food into royal jelly (or, with the Garden, let nurses make it from fungus), then spend jelly to breed new kinds of ant.
 // Each caste sets the flag "caste:<id>", which unlocks its job on the Jobs tab.
-// Also: repletes raise food storage (reads ctx.state.jobs.assigned.replete),
+// Also: repletes bank surplus food in a Reserve and feed it back in a famine (reads ctx.state.jobs.assigned.replete),
 // and Jelly glands let nurses make jelly on their own (automation).
 import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, tileButton, type ActionButton } from '../../core/ui';
@@ -15,11 +15,24 @@ const nurses = (ctx: Context) => ctx.state.jobs?.assigned?.nurse ?? 0;
 const glandRate = (ctx: Context) => nurses(ctx) * CASTES.upgrades.glands.per * (S(ctx).ups.glands ?? 0);
 const UPS = fromBalance(CASTES.upgrades, (ctx) => ctx.flags.has('tech:castes'));
 
+/** Repletes feed the colony from their reserve: returns how much food they gave. */
+export function drawReserve(ctx: Context, want: number) {
+  if (want <= 0 || !ctx.res.has('reserve')) return 0;
+  const got = Math.min(want, ctx.res.amt('reserve'));
+  if (got <= 0) return 0;
+  ctx.res.source = 'Feeding the colony';
+  ctx.res.add('reserve', -got);
+  ctx.res.source = 'Repletes feeding';
+  ctx.res.add('food', got);
+  return got;
+}
+
 export const castes: GameSystem = {
   id: 'castes',
 
   init(ctx) {
     ctx.res.define({ id: 'jelly', name: 'Royal jelly', cap: CASTES.jellyCap, order: 12, group: 'Brood' });
+    ctx.res.define({ id: 'reserve', name: 'Reserve', cap: 0, order: 1.5 });
     ctx.res.define({ id: 'silk', name: 'Silk', cap: NEST.baseMaterialCap.silk, order: 23, integer: true, group: 'Surface' });
     ctx.state.castes = { ups: {}, chewed: 0 } satisfies CasteState;
   },
@@ -27,7 +40,28 @@ export const castes: GameSystem = {
   isUnlocked: (ctx) => ctx.flags.has('tech:castes'),
 
   tick(ctx, dt) {
-    ctx.res.setCapBonus('food', 'repletes', (ctx.state.jobs?.assigned?.replete ?? 0) * CASTES.replete);
+    // repletes fill up from surplus food: only while the stores are more than half full
+    const n = ctx.state.jobs?.assigned?.replete ?? 0;
+    ctx.res.setCapBonus('reserve', 'repletes', n * CASTES.replete.hold);
+    const over = ctx.res.amt('reserve') - ctx.res.cap('reserve'); // repletes moved off the job hand their food back
+    if (over > 0) { ctx.res.source = 'Repletes reassigned'; ctx.res.add('reserve', -over); ctx.res.add('food', over); }
+    const spare = ctx.res.amt('food') - ctx.res.cap('food') * 0.5;
+    const take = Math.min(n * CASTES.replete.fill * dt, ctx.res.cap('reserve') - ctx.res.amt('reserve'), spare);
+    if (take > 0) {
+      ctx.res.source = 'Repletes filling';
+      ctx.res.add('food', -take);
+      ctx.res.source = 'Repletes filling';
+      ctx.res.add('reserve', take);
+    }
+    // with the reserve full, spare food becomes a slow trickle of royal jelly
+    const R = CASTES.replete;
+    const jelly = Math.min(n * R.jelly * dt, ctx.res.cap('jelly') - ctx.res.amt('jelly'), Math.max(0, spare - Math.max(0, take)) / R.food);
+    if (jelly > 0 && ctx.res.amt('reserve') >= ctx.res.cap('reserve') - 1e-6) {
+      ctx.res.source = 'Repletes making jelly';
+      ctx.res.add('food', -jelly * R.food);
+      ctx.res.source = 'Repletes';
+      ctx.res.add('jelly', jelly);
+    }
     // nurses with jelly glands chew fungus into jelly by themselves
     const make = glandRate(ctx) * dt;
     if (make > 0 && ctx.res.amt('fungus') >= make * 8 && ctx.res.amt('jelly') < ctx.res.cap('jelly')) {

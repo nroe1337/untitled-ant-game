@@ -4,7 +4,8 @@ import { el } from '../../core/ui';
 import { icon } from '../../core/sprites';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { BROOD, COLONY, JOBS, NEST, WAR } from '../../data/balance';
+import { BROOD, CASTES, COLONY, JOBS, NEST, WAR } from '../../data/balance';
+import { drawReserve } from '../castes';
 import { broodFoodOutlook, nurseEggsEach } from '../brood';
 
 interface JobDef {
@@ -28,7 +29,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns. Between fights, hunts near the nest for half as much food as a forager.', produces: {}, requires: 'tech:martial' },
   { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
   { id: 'gardener', name: 'Gardener', desc: 'A minim. Keeps fungus beds free of mould (2 beds each).', produces: {}, requires: 'caste:minim' },
-  { id: 'replete', name: 'Replete', desc: 'A living food jar. Each holds +12 food.', produces: {}, requires: 'caste:replete' },
+  { id: 'replete', name: 'Replete', desc: 'Banks up to 20 surplus food and feeds it back when stores run dry. With the reserve full, makes a little royal jelly from spare food. At most 8.', produces: {}, requires: 'caste:replete' },
   { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate. Between fights, hunts like a soldier.', produces: {}, requires: 'caste:major' },
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
@@ -56,6 +57,8 @@ const S = (ctx: Context) => ctx.state.jobs as JobsState;
 const fmtEach = (n: number) => (Math.abs(n) < 1 && n !== 0 ? String(Number(n.toPrecision(3))) : fmt(n));
 
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
+/** Most workers a job can take. */
+const jobMax = (id: string) => (id === 'replete' ? CASTES.replete.max : Infinity);
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
 const busySum = (ctx: Context) => Object.values(ctx.busy).reduce((a, b) => a + b, 0);
 /** Soldiers and majors at home with no raid on: they hunt. A campaign takes all of them away. */
@@ -73,16 +76,18 @@ const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requ
 function followDecree(ctx: Context) {
   const s = S(ctx);
   if (!s.decreeOn || !s.decree || !ctx.flags.has('accord:decree')) return;
-  const open = JOB_DEFS.filter((j) => (s.decree![j.id] ?? 0) > 0 && jobOpen(ctx, j));
+  const open = JOB_DEFS.filter((j) => (s.decree![j.id] ?? 0) > 0 && jobOpen(ctx, j) && s.assigned[j.id] < jobMax(j.id));
   const weight = open.reduce((t, j) => t + s.decree![j.id], 0);
   if (!weight) return;
   for (let idle = idleAnts(ctx); idle > 0; idle--) {
     const staff = open.reduce((t, j) => t + s.assigned[j.id], 0) + 1;
     let best = open[0], gap = -Infinity;
     for (const j of open) {
+      if (s.assigned[j.id] >= jobMax(j.id)) continue;
       const g = (s.decree![j.id] / weight) * staff - s.assigned[j.id];
       if (g > gap) { gap = g; best = j; }
     }
+    if (s.assigned[best.id] >= jobMax(best.id)) break;
     s.assigned[best.id]++;
   }
 }
@@ -94,7 +99,9 @@ function followDecree(ctx: Context) {
  */
 function foodRunsOutIn(ctx: Context, have: number) {
   const food = ctx.res.get('food');
-  const rate = food.rate;
+  // repletes' feeding props the rate up only while their reserve lasts, so count the reserve as stock instead
+  const rate = food.rate - (food.sources.find(([k]) => k === 'Repletes feeding')?.[1] ?? 0);
+  have += ctx.res.has('reserve') ? ctx.res.amt('reserve') : 0;
   const larvae = -(food.sources.find(([k]) => k === 'Larvae eating')?.[1] ?? 0);
   const { committed, ongoing } = broodFoodOutlook(ctx);
   if (larvae <= ongoing) return rate < 0 ? have / -rate : Infinity; // the brood drain is steady: take the rate as it is
@@ -135,11 +142,13 @@ export const jobs: GameSystem = {
       s.assigned[j.id] -= take; over -= take;
     }
 
+    for (const j of JOB_DEFS) s.assigned[j.id] = Math.min(s.assigned[j.id], jobMax(j.id)); // older saves may hold more
     followDecree(ctx);
 
     // upkeep. Whatever can't be paid builds up as hunger, and hunger slowly kills workers.
     // The queen never starves, so the colony can always rebuild from her.
     const need = totalAnts(ctx) * COLONY.antFoodPerSecond * upkeepMult(ctx) * dt;
+    if (need > ctx.res.amt('food')) drawReserve(ctx, need - ctx.res.amt('food'));
     const have = ctx.res.amt('food');
     ctx.res.source = 'Colony upkeep';
     ctx.res.add('food', -need);
@@ -157,12 +166,13 @@ export const jobs: GameSystem = {
     }
     const starving = unpaid > 0 && totalAnts(ctx) > 0;
     const runsOut = foodRunsOutIn(ctx, have);
-    const low = have > 0 && runsOut < COLONY.starveWarnSeconds;
+    const stock = have + (ctx.res.has('reserve') ? ctx.res.amt('reserve') : 0);
+    const low = stock > 0 && runsOut < COLONY.starveWarnSeconds;
     if (!s.warned && low) {
       s.warned = true;
       ctx.log(`Food is running low. At this rate it is gone in about ${Math.ceil(runsOut)}s, and then workers will starve.`, 'warn');
     }
-    if (!low && have > 0) s.warned = false;
+    if (!low && stock > 0) s.warned = false;
     ctx.alert('starving', starving
       ? 'Your workers are starving. They will die one by one until food comes in. Put more workers on foraging.'
       : low ? `Food runs out in about ${Math.ceil(runsOut)}s. Then workers start to starve.` : null);
@@ -188,7 +198,7 @@ export const jobs: GameSystem = {
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
-      if (d > 0) d = Math.min(d, idleAnts(ctx));
+      if (d > 0) d = Math.max(0, Math.min(d, idleAnts(ctx), jobMax(id) - s.assigned[id]));
       else d = -Math.min(-d, s.assigned[id]);
       s.assigned[id] += d;
       if (d) ctx.bus.emit('jobs:change');
@@ -245,7 +255,7 @@ export const jobs: GameSystem = {
         for (const j of JOB_DEFS) {
           const r = rows.get(j.id)!;
           r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);
-          r.count.textContent = String(s.assigned[j.id]);
+          r.count.textContent = isFinite(jobMax(j.id)) ? `${s.assigned[j.id]}/${jobMax(j.id)}` : String(s.assigned[j.id]);
           // The row shows only the rate; the tooltip shows the math once.
           const n = s.assigned[j.id];
           const mult = jobMult(ctx, j.id);
@@ -266,6 +276,11 @@ export const jobs: GameSystem = {
             r.row.dataset.tip = j.desc +
               `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +
               `\nLooked after now: ${Math.min(brood, care)} of ${brood}.`;
+          }
+          if (j.id === 'replete' && n && ctx.res.has('reserve')) {
+            parts.push(`reserve ${fmt(ctx.res.amt('reserve'))}/${fmt(ctx.res.cap('reserve'))}`);
+            const jr = ctx.res.get('jelly').sources.find(([k]) => k === 'Repletes')?.[1] ?? 0;
+            if (jr > 0) parts.push(`+${fmt(jr)} jelly/s`);
           }
           if (j.id === 'soldier' && s.assigned.soldier) {
             parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
