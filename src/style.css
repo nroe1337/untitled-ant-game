@@ -109,6 +109,7 @@ select { background: var(--raise); color: var(--fg); border: 1px solid var(--lin
 
 .savebox { border: 1px solid var(--line); background: var(--panel); padding: 12px; display: grid; gap: 8px; margin-bottom: 16px; }
 .savebox p { margin: 0; }
+.aboutbox a { color: var(--accent, inherit); }
 .savebox textarea { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); font: 12px monospace; }
 
 @keyframes appear { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
