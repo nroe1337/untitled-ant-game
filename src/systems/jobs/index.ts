@@ -30,7 +30,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
   { id: 'gardener', name: 'Gardener', desc: 'A minim. Keeps fungus beds free of mould (2 beds each).', produces: {}, requires: 'caste:minim' },
   { id: 'replete', name: 'Replete', desc: 'Banks up to 20 surplus food and feeds it back when stores run dry. With the reserve full, makes a little royal jelly from spare food. At most 8.', produces: {}, requires: 'caste:replete' },
-  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers at the gate. Between fights, hunts like a soldier.', produces: {}, requires: 'caste:major' },
+  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers. Between fights, hunts like a soldier. One major per 4 soldiers.', produces: {}, requires: 'caste:major' },
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
   { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
@@ -58,7 +58,7 @@ const fmtEach = (n: number) => (Math.abs(n) < 1 && n !== 0 ? String(Number(n.toP
 
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
 /** Most workers a job can take. */
-const jobMax = (id: string) => (id === 'replete' ? CASTES.replete.max : Infinity);
+const jobMax = (ctx: Context, id: string) => (id === 'replete' ? CASTES.replete.max : id === 'major' ? Math.floor((S(ctx).assigned.soldier ?? 0) / CASTES.major.perSoldiers) : Infinity);
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
 const busySum = (ctx: Context) => Object.values(ctx.busy).reduce((a, b) => a + b, 0);
 /** Soldiers and majors at home with no raid on: they hunt. A campaign takes all of them away. */
@@ -76,18 +76,18 @@ const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requ
 function followDecree(ctx: Context) {
   const s = S(ctx);
   if (!s.decreeOn || !s.decree || !ctx.flags.has('accord:decree')) return;
-  const open = JOB_DEFS.filter((j) => (s.decree![j.id] ?? 0) > 0 && jobOpen(ctx, j) && s.assigned[j.id] < jobMax(j.id));
+  const open = JOB_DEFS.filter((j) => (s.decree![j.id] ?? 0) > 0 && jobOpen(ctx, j) && s.assigned[j.id] < jobMax(ctx, j.id));
   const weight = open.reduce((t, j) => t + s.decree![j.id], 0);
   if (!weight) return;
   for (let idle = idleAnts(ctx); idle > 0; idle--) {
     const staff = open.reduce((t, j) => t + s.assigned[j.id], 0) + 1;
     let best = open[0], gap = -Infinity;
     for (const j of open) {
-      if (s.assigned[j.id] >= jobMax(j.id)) continue;
+      if (s.assigned[j.id] >= jobMax(ctx, j.id)) continue;
       const g = (s.decree![j.id] / weight) * staff - s.assigned[j.id];
       if (g > gap) { gap = g; best = j; }
     }
-    if (s.assigned[best.id] >= jobMax(best.id)) break;
+    if (s.assigned[best.id] >= jobMax(ctx, best.id)) break;
     s.assigned[best.id]++;
   }
 }
@@ -142,7 +142,7 @@ export const jobs: GameSystem = {
       s.assigned[j.id] -= take; over -= take;
     }
 
-    for (const j of JOB_DEFS) s.assigned[j.id] = Math.min(s.assigned[j.id], jobMax(j.id)); // older saves may hold more
+    for (const j of JOB_DEFS) s.assigned[j.id] = Math.min(s.assigned[j.id], jobMax(ctx, j.id)); // older saves may hold more
     followDecree(ctx);
 
     // upkeep. Whatever can't be paid builds up as hunger, and hunger slowly kills workers.
@@ -198,7 +198,7 @@ export const jobs: GameSystem = {
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
-      if (d > 0) d = Math.max(0, Math.min(d, idleAnts(ctx), jobMax(id) - s.assigned[id]));
+      if (d > 0) d = Math.max(0, Math.min(d, idleAnts(ctx), jobMax(ctx, id) - s.assigned[id]));
       else d = -Math.min(-d, s.assigned[id]);
       s.assigned[id] += d;
       if (d) ctx.bus.emit('jobs:change');
@@ -255,7 +255,7 @@ export const jobs: GameSystem = {
         for (const j of JOB_DEFS) {
           const r = rows.get(j.id)!;
           r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);
-          r.count.textContent = isFinite(jobMax(j.id)) ? `${s.assigned[j.id]}/${jobMax(j.id)}` : String(s.assigned[j.id]);
+          r.count.textContent = isFinite(jobMax(ctx, j.id)) ? `${s.assigned[j.id]}/${jobMax(ctx, j.id)}` : String(s.assigned[j.id]);
           // The row shows only the rate; the tooltip shows the math once.
           const n = s.assigned[j.id];
           const mult = jobMult(ctx, j.id);
