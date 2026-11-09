@@ -505,3 +505,32 @@ export const HUSBANDRY = {
     litters:{ name: 'Big litters',    desc: 'Herds breed {p} faster each level.',          per: 0.05,  base: { honeydew: 25 },           growth: 1.2,  max: 20 },
   },
 };
+
+/** What each resource is, for the hover text in the Stores pane. */
+export const RES_DESC: Record<string, string> = {
+  ant: 'Adult ants. Each eats food and can take a job.',
+  food: 'Feeds workers and larvae. Foragers bring it in.',
+  reserve: 'Food banked by repletes, fed back when stores run dry.',
+  soil: 'Dug out by diggers. Pays for new chambers.',
+  knowledge: 'Gathered by elders. Spent on research.',
+  pheromone: 'Laid by scouts. Pays for trail marking and mapping.',
+  egg: 'Laid by the queen and nurses. Hatch into larvae when there is room.',
+  larva: 'Eat food and grow into workers.',
+  jelly: 'Royal jelly. Breeds new castes.',
+  twig: 'Brought home by expeditions. Builds sturdier chambers.',
+  seed: 'Brought home by expeditions. Stocks granaries and pays for seed research.',
+  resin: 'Brought home by expeditions. Seals and strengthens chambers.',
+  amber: 'A rare find on the trail and on the water.',
+  trailmark: 'Earned on expeditions. Opens farther places and trail upgrades.',
+  silk: 'Spun by weavers. Builds better boats.',
+  leaf: 'Cut by leafcutters. Feeds the fungus beds.',
+  fungus: 'Grown in fungus gardens. Feeds larvae and pays for castes.',
+  honeydew: 'Milked from herds. Pays for new herds.',
+  wax: 'Made by scale insects. Builds wax stores and galleons.',
+  chitin: 'Husks of fallen enemies. Builds fortifications and husk halls.',
+  venom: 'Taken from spiders. Arms your champion.',
+  lineage: 'Earned by a nuptial flight. Spent on permanent perks.',
+  heritage: 'Earned by migrating. Spent on migration perks.',
+  memory: 'Earned from archive milestones. Spent on accords.',
+  unity: 'Earned from the regions you hold. Spent on supercolony perks.',
+};
