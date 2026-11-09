@@ -323,10 +323,11 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     spots.push({ x: cx, y });
 
     switch (id) {
-      case 'tunnel': // a side passage that keeps going
-        rect(c, cx - 16, y - 1, 32, 3, PAL.hole);
-        rect(c, cx + (lane > 0 ? 14 : -18), y - 4, 4, 7, PAL.hole);
+      case 'tunnel': { // a resting chamber: a low room with a few workers curled up asleep
+        blob(c, cx, y, 15, 5, PAL.hole);
+        for (let e = 0; e < 3; e++) { const sx = cx - 9 + e * 7 + ((k + e) % 2); rect(c, sx, y + 1, 3, 2, ANT_TINT); rect(c, sx + 3, y + 2, 1, 1, ANT_TINT); }
         break;
+      }
       case 'brood': { // eggs in rows, more as the brood grows
         blob(c, cx, y, 16, 5, PAL.hole);
         const n = Math.min(10, Math.ceil(broodCount / Math.max(1, count(ctx, 'brood'))) || 1);

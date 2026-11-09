@@ -181,7 +181,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'blaze', name: 'Blaze it', desc: 'Have exactly 420 twigs.', hidden: true, test: (c) => c.res.has('twig') && Math.floor(c.res.amt('twig')) === 420 },
   { id: 'jackpot', name: 'Jackpot', desc: 'Have exactly 777 soil.', hidden: true, test: (c) => Math.floor(c.res.amt('soil')) === 777 },
   { id: 'leet', name: 'Leet', desc: 'Have exactly 1,337 knowledge.', hidden: true, test: (c) => Math.floor(c.res.amt('knowledge')) === 1337 },
-  { id: 'answer', name: 'The answer', desc: 'Have exactly 42 Tunnels.', hidden: true, test: (c) => chambers(c, 'tunnel') === 42 },
+  { id: 'answer', name: 'The answer', desc: 'Have exactly 42 Resting chambers.', hidden: true, test: (c) => chambers(c, 'tunnel') === 42 },
 ];
 
 function earn(ctx: Context, id: string) {
