@@ -48,7 +48,7 @@ const TECH_MODS: Record<string, [string, number]> = {
 };
 
 interface JobsState {
-  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; warnCd?: number; lowest?: number;
+  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; warnCd?: number; lowFor?: number; lowest?: number;
   /** The queen's decree (an archive accord): the worker mix new workers are sent to match. Kept across colonies. */
   decree?: Record<string, number>; decreeOn?: boolean;
 }
@@ -186,15 +186,23 @@ export const jobs: GameSystem = {
     const starving = unpaid > 0 && totalAnts(ctx) > 0;
     const runsOut = foodRunsOutIn(ctx, have);
     const stock = have + (ctx.res.has('reserve') ? ctx.res.amt('reserve') : 0);
-    const low = stock > 0 && totalAnts(ctx) > 0 && runsOut < COLONY.starveWarnSeconds; // no workers yet: nobody can starve
-    // the Chronicle says it once, then not again for a few minutes, and only after food has truly recovered
+    // real danger only: larvae just stop growing when food is short, so a brood drain alone never starves anyone.
+    // Warn when the workers' own upkeep outruns income.
+    const food = ctx.res.get('food');
+    const larvaeEat = -(food.sources.find(([k]) => k === 'Larvae eating')?.[1] ?? 0);
+    const workersNet = food.rate - (food.sources.find(([k]) => k === 'Repletes feeding')?.[1] ?? 0) + larvaeEat;
+    const danger = workersNet < 0 && stock / -workersNet < COLONY.starveWarnSeconds;
+    const low = stock > 0 && totalAnts(ctx) > 0 && danger && runsOut < COLONY.starveWarnSeconds; // no workers yet: nobody can starve
+    // the Chronicle only speaks up when food stays low for a while (not a passing blip),
+    // and not again until food has truly recovered and a short cooldown has passed
     s.warnCd = Math.max(0, (s.warnCd ?? 0) - dt);
-    if (!s.warned && low && s.warnCd <= 0) {
+    s.lowFor = low ? (s.lowFor ?? 0) + dt : 0;
+    if (!s.warned && s.lowFor >= COLONY.starveWarnAfter && s.warnCd <= 0) {
       s.warned = true;
       s.warnCd = COLONY.starveWarnEvery;
       ctx.log(`Food is running low. At this rate it is gone in about ${Math.ceil(runsOut)}s, and then workers will starve.`, 'warn');
     }
-    if (stock > 0 && runsOut > COLONY.starveWarnSeconds * 2) s.warned = false;
+    if (stock > 0 && !low) s.warned = false;
     ctx.alert('starving', starving
       ? 'Your workers are starving. They will die one by one until food comes in. Put more workers on foraging.'
       : low ? `Food runs out in about ${Math.ceil(runsOut)}s. Then workers start to starve.` : null);
