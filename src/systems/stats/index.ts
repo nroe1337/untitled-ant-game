@@ -21,7 +21,7 @@ interface StatsState {
 interface Track {
   safeTrips: number; wipesInRow: number; marks: number;
   dests: string[]; reserveTrips: number; laid: number; jobChanges: number; tended: number;
-  lean: number | null; raids: number; won: number; cleanInRow: number; quiet: number;
+  lean: number | null; dry?: number; raids: number; won: number; cleanInRow: number; quiet: number;
   /** False until raids/won are read from the war state once, so an old save doesn't count its past waves. */
   synced: boolean;
 }
@@ -94,7 +94,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'migrate', name: 'Into the town', desc: 'Migrate your line into the town.', test: (c) => migrations(c) >= 1 || c.flags.has('legacy:migrated') },
   // Colony and brood
   { id: 'tended', name: 'Every egg accounted for', desc: 'Keep every egg and larva looked after for 10 minutes, with room for 20 or more brood.', test: (c) => T(c).tended >= 600 },
-  { id: 'lean', name: 'The lean season', desc: 'Run out of food and recover without losing a worker.', test: () => false },
+  { id: 'lean', name: 'The lean season', desc: 'Go 30 seconds with empty food stores, then fill them back to half without losing a worker.', test: () => false },
   { id: 'oneeach', name: 'One of each', desc: 'Have a worker in every job you have, at once (at least 6 jobs).', test: (c) => {
     const open = Object.keys(st(c).jobs?.assigned ?? {}).filter((id) => c.flags.has(JOB_NEEDS[id] ?? '') || !JOB_NEEDS[id]);
     return open.length >= 6 && open.every((id) => job(c, id) > 0);
@@ -237,8 +237,10 @@ function track(ctx: Context, dt: number) {
   t.tended = ctx.res.cap('egg') >= 20 && care >= brood ? t.tended + dt : 0;
   // the lean season: from empty stores back to plenty with nobody starving on the way
   const food = ctx.res.amt('food');
-  if (food < 1 && t.lean === null) t.lean = starvedNow(ctx);
-  else if (t.lean !== null && food >= 50) { if (starvedNow(ctx) === t.lean) earn(ctx, 'lean'); t.lean = null; }
+  // spending the stores down to nothing is not a famine: they have to stay empty for a while
+  t.dry = food < 1 ? (t.dry ?? 0) + dt : 0;
+  if (t.dry >= 30 && t.lean === null) t.lean = starvedNow(ctx);
+  else if (t.lean !== null && food >= Math.max(50, ctx.res.cap('food') * 0.5)) { if (starvedNow(ctx) === t.lean) earn(ctx, 'lean'); t.lean = null; }
   // raid waves
   const war = a.war as { raids?: number; won?: number } | undefined;
   if (war) {
