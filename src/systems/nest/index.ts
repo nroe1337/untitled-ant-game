@@ -358,7 +358,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       case 'gallery': { // a resin gallery: a big chamber sealed with an amber rim, a few drips hanging from the roof
         blob(c, cx, y, 22, 7, PAL.amber);
         blob(c, cx, y, 19, 5, PAL.hole);
-        rect(c, cx - 17, y - 5, 34, 1, RESIN_DARK);
+        rect(c, cx - 11, y - 4, 22, 1, RESIN_DARK); // the roof's dark seam, inside the amber wall
         for (const [dx, h] of [[-11, 2], [-3, 3], [6, 1], [13, 2]] as const) { rect(c, cx + dx, y - 4, 1, h, PAL.amber); rect(c, cx + dx, y - 4 + h, 1, 1, mix(PAL.amber, PAL.hole, 0.5)); }
         rect(c, cx - 15, y + 3, 30, 1, mix(PAL.hole, PAL.amber, 0.25)); // the sealed floor
         break;
