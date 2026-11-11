@@ -187,8 +187,7 @@ function finish(ctx: Context, p: Party) {
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
   if (s.runs === X.rivalAfterRuns && !ctx.flags.has('rival')) {
     ctx.flags.add('rival');
-    const when = ctx.flags.has('tech:cartography') ? 'Mandible drill can now be researched' : 'Mandible drill opens once Mapping is learned';
-    ctx.log(`A returning scout is shaking. To the east, a foreign colony. Many of them. (${when})`, 'warn');
+    ctx.log('A returning scout is shaking. To the east, a foreign colony. Many of them.', 'warn');
   }
 }
 
