@@ -99,7 +99,7 @@ export const brood: GameSystem = {
     ctx.res.define({ id: 'food', name: 'Food', cap: NEST.baseFoodCap, order: 1 });
     ctx.res.define({ id: 'egg', name: 'Eggs', cap: BROOD.baseBroodCap, order: 10, integer: true, stepped: true, group: 'Brood' });
     ctx.res.define({ id: 'larva', name: 'Larvae', cap: BROOD.baseBroodCap, order: 11, integer: true, stepped: true, group: 'Brood' });
-    ctx.res.define({ id: 'mould', name: 'Mould', cap: BROOD.mould.cap, order: 12, group: 'Brood' });
+    ctx.res.define({ id: 'mould', name: 'Mould', cap: BROOD.mould.cap, order: 900, group: 'Environment' });
     // used by royal upgrades; other systems fill them
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });

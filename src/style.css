@@ -390,3 +390,5 @@ canvas.map.world { cursor: pointer; }
 .g-veil:hover > * { filter: blur(5px); opacity: .7; }
 .g-steps > li.g-veil::marker { color: var(--muted); }
 .g-next > span { display: block; }
+.env-head { margin-top: 22px; }
+.res-list.env .res .name { color: #b98fa0; }
