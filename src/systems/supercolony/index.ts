@@ -148,7 +148,8 @@ export const supercolony: GameSystem = {
         fronts = el('div.ledger');
         laws = upgradeList(ctx, () => S(ctx).laws, LAWS);
         main = el('div', {},
-          el('p.muted', {}, 'Click a region. Give your regions roles. Each front with a neighbouring nation follows its standing order.'),
+          el('p.muted', {}, 'Give your regions roles. Each front with a neighbouring nation follows its standing order.'),
+          el('p.controls', {}, 'Click a region to select it.'),
           cv, info, sel,
           el('h3', {}, 'Fronts'), fronts,
           el('h3', {}, 'Laws'), laws.root);

@@ -258,7 +258,8 @@ export const map: GameSystem = {
         upsHead = el('h3', {}, 'Outposts');
         ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
         gardenBox = el('div.mapview', {},
-          el('p.flavor', {}, 'The garden, as far as your scouts have seen. Click a tile to inspect it.'),
+          el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
+          el('p.controls', {}, 'Click a tile to inspect it.'),
           cv, hover, summary, claimLine, el('div.row', {}, autoWrap),
           el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap,
           upsHead, ups.root,
@@ -299,7 +300,8 @@ export const map: GameSystem = {
         lookWrap = el('div.row', {}, look);
         lmHead = el('h3', {}, 'Landmarks'); lmList = el('div.ledger');
         worldBox = el('div.mapview', {},
-          el('p.flavor', {}, 'From the air the garden is a single patch of a much larger world. Click a cell to inspect it; double-click to look closer.'),
+          el('p.flavor', {}, 'From the air the garden is a single patch of a much larger world.'),
+          el('p.controls', {}, 'Click a cell to inspect it. Double-click to look closer.'),
           wcv, wHover, wSummary, sortieLine,
           el('h3', {}, 'Selected cell'), wInfo, sortieWrap, lookWrap, lmHead, lmList,
         );

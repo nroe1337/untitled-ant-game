@@ -212,7 +212,7 @@ export const nest: GameSystem = {
         });
         root.classList.add('nestpanel');
         root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid,
-          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), el('span.muted', {}, '|'), el('span.muted', {}, 'Click a chamber, then another, to swap them.')), scroller);
+          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);

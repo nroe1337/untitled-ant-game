@@ -291,6 +291,7 @@ export const expeditions: GameSystem = {
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
           el('div.row', {}, sendBtn.root, markBtn.root, markWrap),
           partyHint,
+          el('p.controls', {}, 'Shift-click moves 5.'),
           autoWrap,
           el('div.viewerwrap', {}, viewer, captions),
           statusEl,
@@ -315,7 +316,7 @@ export const expeditions: GameSystem = {
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
           `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}. Trips can be repeated as often as you like.`;
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
-          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5.` +
+          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
           (s.party < 30 && 'twig' in dest.loot ? ' Short on twigs? Big parties of 30 to 50 bring home far more.' : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
