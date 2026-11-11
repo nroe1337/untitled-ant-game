@@ -87,7 +87,7 @@ function revealRival(ctx: Context) {
 }
 const majors = (ctx: Context) => ctx.state.jobs?.assigned?.major ?? 0;
 /** Fighting strength in soldier-equivalents: a major counts as several soldiers. */
-const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + majors(ctx) * CASTES.major.atk;
+const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + majors(ctx) * CASTES.major.atk * (1 + ctx.mods.get('majorAtk'));
 const power = (ctx: Context) => 1 + ctx.mods.get('soldierPower');
 const defence = (ctx: Context) => ctx.mods.get('defence');
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -150,7 +150,7 @@ function startBattle(ctx: Context) {
   const hp = B.soldier.hp * (1 + F.carapace.per * fl(ctx, 'carapace'));
   const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
   const us: Stack[] = [];
-  if (majors(ctx)) us.push(stack('major', majors(ctx), hp * CASTES.major.hp, B.soldier.atk * CASTES.major.atk));
+  if (majors(ctx)) us.push(stack('major', majors(ctx), hp * CASTES.major.hp * (1 + ctx.mods.get('majorHp')), B.soldier.atk * CASTES.major.atk * (1 + ctx.mods.get('majorAtk'))));
   if (plain) us.push(stack('soldier', plain, hp, B.soldier.atk));
   const them: Stack[] = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
@@ -564,7 +564,7 @@ function battleField() {
         const hp = B.soldier.hp * (1 + F.carapace.per * fl(ctx, 'carapace'));
         const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
         ours = [];
-        if (majors(ctx)) ours.push(stack('major', majors(ctx), hp * CASTES.major.hp, 0));
+        if (majors(ctx)) ours.push(stack('major', majors(ctx), hp * CASTES.major.hp * (1 + ctx.mods.get('majorHp')), 0));
         if (plain || !majors(ctx)) ours.push(stack('soldier', plain, hp, 0));
         const comp = waveComp(waveOf(ctx)), tough = toughness(waveOf(ctx));
         theirs = s.rivalDefeated ? [] : [stack('raider', comp.raiders, B.raider.hp * tough, 0)];

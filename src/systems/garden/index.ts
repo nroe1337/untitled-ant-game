@@ -14,7 +14,7 @@ const S = (ctx: Context) => ctx.state.garden as GardenState;
 const lvl = (ctx: Context, id: keyof typeof GARDEN.upgrades) => S(ctx).ups[id] ?? 0;
 const beds = (ctx: Context) => ctx.state.nest?.built?.fungus ?? 0;
 const gardeners = (ctx: Context) => ctx.state.jobs?.assigned?.gardener ?? 0;
-const tended = (ctx: Context) => Math.min(beds(ctx), gardeners(ctx) * GARDEN.bedsPerGardener);
+const tended = (ctx: Context) => Math.min(beds(ctx), Math.floor(gardeners(ctx) * GARDEN.bedsPerGardener * (1 + ctx.mods.get('job:gardener'))));
 const healthy = (ctx: Context) => Math.max(0, beds(ctx) - S(ctx).mould);
 const bedRate = (ctx: Context) => GARDEN.fungusPerBed * (1 + GARDEN.upgrades.compost.per * lvl(ctx, 'compost'));
 const UPS = fromBalance(GARDEN.upgrades, (ctx) => beds(ctx) > 0);
@@ -47,7 +47,7 @@ export const garden: GameSystem = {
       }
     }
     // gardeners also clear mould they can reach, slowly
-    if (s.mould > 0 && gardeners(ctx) > 0 && Math.random() < (gardeners(ctx) / 60) * dt) { s.mould--; s.weeded++; }
+    if (s.mould > 0 && gardeners(ctx) > 0 && Math.random() < (gardeners(ctx) * (1 + ctx.mods.get('job:gardener')) / 60) * dt) { s.mould--; s.weeded++; }
 
     // healthy beds turn leaves into fungus
     const h = healthy(ctx);

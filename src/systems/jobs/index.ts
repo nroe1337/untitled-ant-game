@@ -59,8 +59,8 @@ const fmtEach = (n: number) => (Math.abs(n) < 1 && n !== 0 ? String(Number(n.toP
 const totalAnts = (ctx: Context) => Math.floor(ctx.res.amt('ant'));
 /** Most workers a job can take. */
 const jobMax = (ctx: Context, id: string) => {
-  if (id === 'replete') return CASTES.replete.max;
-  if (id === 'major') return Math.floor((S(ctx).assigned.soldier ?? 0) / CASTES.major.perSoldiers);
+  if (id === 'replete') return CASTES.replete.max + ctx.mods.get('repleteMax');
+  if (id === 'major') return Math.floor((S(ctx).assigned.soldier ?? 0) / Math.max(2, CASTES.major.perSoldiers - ctx.mods.get('majorRatio')));
   const slot = COLONY.jobSlots[id];
   if (!slot) return Infinity;
   const built = (ctx.state.nest as { built?: Record<string, number> } | undefined)?.built?.[slot[0]] ?? 0;
