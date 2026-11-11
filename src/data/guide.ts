@@ -127,6 +127,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',
         'Dig [Clay hall]s for lots of living space.',
         'Big nests need clay too: later Halls of husks, Memory vaults and Paper halls cost some.',
+        'Learn [Chamber craft] to upgrade a kind of chamber you have 3 or more of. Upgrades add no mould, so they beat digging more.',
       ] },
       { head: 'Watch the seasons', do: [
         'From now on the year turns.',

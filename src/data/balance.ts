@@ -90,6 +90,8 @@ export const NEST = {
   costGrowth: 1.3,          // default; each chamber can set its own growth
   /** Techs that make storage chambers hold more (Evolve-style shelving): tech id -> chambers it boosts by +50%. */
   /** Each storage chamber holds this much more than the one before it, so late ones keep pace with their cost. */
+  /** Chamber craft: upgrade a whole kind of chamber. Costs clay plus that chamber's own late resource. */
+  upgrade: { per: 0.15, max: 5, growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number>, minBuilt: 3, skip: ['harbour'] as string[] },
   storeGrowth: 1.08,
   storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
@@ -333,6 +335,7 @@ export const RESEARCH = {
     castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
+    renovation: { name: 'Chamber craft',     age: 'wings', cost: { knowledge: 560, clay: 80 },       needs: ['deepdig'], desc: 'Old chambers can be rebuilt with clay. Opens chamber upgrades in the Nest: each level makes every chamber of that kind give 15% more. Upgrades add no mould.' },
     deepdig:    { name: 'Deep diggers',      age: 'wings', cost: { knowledge: 420, soil: 600 },        needs: ['royal'], desc: 'Diggers tunnel down past the soil into the clay. Each digger also brings up a little clay. Unlocks the Clay hall.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 100, food: 120 },          needs: ['worksongs'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
     galleons:   { name: 'Wax hulls',         age: 'conquest', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
