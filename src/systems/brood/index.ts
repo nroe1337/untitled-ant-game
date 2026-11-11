@@ -285,7 +285,9 @@ export const brood: GameSystem = {
         eggBar.set(ctx.res.amt('egg') >= 1 ? s.eggProgress % 1 : 0);
         larvaBar.set(growingNow >= 1 ? s.larvaProgress % 1 : 0);
         pupaTxt.textContent = pupae >= 1 ? `Pupae waiting for room: ${pupae}` : 'No pupae yet.';
-        hint.textContent = broodUsed(ctx) >= broodCap(ctx)
+        hint.textContent = ctx.res.amt('mould') >= MO.sick && ctx.flags.has('mould:scrub')
+          ? 'Workers are dying in the mould. Press Scrub the mould until it is under ' + MO.sick + ', then put workers on Nurse.'
+          : broodUsed(ctx) >= broodCap(ctx)
           ? 'The brood cell is full. Research Brood care, then build a Warming chamber in the Nest.' : '';
         const lines = [
           ['Workers born', String(s.born)],

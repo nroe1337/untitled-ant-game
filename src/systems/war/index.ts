@@ -351,6 +351,8 @@ export const war: GameSystem = {
     const s = S(ctx);
     if (s.battle && !s.battle.us) s.battle = null; // a raid saved in the old lane format: call it off
     ctx.mods.set('soldierPower', 'plating', F.plating.per * fl(ctx, 'plating'));
+    ctx.mods.set('chamberCost', 'husktiles', F.husktiles.per * fl(ctx, 'husktiles'));
+    ctx.mods.set('job:forager', 'sickles', F.sickles.per * fl(ctx, 'sickles'));
     ctx.mods.set('soldierPower', 'standards', H.standards.per * hl(ctx, 'standards'));
     ctx.mods.set('hunting', 'firstblood', hasMilestone(ctx, 'hunt') ? 1 : 0);
     ctx.mods.set('expSafety', 'feared', hasMilestone(ctx, 'feared') ? -0.2 : 0);
