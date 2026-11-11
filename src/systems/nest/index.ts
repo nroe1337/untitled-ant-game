@@ -12,7 +12,7 @@ import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
   name: string; base: Costs; desc: string; needs?: string; max?: number; growth?: number;
-  antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number;
+  antCap?: number; foodCap?: number; broodCap?: number; pheroCap?: number; jellyCap?: number;
   soilCap?: number; matCap?: Record<string, number>;
   foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
   /** Any shared modifier, per chamber built (e.g. { 'job:forager': 0.04 }). */
@@ -135,6 +135,7 @@ function applyEffects(ctx: Context) {
   if (ctx.res.has('knowledge')) ctx.res.setCapBonus('knowledge', 'nest', sum('knowCap'));
   if (ctx.res.has('fungus')) ctx.res.setCapBonus('fungus', 'nest', sum('fungusCap'));
   if (ctx.res.has('wax')) ctx.res.setCapBonus('wax', 'nest', sum('waxCap'));
+  if (ctx.res.has('jelly')) ctx.res.setCapBonus('jelly', 'nest', sum('jellyCap'));
   ctx.mods.set('boatSlots', 'nest', sum('boats'));
   const m: Record<string, number> = {};
   for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id);
