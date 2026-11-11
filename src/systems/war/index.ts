@@ -9,12 +9,13 @@ import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, setup } from '../../core/pixel';
 import { WAR, MAP, CASTES } from '../../data/balance';
 import { idleAnts } from '../jobs';
+import { queenGuard } from '../brood';
 
 const B = WAR.battle;
 const F = WAR.fortifications;
 
 /** One stack per kind of ant on each side: a count, and the hit points left on the ant at the front of it. */
-type Kind = 'major' | 'soldier' | 'worker' | 'raider' | 'brute';
+type Kind = 'major' | 'soldier' | 'worker' | 'queen' | 'raider' | 'brute';
 interface Stack { kind: Kind; n: number; hp: number; max: number; atk: number; start: number; hit?: number; fell?: number }
 interface Battle {
   /** ours, in the order the raiders bite them: majors, then soldiers, then rallied workers */
@@ -214,11 +215,16 @@ function stepBattle(ctx: Context, dt: number) {
     const save = Math.min(B.rescueMax, carriers * B.rescuePerWorker);
     biteSide(b.us, inDmg * P, (x, n) => {
       if (x.kind === 'worker') { b.workersLost += n; return; }
+      if (x.kind === 'queen') { ctx.log('The queen is driven back into the royal chamber, hurt but alive.', 'warn'); return; }
       let saved = 0;
       for (let i = 0; i < n; i++) if (Math.random() < save) saved++;
       b.rescued = (b.rescued ?? 0) + saved;
       if (x.kind === 'major') b.majorsLost = (b.majorsLost ?? 0) + n; else b.soldiersLost += n;
     });
+  } else if (queenGuard(ctx) > 0 && !b.us.some((x) => x.kind === 'queen')) {
+    // Chitin plates: with the line gone, the armoured queen comes out to fight
+    b.us.push(stack('queen', 1, queenGuard(ctx), B.queenAtk));
+    ctx.log('The line is gone. The queen herself comes to the entrance, armoured in raider chitin.', 'warn');
   } else {
     // nobody holds the entrance: they slip in one by one while the walls keep biting
     b.slip = (b.slip ?? B.slipEvery) - dt;
@@ -478,7 +484,7 @@ export const war: GameSystem = {
 };
 
 // ---- the entrance: one ant for each stack, with the front ant's health and the count over its head ----
-const NAMES: Record<Kind, string> = { major: 'Majors', soldier: 'Soldiers', worker: 'Workers', raider: 'Raiders', brute: 'Brutes' };
+const NAMES: Record<Kind, string> = { queen: 'Queen', major: 'Majors', soldier: 'Soldiers', worker: 'Workers', raider: 'Raiders', brute: 'Brutes' };
 const LEGS_A = ['...#..#..#......', '..#..#..#.......'];
 const LEGS_B = ['...#..#..#......', '....#..#..#.....'];
 /** Pixel ants, facing right. '#' is body. */
@@ -517,13 +523,13 @@ const CW = 18, CH = 10;
 function drawAnt(cv: HTMLCanvasElement, x: Stack, theirs: boolean, fighting: boolean) {
   const c = setup(cv);
   c.clearRect(0, 0, CW, CH);
-  const shape = SHAPES[x.kind === 'major' ? 'major' : x.kind === 'brute' ? 'brute' : 'small'];
+  const shape = SHAPES[x.kind === 'major' ? 'major' : x.kind === 'brute' || x.kind === 'queen' ? 'brute' : 'small'];
   const t = performance.now() / 1000;
   const step = fighting ? Math.floor(t * 6) % 2 : 0;
   const lunge = fighting && x.n > 0 && Math.floor(t * 2.5 + (theirs ? 0.5 : 0)) % 2 ? 1 : 0;
   const rows = [...shape, ...(step ? LEGS_B : LEGS_A)];
   const top = CH - rows.length;
-  let col = theirs ? PAL.rival : x.kind === 'worker' ? PAL.bone : PAL.you;
+  let col = theirs ? PAL.rival : x.kind === 'worker' ? PAL.bone : x.kind === 'queen' ? PAL.amber : PAL.you;
   if (x.n <= 0) col = mix(col, PAL.bg, 0.65);
   else if ((x.hit ?? 0) > 0.12) col = mix(col, PAL.bone, 0.55);
   c.fillStyle = col;

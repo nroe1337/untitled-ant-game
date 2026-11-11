@@ -20,14 +20,14 @@ export const BROOD = {
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
-    // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
-    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch {p} faster each level.',               per: 0.01, base: { food: 20 },           growth: 1.18, max: 25 },
-    jelly:     { name: 'Rich feeding',    desc: 'Larvae grow {p} faster each level.',              per: 0.01, base: { food: 30 },           growth: 1.18, max: 25 },
-    devotion:  { name: 'Devoted nurses',  desc: 'Nurses lay eggs {p} faster each level.',               per: 0.01, base: { food: 40, soil: 15 }, growth: 1.2,  max: 30, needs: 'chamber:brood' },
+    // Two upgrades speed the brood up; the rest each do something different.
+    quicken:   { name: 'Warm brood',      desc: 'Eggs hatch and larvae grow {p} faster each level.', per: 0.02, base: { food: 25 }, growth: 1.18, max: 30 },
+    longevity: { name: 'Royal rhythm',    desc: 'Each level, the queen lays {p} more eggs per second on her own, and nurses lay 2% faster.', per: 0.005, base: { food: 40, seed: 4 }, growth: 1.25, max: 25, unit: 'flat' as const, needs: 'surface' },
     clutch:    { name: 'Larger clutch',   desc: 'Each level adds {p} egg to every lay.', per: 1,   base: { food: 60 },           growth: 3,    max: 3, unit: 'flat' as const },
-    plates:    { name: 'Chitin plates',   desc: 'Raider chitin armours the queen. Eggs hatch {p} faster each level.', per: 0.02, base: { chitin: 5 }, growth: 1.15, max: 50, needs: 'rival' },
+    twins:     { name: 'Twin eggs',       desc: 'Each egg laid has a {p} chance to be two, each level.', per: 0.04, base: { food: 120, jelly: 2 }, growth: 1.35, max: 10, needs: 'tech:castes' },
+    hardy:     { name: 'Hardy brood',     desc: 'Starving larvae keep growing at {p} of full speed each level, living off their fat.', per: 0.1, base: { food: 150, resin: 4 }, growth: 1.4, max: 5 },
+    plates:    { name: 'Chitin plates',   desc: 'Raider chitin armours the queen. When nobody is left at the entrance she fights the raiders herself, with {p} health each level.', per: 15, base: { chitin: 5 }, growth: 1.15, max: 50, unit: 'flat' as const, needs: 'rival' },
     wounds:    { name: 'Wound care',      desc: 'Each nurse lowers the chance of losing workers on expeditions by {p} per level, down to half the base chance at most. Wounded champions also heal faster.', per: 0.004, base: { food: 80, resin: 2 }, growth: 1.3, max: 10, needs: 'surface' },
-    longevity: { name: 'Royal rhythm',    desc: 'Each level, the queen lays {p} more eggs per second on her own.', per: 0.005, base: { seed: 6, resin: 1 }, growth: 1.3, max: 20, unit: 'flat' as const, needs: 'surface' },
   },
 };
 
@@ -216,6 +216,7 @@ export const WAR = {
     rallyMax: 8,                     // most workers that answer one rally
     rescuePerWorker: 0.06,           // each rallied worker at the entrance: this chance that a fallen soldier is carried home alive
     rescueMax: 0.5,
+    queenAtk: 3,                     // the armoured queen's bite, when she fights at the entrance (Chitin plates)
     slipEvery: 1.5,                  // with nobody left at the entrance, a raider slips in this often (seconds)
     chitinPerKill: 1,
     stealPerBreach: 0.04,            // fraction of food stolen per raider that gets in

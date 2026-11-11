@@ -28,11 +28,11 @@ const RB = BROOD.royal;
 /** Larvae the nest has living space for: workers plus larvae (and pupae) may not outgrow it. */
 const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt('ant')) - Math.floor(ctx.res.amt('larva'));
 // mods: 'brood' (lineage perks) speeds both; 'larvaGrowth' (fungus feeding) speeds larvae
-const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + RB.plates.per * R(ctx, 'plates') + ctx.mods.get('brood'));
-const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.jelly.per * R(ctx, 'jelly') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
+const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
+const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
-export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + RB.devotion.per * R(ctx, 'devotion'));
+export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity'));
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
@@ -59,8 +59,13 @@ export function broodFoodOutlook(ctx: Context) {
 }
 
 const ROYAL = fromBalance(RB, (ctx, needs) => ctx.flags.has('tech:royal') && (!needs || ctx.flags.has(needs)));
+/** The queen's health when she has to fight raiders herself (Chitin plates), read by war. */
+export const queenGuard = (ctx: Context) => RB.plates.per * R(ctx, 'plates');
 
 function addEggs(ctx: Context, n: number) {
+  // Twin eggs: each egg may come as two
+  const twin = RB.twins.per * R(ctx, 'twins');
+  if (twin > 0) { let extra = 0; for (let i = 0; i < n; i++) if (Math.random() < twin) extra++; n += extra; }
   const room = broodCap(ctx) - broodUsed(ctx);
   ctx.res.add('egg', Math.max(0, Math.min(n, room)));
 }
@@ -94,6 +99,11 @@ export const brood: GameSystem = {
 
   tick(ctx, dt) {
     const s = S(ctx);
+    // older saves: Rich feeding folded into Warm brood, Devoted nurses into Royal rhythm
+    if (s.royal.jelly || s.royal.devotion) {
+      s.royal.quicken = Math.max(s.royal.quicken ?? 0, s.royal.jelly ?? 0);
+      delete s.royal.jelly; delete s.royal.devotion;
+    }
     // Wound care: nurses patch up the injured (read by expeditions and the champion)
     ctx.mods.set('nurseHeal', 'brood', Math.min(BROOD.healCap, (ctx.state.jobs?.assigned?.nurse ?? 0) * RB.wounds.per * R(ctx, 'wounds')));
     const { res } = ctx;
@@ -130,8 +140,17 @@ export const brood: GameSystem = {
         s.larvaProgress += (dt / growTime(ctx)) * growing * tendSpeed(ctx);
         while (s.larvaProgress >= 1 && s.pupae < Math.floor(res.amt('larva'))) { s.pupae++; s.larvaProgress -= 1; }
         s.starvingWarned = false;
-      } else if (!s.starvingWarned) {
-        ctx.log('The larvae are starving. They will not grow without food.', 'warn'); s.starvingWarned = true;
+      } else {
+        // Hardy brood: starving larvae still grow a little, living off their fat
+        const hardy = RB.hardy.per * R(ctx, 'hardy');
+        if (hardy > 0) {
+          s.larvaProgress += (dt / growTime(ctx)) * growing * tendSpeed(ctx) * hardy;
+          while (s.larvaProgress >= 1 && s.pupae < Math.floor(res.amt('larva'))) { s.pupae++; s.larvaProgress -= 1; }
+        }
+        if (!s.starvingWarned) {
+          ctx.log(hardy > 0 ? `The larvae are starving. They grow at ${Math.round(hardy * 100)}% speed on their own fat.` : 'The larvae are starving. They will not grow without food.', 'warn');
+          s.starvingWarned = true;
+        }
       }
     } else s.larvaProgress = 0;
     while (s.pupae >= 1 && res.amt('ant') < res.cap('ant')) {
