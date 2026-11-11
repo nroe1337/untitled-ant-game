@@ -8,7 +8,15 @@ import { MAP, WORLD } from '../../data/balance';
 import type { Terrain, Tile } from './index';
 
 export interface Sortie { cell: number; elapsed: number; duration: number; ants: number; risk: number; wind: Wind }
-export interface WorldState { seen: number[]; wind: number; windT: number; sortie: Sortie | null; found: string[]; kin: string[]; sorties: number; lost: number; intro?: boolean }
+export interface Assault { cell: number; i: number; army: number; elapsed: number; duration: number }
+export interface WorldState {
+  seen: number[]; wind: number; windT: number; sortie: Sortie | null; found: string[]; kin: string[]; sorties: number; lost: number; intro?: boolean;
+  /** Land held beyond the garden: cell -> tile indices. */
+  held?: Record<number, number[]>;
+  /** Hostile colonies that have fallen. */
+  fallen?: string[];
+  assault?: Assault | null;
+}
 type Wind = 'down' | 'up' | 'cross';
 
 const N = WORLD.size;
@@ -27,7 +35,7 @@ export const skyOpen = (ctx: Context) => ctx.flags.has('tech:sky');
 function rng(seed: number) {
   return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-export interface Cell { biome: string; landmark?: string; kin?: string; seed: number; kinAt?: [number, number] }
+export interface Cell { biome: string; landmark?: string; kin?: string; seed: number; kinAt?: [number, number]; foe?: string; foeAt?: [number, number] }
 const layouts = new Map<number, Cell[]>();
 export function layout(seed: number): Cell[] {
   const hit = layouts.get(seed); if (hit) return hit;
@@ -47,6 +55,12 @@ export function layout(seed: number): Cell[] {
   WORLD.landmarks.forEach((l, i) => { const c = (i === 0 ? near : far).find((c) => !used.has(c) && cells[c].biome !== 'pond')!; used.add(c); cells[c].landmark = l.id; });
   const kinCells = shuffled(all.filter((c) => ring(c) >= 2 && !used.has(c) && cells[c].biome !== 'pond'));
   WORLD.kin.forEach((k, i) => { const c = kinCells[i]; cells[c].kin = k.id; cells[c].kinAt = [8 + Math.floor(R() * 24), 5 + Math.floor(R() * 14)]; });
+  // hostile colonies, from their own stream so older layouts keep their landmarks and kin where they were
+  const F = rng(seed ^ 0xf0e5);
+  const free = (c: number) => c !== HOME && !cells[c].landmark && !cells[c].kin && cells[c].biome !== 'pond';
+  const mix = (list: number[]) => list.map((c) => [F(), c] as const).sort((a, b) => a[0] - b[0]).map(([, c]) => c);
+  const foeCells = [...mix(all.filter((c) => ring(c) === 1 && free(c))).slice(0, 1), ...mix(all.filter((c) => ring(c) >= 2 && free(c)))];
+  WORLD.foes.forEach((f, i) => { const c = foeCells[i]; if (c == null) return; cells[c].foe = f.id; cells[c].foeAt = [8 + Math.floor(F() * 24), 5 + Math.floor(F() * 14)]; });
   layouts.set(seed, cells);
   return cells;
 }
@@ -73,6 +87,90 @@ export function cellTerrain(seed: number, c: number): Terrain[] {
   }
   terrains.set(key, out);
   return out;
+}
+
+// ---- land beyond the garden ----
+export type WOwner = 'you' | 'foe' | 'kin' | null;
+export const foeOf = (id: string) => WORLD.foes.find((f) => f.id === id)!;
+export const held = (w: WorldState, c: number) => w.held?.[c] ?? [];
+const near = (i: number, at: [number, number] | undefined, r: number) => !!at && Math.hypot((i % MAP.cols) - at[0], (Math.floor(i / MAP.cols) - at[1]) * 1.1) < r;
+/** Who holds tile i of foreign cell c. */
+export function ownerAt(seed: number, w: WorldState, c: number, i: number): WOwner {
+  if (held(w, c).includes(i)) return 'you';
+  const cell = layout(seed)[c];
+  if (cell.kin && near(i, cell.kinAt, 3)) return 'kin';
+  if (cell.foe && !w.fallen?.includes(cell.foe) && near(i, cell.foeAt, WORLD.foeRadius) && cellTerrain(seed, c)[i] !== 'water') return 'foe';
+  return null;
+}
+export const isFoeCore = (seed: number, c: number, i: number) => { const at = layout(seed)[c].foeAt; return !!at && i === at[1] * MAP.cols + at[0]; };
+/** Do you hold the tile at global coordinates gx, gy (garden or beyond)? */
+function youAt(seed: number, w: WorldState, home: Tile[], gx: number, gy: number) {
+  if (gx < 0 || gy < 0 || gx >= N * MAP.cols || gy >= N * MAP.rows) return false;
+  const c = Math.floor(gy / MAP.rows) * N + Math.floor(gx / MAP.cols), i = (gy % MAP.rows) * MAP.cols + (gx % MAP.cols);
+  return c === HOME ? home[i]?.o === 'you' : held(w, c).includes(i);
+}
+/** Next to land you hold, counting across cell borders. */
+export function besideYou(seed: number, w: WorldState, home: Tile[], c: number, i: number) {
+  const [cx, cy] = cxy(c), gx = cx * MAP.cols + (i % MAP.cols), gy = cy * MAP.rows + Math.floor(i / MAP.cols);
+  return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => youAt(seed, w, home, gx + dx, gy + dy));
+}
+export const reachable = (ctx: Context, c: number) => ctx.flags.has('tech:bordernests') && c !== HOME && ring(c) <= WORLD.claim.ring && isSeen(W(ctx), c);
+export function canClaimAt(ctx: Context, c: number, i: number) {
+  const w = W(ctx), seed = ctx.state.map.seed;
+  if (!reachable(ctx, c) || ownerAt(seed, w, c, i) !== null) return false;
+  if (cellTerrain(seed, c)[i] === 'water' && !ctx.flags.has('tech:rafts')) return false;
+  return besideYou(seed, w, ctx.state.map.tiles, c, i);
+}
+export function canAssault(ctx: Context, c: number, i: number) {
+  const w = W(ctx), seed = ctx.state.map.seed;
+  return reachable(ctx, c) && ctx.flags.has('tech:campaigns') && ownerAt(seed, w, c, i) === 'foe' && besideYou(seed, w, ctx.state.map.tiles, c, i);
+}
+export const foeStrength = (seed: number, c: number, i: number) => foeOf(layout(seed)[c].foe!).power * (isFoeCore(seed, c, i) ? WORLD.coreMult : 1);
+export function takeTile(ctx: Context, c: number, i: number) {
+  const w = W(ctx);
+  ((w.held ??= {})[c] ??= []).includes(i) || w.held[c].push(i);
+}
+/** Every tile held beyond the garden, with its terrain. */
+export function heldTerrain(ctx: Context): Terrain[] {
+  const w = W(ctx), seed = ctx.state.map.seed, out: Terrain[] = [];
+  for (const [c, list] of Object.entries(w.held ?? {})) { const T = cellTerrain(seed, +c); for (const i of list) out.push(T[i]); }
+  return out;
+}
+const soldiers = (ctx: Context) => Math.floor(ctx.state.jobs?.assigned?.soldier ?? 0);
+export const assaultArmy = soldiers;
+export function sendAssault(ctx: Context, c: number, i: number) {
+  W(ctx).assault = { cell: c, i, army: soldiers(ctx), elapsed: 0, duration: WORLD.assault.time };
+}
+function finishAssault(ctx: Context) {
+  const w = W(ctx), a = w.assault!, seed = ctx.state.map.seed;
+  w.assault = null;
+  ctx.ping('map');
+  if (ownerAt(seed, w, a.cell, a.i) !== 'foe') { ctx.log('The soldiers come home. Nobody is left to fight there.', 'info'); return; }
+  const cell = layout(seed)[a.cell], foe = foeOf(cell.foe!), core = isFoeCore(seed, a.cell, a.i);
+  const enemy = foeStrength(seed, a.cell, a.i);
+  const ours = a.army * (1 + ctx.mods.get('soldierPower')) * (0.85 + Math.random() * 0.3);
+  const win = ours >= enemy;
+  const lost = Math.min(a.army, Math.ceil(a.army * WORLD.assault.loss * (win ? 1 : 2)));
+  ctx.res.add('ant', -lost);
+  const jobs = ctx.state.jobs?.assigned; if (jobs) jobs.soldier = Math.max(0, (jobs.soldier ?? 0) - lost);
+  if (!win) {
+    ctx.announce('Repulsed', `${foe.name} holds. ${lost} soldiers fell. They needed about ${Math.ceil(enemy)} strength; you brought ${Math.floor(ours)}.`, { small: true, kicker: 'Assault', loss: true });
+    ctx.log(`The assault on ${foe.name} fails. ${lost} soldiers do not return.`, 'warn');
+    return;
+  }
+  const got = Object.entries(foe.loot).filter(([r]) => ctx.res.has(r)).map(([r, [lo, hi]]) => { const n = Math.round((lo + Math.random() * (hi - lo)) * (core ? 4 : 1)); ctx.res.add(r, n); return `+${n} ${r}`; });
+  const hon = core ? WORLD.assault.fallHonours : WORLD.assault.honours;
+  if (ctx.res.has('honour')) { ctx.res.add('honour', hon); if (ctx.state.war) ctx.state.war.honoured = (ctx.state.war.honoured ?? 0) + hon; got.push(`+${hon} war honours`); }
+  takeTile(ctx, a.cell, a.i);
+  ctx.bus.emit('world:capture', { cell: a.cell, i: a.i });
+  if (core) {
+    (w.fallen ??= []).push(foe.id);
+    ctx.announce(`${foe.name} falls`, `Their queen is dead and the ${foe.kind} scatter. Their land lies open to claim.`, { kicker: 'Conquest', lines: [...got, ...(lost ? [`${lost} soldiers fell`] : [])] });
+    ctx.log(`${foe.name} falls. Their land lies open.`, 'story');
+  } else {
+    ctx.announce('Victory', `A tile taken from ${foe.name}.`, { small: true, kicker: 'Assault', lines: [...got, ...(lost ? [`${lost} soldiers fell`] : [])] });
+    ctx.log(`Your soldiers take a tile from ${foe.name}. ${got.join(', ')}. ${lost} fell.`, 'info');
+  }
 }
 
 // ---- wind and sorties ----
@@ -147,6 +245,7 @@ export function tickWorld(ctx: Context, dt: number) {
   }
   if ((w.windT += dt) >= SW.windEvery) { w.windT = 0; w.wind = (w.wind + (Math.random() < 0.5 ? 1 : 3)) % 4; }
   if (w.sortie && (w.sortie.elapsed += dt) >= w.sortie.duration) finishSortie(ctx);
+  if (w.assault && (w.assault.elapsed += dt) >= w.assault.duration) finishAssault(ctx);
   // landmarks help every colony of the line
   const sum: Record<string, number> = {};
   for (const id of w.found) { const l = lmName(id); sum[l.mod] = (sum[l.mod] ?? 0) + l.per; }
@@ -174,10 +273,11 @@ function paintWorld(seed: number, w: WorldState, home: Tile[]) {
       rect(c, X0, Y0, MAP.cols, MAP.rows, frontier(w, cc) ? FOG2 : FOG1);
       continue;
     }
-    cellTerrain(seed, cc).forEach((t, i) => rect(c, X0 + (i % MAP.cols), Y0 + Math.floor(i / MAP.cols), 1, 1, TC[t]));
+    cellTerrain(seed, cc).forEach((t, i) => { const o = ownerAt(seed, w, cc, i); rect(c, X0 + (i % MAP.cols), Y0 + Math.floor(i / MAP.cols), 1, 1, o === 'you' ? PAL.you : o === 'foe' ? PAL.foe : TC[t]); });
     const cell = cells[cc];
     if (cell.kin && cell.kinAt) { const [kx, ky] = cell.kinAt; rect(c, X0 + kx - 2, Y0 + ky - 2, 5, 5, PAL.scent); rect(c, X0 + kx, Y0 + ky, 1, 1, PAL.hole); }
     if (cell.landmark) rect(c, X0 + 18, Y0 + 10, 4, 4, PAL.amber);
+    if (cell.foe && cell.foeAt && !w.fallen?.includes(cell.foe)) { const [fx, fy] = cell.foeAt; rect(c, X0 + fx - 1, Y0 + fy - 1, 3, 3, PAL.hole); }
   }
 }
 
@@ -204,11 +304,32 @@ export function drawWorld(cv: HTMLCanvasElement, seed: number, w: WorldState, ho
   box(selected, PAL.bone);
 }
 
-/** One foreign cell, close up, at the garden's 8px scale. */
-export function drawCell(cv: HTMLCanvasElement, seed: number, cc: number) {
+/** One foreign cell, close up, at the garden's 8px scale, with borders like the garden map. */
+export function drawCell(cv: HTMLCanvasElement, seed: number, w: WorldState, cc: number, hover: number | null, selected: number | null, busy: number | null) {
   const c = cv.getContext('2d')!;
-  const T = 8, cell = layout(seed)[cc];
-  cellTerrain(seed, cc).forEach((t, i) => rect(c, (i % MAP.cols) * T, Math.floor(i / MAP.cols) * T, T, T, TC[t]));
-  if (cell.kin && cell.kinAt) { const [kx, ky] = cell.kinAt; rect(c, (kx - 2) * T, (ky - 2) * T, 5 * T, 5 * T, PAL.scent); rect(c, kx * T + 2, ky * T + 2, 4, 4, PAL.hole); }
-  if (cell.landmark) rect(c, 18 * T, 10 * T, 4 * T, 4 * T, PAL.amber);
+  const T = 8, cell = layout(seed)[cc], terr = cellTerrain(seed, cc);
+  const own = terr.map((_, i) => ownerAt(seed, w, cc, i));
+  const OCOL: Record<string, string> = { you: PAL.you, foe: PAL.foe, kin: PAL.scent };
+  terr.forEach((t, i) => {
+    const x = i % MAP.cols, y = Math.floor(i / MAP.cols), X = x * T, Y = y * T, o = own[i];
+    rect(c, X, Y, T, T, TC[t]);
+    if (!o) return;
+    const col = OCOL[o];
+    const n = (dx: number, dy: number) => { const xx = x + dx, yy = y + dy; return xx < 0 || yy < 0 || xx >= MAP.cols || yy >= MAP.rows ? null : own[yy * MAP.cols + xx]; };
+    if (n(0, -1) !== o) rect(c, X, Y, T, 1, col);
+    if (n(0, 1) !== o) rect(c, X, Y + T - 1, T, 1, col);
+    if (n(-1, 0) !== o) rect(c, X, Y, 1, T, col);
+    if (n(1, 0) !== o) rect(c, X + T - 1, Y, 1, T, col);
+  });
+  if (cell.kin && cell.kinAt) { const [kx, ky] = cell.kinAt; rect(c, kx * T + 2, ky * T + 2, 4, 4, PAL.scent); }
+  if (cell.foe && cell.foeAt && !w.fallen?.includes(cell.foe)) { const [fx, fy] = cell.foeAt; rect(c, fx * T + 2, fy * T + 2, 4, 4, PAL.foe); }
+  if (cell.landmark) rect(c, 18 * T + 1, 10 * T + 1, 2 * T - 2, 2 * T - 2, PAL.amber);
+  const mark = (i: number | null, col: string) => {
+    if (i == null) return;
+    const X = (i % MAP.cols) * T, Y = Math.floor(i / MAP.cols) * T;
+    rect(c, X, Y, T, 1, col); rect(c, X, Y + T - 1, T, 1, col); rect(c, X, Y, 1, T, col); rect(c, X + T - 1, Y, 1, T, col);
+  };
+  if (busy != null && Math.floor(performance.now() / 400) % 2) mark(busy, PAL.you);
+  mark(hover, PAL.bone);
+  mark(selected, PAL.bone);
 }
