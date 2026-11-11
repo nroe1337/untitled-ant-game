@@ -32,9 +32,10 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Research the basics', do: [
         'Learn [Storage chambers], [Brood care] and [Elder memory].',
+        'After [Brood care], put workers on Nurse. Each nurse keeps 8 eggs or larvae clean.',
         'Dig a [Food store] or [Soil pit] whenever a resource sits at its cap.',
         'Put a few workers on Elder for |knowledge|.',
-      ] },
+      ], tip: '!Mould!: brood with no nurse to clean it can rot. 6 to 8 nurses cover a big nest.' },
     ],
     next: 'Learn [Upward tunnels] and reach 10 chambers. The Age of Forage begins.',
   },
