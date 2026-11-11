@@ -23,6 +23,7 @@ import { stats } from './stats';
 import { happenings } from './happenings';
 import { seasons } from './seasons';
 import { kin } from './kin';
+import { guide } from './guide';
 
 export const SYSTEMS: GameSystem[] = [
   seasons,
@@ -39,6 +40,7 @@ export const SYSTEMS: GameSystem[] = [
   garden,
   castes,
   waters,
+  guide,
   lineage,
   husbandry,
   champion,

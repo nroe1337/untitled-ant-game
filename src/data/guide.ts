@@ -1,0 +1,175 @@
+// The Guide: one page per age, opened the first time the line reaches that age. Step-by-step advice.
+// Markup inside strings (rendered in colour by the Guide panel):
+//   {Jobs}            a tab                     (blue)
+//   [Daily routine]   research, chamber, button  (gold)
+//   |food|            a resource                 (green)
+//   !Careful!         a warning                  (red)
+
+export interface GuideStep { head: string; do: string[]; tip?: string }
+export interface GuidePage { age: string; goal: string; steps: GuideStep[]; next: string }
+
+export const GUIDE: GuidePage[] = [
+  {
+    age: 'dirt',
+    goal: 'Grow from one queen to a nest of 10 chambers, then break through to the surface.',
+    steps: [
+      { head: 'Get your first workers', do: [
+        'The queen lays eggs on her own. Watch them hatch on the {Queen} tab.',
+        'Click [Forage near the entrance] whenever it is ready. It gives |food|.',
+      ], tip: 'Early on, your own clicks are most of your food. Keep clicking.' },
+      { head: 'Start research', do: [
+        'At 3 workers the {Research} tab opens.',
+        'Learn [Tunnelling] first. It unlocks Diggers and the {Nest} tab.',
+      ] },
+      { head: 'Give everyone a job', do: [
+        'Open the {Jobs} tab.',
+        'Put about 2 workers on Forager for every 1 on Digger.',
+        'Foragers bring |food|. Diggers bring |soil|.',
+      ], tip: '!Every worker eats.! Hover |food| at the top to check it is going up, not down.' },
+      { head: 'Dig chambers', do: [
+        'On the {Nest} tab, dig [Resting chamber]s for living space.',
+        'When living space is full, no new workers hatch. Dig ahead.',
+      ] },
+      { head: 'Research the basics', do: [
+        'Learn [Storage chambers], [Brood care] and [Elder memory].',
+        'Dig a [Food store] or [Soil pit] whenever a resource sits at its cap.',
+        'Put a few workers on Elder for |knowledge|.',
+      ] },
+    ],
+    next: 'Learn [Upward tunnels] and reach 10 chambers. The Age of Forage begins.',
+  },
+  {
+    age: 'forage',
+    goal: 'Make the colony run itself, start expeditions, and research the way to the Map.',
+    steps: [
+      { head: 'Automate jobs', do: [
+        'Learn [Daily routine].',
+        'On the {Jobs} tab, click the ☆ next to Forager.',
+        'New idle workers now go to Forager on their own.',
+      ], tip: 'You can change the starred job any time.' },
+      { head: 'Grow the stores', do: [
+        'Learn [Wider tunnels], [Packed walls] and [Memory songs].',
+        'They are cheap and make every chamber better.',
+      ] },
+      { head: 'Explore the surface', do: [
+        'Open the {Surface} tab and send expeditions.',
+        'They bring back |twig| and |seed|, which are hard to get any other way.',
+        'Spend the trail marks they earn on the {Surface} tab.',
+      ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
+      { head: 'Make pheromone', do: [
+        'Learn [Trail scent]. Put a few workers on Scout.',
+        'Scouts make |pheromone|. The Map costs a lot of it, so start early.',
+      ] },
+      { head: 'Set up queues', do: [
+        'Learn [Digging plans] for a building queue.',
+        'Learn [Study plans] for a research queue.',
+        'Fill both before you step away from the game.',
+      ] },
+      { head: 'Free food', do: [
+        'Learn [Seed lore] and dig [Seed granary]s. They make |food| with no workers.',
+        'Learn [Sanitation] and dig a [Midden]. It lowers how much the colony eats.',
+      ] },
+    ],
+    next: 'Learn [Mapping]. The {Map} tab opens and the Age of Conquest begins.',
+  },
+  {
+    age: 'conquest',
+    goal: 'Claim the garden, beat back the rival, and build room for a much bigger colony.',
+    steps: [
+      { head: 'Claim land', do: [
+        'On the {Map} tab, click a tile next to your land, then claim it.',
+        'Each tile you hold gives resources. Build outposts on tiles for more.',
+        'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
+      ], tip: 'Learn [Frontier sense] to turn on "Expand on its own".' },
+      { head: 'Prepare for raids', do: [
+        'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
+        'Put workers on Soldier and dig Guard posts.',
+      ], tip: '!Raids will come.! Have soldiers ready before the first wave.' },
+      { head: 'Use the chitin', do: [
+        'Dead raiders drop |chitin|.',
+        'Spend it on fortifications on the {War} tab.',
+        'Learn [Husk masonry] and dig [Hall of husks] for room and defence.',
+      ] },
+      { head: 'Take the fight to them', do: [
+        'Learn [Campaigning].',
+        'Pick an enemy tile on the {Map}, then launch from the {War} tab.',
+        'Every tile you take makes the rival army smaller.',
+      ] },
+      { head: 'Make room', do: [
+        'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',
+        'Dig [Worker hall]s. Living space is the main limit this age.',
+      ] },
+      { head: 'Take to the water', do: [
+        'Learn [Leaf rafts] to open the {Waters} tab.',
+        'Send boats on voyages for loot. Some islands can be settled for steady income.',
+      ] },
+    ],
+    next: 'Learn [Royal court]. The Age of Wings begins.',
+  },
+  {
+    age: 'wings',
+    goal: 'Breed new castes, explore the wider world, and send your first nuptial flight.',
+    steps: [
+      { head: 'Breed castes', do: [
+        'Learn [Caste lore] to open the {Castes} tab.',
+        'Use |jelly| to breed minims, repletes, majors or weavers.',
+        'Each caste has a long road of 5 stages. Push one caste first.',
+      ] },
+      { head: 'Watch the seasons', do: [
+        'From now on the year turns.',
+        'Winter stops expeditions and sky sorties.',
+      ], tip: '!Stock up on food in autumn.!' },
+      { head: 'Look beyond the garden', do: [
+        'Learn [Sky scouts] to open the World view on the {Map}.',
+        'Send sorties to uncover nearby cells, landmarks and other colonies.',
+        'Help friendly colonies on the {Kin} tab. Finish their quests to earn trust.',
+      ] },
+      { head: 'Build the Swarm Spire', do: [
+        'Learn [Winged queens]. The {Lineage} tab opens.',
+        'Build the Spire\'s 5 stages. Stores are held back for it on their own.',
+        'The [Winged princesses] stage takes a long time. Keep playing while it grows.',
+      ] },
+      { head: 'Send the flight', do: [
+        'Click [Send out the nuptial flight] on a warm evening.',
+        'This colony ends. You earn |lineage|.',
+        'Spend |lineage| on perks. Perks are kept forever.',
+      ], tip: 'Good first perks: [Royal blood], [Old trails] and [Founding swarm].' },
+      { head: 'After your first flight', do: [
+        'New research appears: [Teaching], [Leaf culture], [Herding], [The hunt] and [Border nests].',
+        'The {Archive} and {Records} tabs start filling up.',
+        'Fly again. A second flight opens the {Genome} tab.',
+      ] },
+    ],
+    next: 'Reach the far shore with a galleon, fly 3 times and settle 3 places across the water. Then you can migrate.',
+  },
+  {
+    age: 'settlement',
+    goal: 'Move your line into the human town, open all of it, and grow into a supercolony.',
+    steps: [
+      { head: 'Migrate', do: [
+        'Open the {Migration} tab once a galleon reaches the far shore.',
+        'Check that you have 3 flights since your last migration and 3 settlements across the water.',
+        'Migrate. You earn |heritage| and buy perks with it.',
+      ], tip: 'You keep |lineage|, its perks, your captured land, champion, Archive and Genome.' },
+      { head: 'Work the town', do: [
+        'Learn [Town ways] to open the {Town} tab.',
+        'Put workers on Town forager. They work every open site.',
+        'Choose working hours. Day is fast but risky. Night is safe but slow.',
+      ] },
+      { head: 'Stay safe', do: [
+        'Learn [Tasting] and put workers on Taster.',
+        'Tasters find poisoned food before it kills your foragers.',
+      ], tip: '!Get Tasting before you send many foragers.!' },
+      { head: 'Open every site', do: [
+        'Learn [Street fighting] to clear pavement ants from sites.',
+        'Learn [Paper nests] for the study and satellite nests.',
+        'Learn [Iron dust] for the shed.',
+      ] },
+      { head: 'Keep flying', do: [
+        'Flights still work here and still pay |lineage|.',
+        'Fly a few times between migrations to grow faster.',
+      ] },
+    ],
+    next: 'Open all 6 town sites, build 6 satellite nests and earn 25 |heritage| in all. Then become a supercolony on the {Continent} tab and earn |unity|.',
+  },
+];
