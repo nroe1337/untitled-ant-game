@@ -9,12 +9,14 @@ import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP } from '../../data/balance';
 import { fromBalance, upgradeList } from '../../core/upgrades';
+import { W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
+import { WORLD } from '../../data/balance';
 
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
 interface Claim { i: number; elapsed: number; duration: number; ants: number }
-interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean }
+interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
 const yieldMult = (ctx: Context) => 1 + MAP.upgrades.lines.per * (S(ctx).ups?.lines ?? 0);
 
@@ -98,7 +100,10 @@ export const canClaim = (ctx: Context, i: number | null) => {
 };
 /** Scouts a claiming party needs: more for tiles farther from the nest. */
 const claimScouts = (i: number) => { const [x, y] = xy(i), [nx, ny] = MAP.nest; return MAP.claimParty + Math.floor(MAP.claimScoutsPerTile * Math.hypot(x - nx, y - ny)); };
-const scouts = (ctx: Context) => Math.floor((ctx.state.jobs?.assigned?.scout ?? 0) as number);
+const scoutsAll = (ctx: Context) => Math.floor((ctx.state.jobs?.assigned?.scout ?? 0) as number);
+/** Scouts at home: not out on a winged sortie. */
+const scouts = (ctx: Context) => scoutsAll(ctx) - (S(ctx).world?.sortie?.ants ?? 0);
+const scoutsFree = (ctx: Context) => scouts(ctx) - (S(ctx).claiming?.ants ?? 0);
 const canSend = (ctx: Context, i: number | null) => !S(ctx).claiming && i !== null && scouts(ctx) >= claimScouts(i);
 function sendClaim(ctx: Context, i: number) {
   S(ctx).claiming = { i, elapsed: 0, duration: claimTime(i), ants: claimScouts(i) };
@@ -161,7 +166,7 @@ export const map: GameSystem = {
   // but outposts are left behind and must be built again
   keep(ctx) {
     const s = S(ctx);
-    return { ...s, selected: null, ups: {}, claiming: null, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
+    return { ...s, selected: null, ups: {}, claiming: null, world: s.world ? { ...s.world, sortie: null } : undefined, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
   },
 
   tick(ctx, dt) {
@@ -169,7 +174,8 @@ export const map: GameSystem = {
     const s = S(ctx);
     delete ctx.busy.outposts;
     delete ctx.busy.claiming;
-    ctx.busy['job:scout'] = s.claiming?.ants ?? 0; // scouts out claiming don't make pheromone
+    ctx.busy['job:scout'] = (s.claiming?.ants ?? 0) + (s.world?.sortie?.ants ?? 0); // scouts out claiming or flying don't make pheromone
+    tickWorld(ctx, dt);
     if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
     if (s.auto && ctx.flags.has('tech:frontier')) {
       s.autoCd = (s.autoCd ?? 0) - dt;
@@ -190,10 +196,21 @@ export const map: GameSystem = {
     let hoverI: number | null = null;
     const bar = progressBar();
     let claimLine: HTMLElement, claimText: HTMLElement;
-    return {
+    // the world view (Age of Wings): a Garden/World toggle, the zoomed-out grid, and one foreign cell close up
+    type View = 'garden' | 'world' | 'cell';
+    let view: View = 'garden', zoomAt = 0, zoomLen = 700, firstZoom = true;
+    let toggle: HTMLElement, gBtn: HTMLButtonElement, wBtn: HTMLButtonElement, gardenBox: HTMLElement, worldBox: HTMLElement, cellBox: HTMLElement;
+    let wcv: HTMLCanvasElement, ccv: HTMLCanvasElement, wHover: HTMLElement, wSummary: HTMLElement, wInfo: HTMLElement, cInfo: HTMLElement, cTitle: HTMLElement, lmHead: HTMLElement, lmList: HTMLElement;
+    let sortie: ActionButton, sortieWrap: HTMLElement, lookWrap: HTMLElement, sortieLine: HTMLElement, sortieText: HTMLElement;
+    let wHoverC: number | null = null, wSel: number | null = null, looking = HOME;
+    const sbar = progressBar();
+    const winter = (ctx: Context) => ctx.mods.get('winter') > 0;
+    const canFly = (ctx: Context, c: number | null) => c != null && frontier(W(ctx), c) && !W(ctx).sortie && !winter(ctx) && scoutsFree(ctx) >= sortieAnts(c);
+    const windText = { down: 'with the wind', up: 'into the wind', cross: 'across the wind' };
+    const P = {
       title: 'Map',
       group: 'World',
-      mount(root, ctx) {
+      mount(root: HTMLElement, ctx: Context) {
         cv = el('canvas.map', { width: MAP.cols * 8, height: MAP.rows * 8, 'aria-label': 'Map of the garden' }) as HTMLCanvasElement;
         const pick = (e: MouseEvent) => {
           const r = cv.getBoundingClientRect();
@@ -227,15 +244,69 @@ export const map: GameSystem = {
         claimWrap = el('div.row', {}, claim.root);
         upsHead = el('h3', {}, 'Outposts');
         ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
-        root.append(
+        gardenBox = el('div.mapview', {},
           el('p.flavor', {}, 'The garden, as far as your scouts have seen. Click a tile to inspect it.'),
           cv, hover, summary, claimLine, el('div.row', {}, autoWrap),
           el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap,
           upsHead, ups.root,
         );
+        // ---- the world ----
+        gBtn = el('button.tab', { type: 'button' }, 'Garden') as HTMLButtonElement;
+        wBtn = el('button.tab', { type: 'button' }, 'World') as HTMLButtonElement;
+        gBtn.addEventListener('click', () => { view = 'garden'; });
+        wBtn.addEventListener('click', () => {
+          if (view === 'world') return;
+          if (view === 'garden') { zoomAt = performance.now(); zoomLen = firstZoom ? 2400 : 700; firstZoom = false; }
+          view = 'world';
+        });
+        toggle = el('div.tabs.maptoggle', {}, gBtn, wBtn);
+        const N = WORLD.size;
+        wcv = el('canvas.map.world', { width: N * 80, height: N * 48, 'aria-label': 'Map of the world' }) as HTMLCanvasElement;
+        const wpick = (e: MouseEvent) => {
+          const r = wcv.getBoundingClientRect();
+          const x = Math.floor(((e.clientX - r.left) / r.width) * N), y = Math.floor(((e.clientY - r.top) / r.height) * N);
+          return x >= 0 && y >= 0 && x < N && y < N ? y * N + x : null;
+        };
+        wcv.addEventListener('mousemove', (e) => { wHoverC = wpick(e); });
+        wcv.addEventListener('mouseleave', () => { wHoverC = null; });
+        wcv.addEventListener('click', (e) => { wSel = wpick(e); });
+        wcv.addEventListener('dblclick', (e) => { const c = wpick(e); if (c === HOME) view = 'garden'; else if (c != null && isSeen(W(ctx), c)) { looking = c; view = 'cell'; } });
+        wHover = el('p.muted.mono'); wSummary = el('p.muted'); wInfo = el('div.ledger');
+        sortieText = el('span');
+        sortieLine = el('div.caption', { hidden: true }, sortieText, sbar.root);
+        sortie = actionButton({
+          ctx, label: 'Send a winged sortie', costs: () => (wSel == null ? {} : sortieCost(wSel)),
+          desc: 'Winged scouts fly out over the cell, look, and come home with what they find. Farther cells need more scouts. Flying into the wind is slower, and birds hunt the slow.',
+          enabled: (c) => canFly(c, wSel),
+          onBuy: (c) => sendSortie(c, wSel!),
+        });
+        sortieWrap = el('div.row', {}, sortie.root);
+        const look = el('button.action', { type: 'button' }, el('span.label', {}, 'Look closer'));
+        look.addEventListener('click', () => { if (wSel === HOME) view = 'garden'; else if (wSel != null) { looking = wSel; view = 'cell'; } });
+        lookWrap = el('div.row', {}, look);
+        lmHead = el('h3', {}, 'Landmarks'); lmList = el('div.ledger');
+        worldBox = el('div.mapview', {},
+          el('p.flavor', {}, 'From the air the garden is a single patch of a much larger world. Click a cell to inspect it; double-click to look closer.'),
+          wcv, wHover, wSummary, sortieLine,
+          el('h3', {}, 'Selected cell'), wInfo, sortieWrap, lookWrap, lmHead, lmList,
+        );
+        ccv = el('canvas.map', { width: MAP.cols * 8, height: MAP.rows * 8, 'aria-label': 'A cell of the world, close up' }) as HTMLCanvasElement;
+        const back = el('button.action', { type: 'button' }, el('span.label', {}, 'Back to the world'));
+        back.addEventListener('click', () => { view = 'world'; });
+        cTitle = el('p.flavor'); cInfo = el('div.ledger');
+        cellBox = el('div.mapview', {}, cTitle, ccv, cInfo, el('div.row', {}, back));
+        root.append(toggle, gardenBox, worldBox, cellBox);
       },
-      update(_root, ctx) {
+      update(_root: HTMLElement, ctx: Context) {
         const s = S(ctx);
+        const sky = skyOpen(ctx);
+        if (!sky) view = 'garden';
+        toggle.hidden = !sky;
+        gBtn.classList.toggle('on', view === 'garden'); wBtn.classList.toggle('on', view !== 'garden');
+        gardenBox.hidden = view !== 'garden'; worldBox.hidden = view !== 'world'; cellBox.hidden = view !== 'cell';
+        if (view === 'world') P.world(ctx);
+        if (view === 'cell') P.cell(ctx);
+        if (view !== 'garden') return;
         drawMap(cv, s, hoverI);
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         autoBox.checked = !!s.auto;
@@ -277,7 +348,54 @@ export const map: GameSystem = {
         claim.update(ctx); build.update(ctx);
         void fmt;
       },
+      world(ctx: Context) {
+        const s = S(ctx), w = W(ctx), cells = layout(s.seed);
+        const z = Math.min(1, (performance.now() - zoomAt) / zoomLen);
+        drawWorld(wcv, s.seed, w, s.tiles, z, z < 1 ? null : wHoverC, z < 1 ? null : wSel);
+        const name = (c: number) => isSeen(w, c) ? biomeName(cells[c]) : 'Unexplored';
+        const [hx, hy] = wHoverC == null ? [0, 0] : cxy(wHoverC);
+        wHover.textContent = wHoverC == null ? 'Hover a cell.' : `${hx},${hy}  ${name(wHoverC)}`;
+        const winterNote = winter(ctx) ? ' Winter: the scouts\' wings stay folded until spring.' : '';
+        wSummary.textContent = `${windName(w)}.${winterNote} ${w.seen.length - 1} cells seen from the air, ${w.found.length} of ${WORLD.landmarks.length} landmarks found` + (w.kin.length ? `, ${w.kin.length} kin colon${w.kin.length > 1 ? 'ies' : 'y'}` : '') + '. Claiming land beyond the garden is beyond this colony. For now.';
+        const so = w.sortie;
+        sortieLine.hidden = !so;
+        if (so) { sortieText.textContent = `${so.ants} winged scouts over the ${name(so.cell) === 'Unexplored' ? 'unknown' : name(so.cell).toLowerCase()}, flying ${windText[so.wind]}. ${Math.ceil((so.duration - so.elapsed) / ctx.speed)}s left.`; sbar.set(so.elapsed / so.duration); }
+        const c = wSel;
+        lmHead.hidden = !w.found.length;
+        lmList.replaceChildren(...w.found.map((id) => { const l = lmName(id); return el('div', {}, el('span.muted', {}, l.name), el('span', {}, l.desc.replace('{p}', Math.round(Math.abs(l.per) * 100) + '%'))); }));
+        if (c == null) { wInfo.replaceChildren(el('span.muted', {}, 'No cell selected.')); sortieWrap.hidden = true; lookWrap.hidden = true; return; }
+        const cell = cells[c], seen = isSeen(w, c);
+        const rows: [string, string][] = [['Cell', `${cxy(c).join(',')}  ${name(c)}${c === HOME ? ' (home)' : ''}`]];
+        if (c !== HOME) rows.push(['Distance', `${ring(c)} cell${ring(c) > 1 ? 's' : ''} from the garden`]);
+        if (seen && c !== HOME) rows.push(['From the air', WORLD.biomes[cell.biome].note]);
+        if (seen && cell.landmark) rows.push(['Landmark', lmName(cell.landmark).name]);
+        if (seen && cell.kin) { const k = kinOf(cell.kin); rows.push(['Kin colony', `${k.name}. They are ${k.temper}.`]); }
+        if (!seen) {
+          if (frontier(w, c)) {
+            const wd = windFor(w, c);
+            rows.push(['Sortie', `${sortieAnts(c)} scouts, about ${sortieTime(w, c)}s, flying ${windText[wd]}`]);
+            rows.push(['Birds', `${Math.round(sortieRisk(w, c) * 100)}% chance they take half the sortie`]);
+            if (w.sortie) rows.push(['', 'A sortie is already out.']);
+            else if (scoutsFree(ctx) < sortieAnts(c)) rows.push(['', `Needs ${sortieAnts(c)} scouts at home (you have ${Math.max(0, scoutsFree(ctx))})`]);
+          } else rows.push(['Sortie', 'Too far. See a cell next to it first.']);
+        }
+        wInfo.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+        sortieWrap.hidden = seen || !frontier(w, c);
+        lookWrap.hidden = !seen;
+        sortie.update(ctx);
+      },
+      cell(ctx: Context) {
+        const s = S(ctx), cell = layout(s.seed)[looking];
+        drawCell(ccv, s.seed, looking);
+        cTitle.textContent = `${biomeName(cell)}, ${ring(looking)} cell${ring(looking) > 1 ? 's' : ''} from the garden. ${WORLD.biomes[cell.biome]?.note ?? ''}`;
+        const rows: [string, string][] = [];
+        if (cell.landmark) rows.push(['Landmark', lmName(cell.landmark).name]);
+        if (cell.kin) { const k = kinOf(cell.kin); rows.push(['Kin colony', `${k.name}. They are ${k.temper}.`]); }
+        rows.push(['Claim', 'Not yet. This colony cannot hold land so far from home.']);
+        cInfo.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+      },
     };
+    return P;
   })(),
 };
 
