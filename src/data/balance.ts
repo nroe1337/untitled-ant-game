@@ -343,7 +343,7 @@ export const RESEARCH = {
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
     { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },
-    { id: 'forage', name: 'Age of Forage', note: 'The surface, the garden, and everything that lives in it.' },
+    { id: 'forage', name: 'Age of Forage', note: 'Up into the daylight near the entrance: trails, seeds, and the first resin.' },
     { id: 'conquest', name: 'Age of Conquest', note: 'Maps, a rival mound, and the land between.' },
     { id: 'wings', name: 'Age of Wings', note: 'A royal court, new castes, and the first winged queens. A colony\'s road ends in a nuptial flight.' },
     { id: 'settlement', name: 'Age of Settlement', note: 'Across the water: houses, walls, and humans.' },
