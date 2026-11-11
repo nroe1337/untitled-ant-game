@@ -185,7 +185,7 @@ function finish(ctx: Context, p: Party) {
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: sent, lost: sent - p.ants });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
-  if (s.runs === X.rivalAfterRuns && !ctx.flags.has('rival')) {
+  if (s.runs >= X.rivalAfterRuns && !ctx.flags.has('rival')) {
     ctx.flags.add('rival');
     ctx.log('A returning scout is shaking. To the east, a foreign colony. Many of them.', 'warn');
   }
