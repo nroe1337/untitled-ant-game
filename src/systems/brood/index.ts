@@ -34,10 +34,10 @@ const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt(
 const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
-/** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
-export const broodCleaned = (ctx: Context) => BROOD.mould.queenCleans + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.mould.nurseCleans;
+/** Eggs and larvae the queen and nurses look after. Brood beyond it grows slowly and may rot (from Brood care on). */
+export const broodCare = (ctx: Context) => BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends;
 export const broodUnclean = (ctx: Context) => (ctx.flags.has('tech:brood')
-  ? Math.max(0, Math.floor(ctx.res.amt('egg') + ctx.res.amt('larva') - (S(ctx).pupae ?? 0)) - broodCleaned(ctx)) : 0);
+  ? Math.max(0, Math.floor(ctx.res.amt('egg') + ctx.res.amt('larva') - (S(ctx).pupae ?? 0)) - broodCare(ctx)) : 0);
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity'));
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
@@ -177,13 +177,13 @@ export const brood: GameSystem = {
         else if (Math.floor(res.amt('larva')) - (s.pupae ?? 0) >= 1) res.add('larva', -1);
         else break;
         s.mouldLost = (s.mouldLost ?? 0) + 1;
-        if (s.mouldLost === 1) ctx.log('Mould creeps over the brood pile. An egg is lost. More nurses would keep it clean.', 'warn');
+        if (s.mouldLost === 1) ctx.log('Mould creeps over the brood nobody is looking after. An egg is lost. More nurses would stop it.', 'warn');
       }
     } else if (s.mouldLost) {
-      ctx.log(`The nurses scrub the brood clean. Mould took ${s.mouldLost} before it was stopped.`, 'info');
+      ctx.log(`Every egg and larva is looked after again. Mould took ${s.mouldLost} before it was stopped.`, 'info');
       s.mould = 0; s.mouldLost = 0;
     }
-    ctx.alert('mould', dirty > 0 ? `Mould: ${dirty} eggs and larvae have nobody to clean them. Add nurses (each cleans ${BROOD.mould.nurseCleans}).` : null);
+    ctx.alert('mould', dirty > 0 ? `${dirty} eggs and larvae have no nurse and can go mouldy. Each nurse looks after ${BROOD.nurseTends}.` : null);
 
     // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
     const full = s.pupae >= 1 && res.amt('ant') >= res.cap('ant');
@@ -252,7 +252,7 @@ export const brood: GameSystem = {
         ];
         const brood = Math.floor(broodUsed(ctx));
         const care = BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends;
-        if (brood > BROOD.queenTends || care > BROOD.queenTends) lines.push(['Brood looked after', `${Math.min(brood, care)} of ${brood}` + (brood > care ? ' (the rest grow at half speed)' : '')]);
+        if (brood > BROOD.queenTends || care > BROOD.queenTends) lines.push(['Brood looked after', `${Math.min(brood, care)} of ${brood}` + (brood > care ? (ctx.flags.has('tech:brood') ? ' (the rest grow at half speed and can go mouldy)' : ' (the rest grow at half speed)') : '')]);
         const auto = nurseRate(ctx) + queenRate(ctx);
         if (auto) lines.push(['Eggs laid without you', `${auto.toFixed(3)}/s`]);
         ledger.replaceChildren(...lines.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));

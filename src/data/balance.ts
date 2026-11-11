@@ -13,12 +13,12 @@ export const BROOD = {
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
   baseBroodCap: 4,          // max eggs + larvae before chambers
   nurseEggsPerSecond: 0.03, // each nurse lays this many eggs
-  nurseTends: 3,            // eggs or larvae each nurse looks after
-  queenTends: 4,            // the queen looks after this many herself
+  nurseTends: 5,            // eggs or larvae each nurse looks after
+  queenTends: 8,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
-  /** Brood mould: nurses keep the brood clean. Brood beyond what the queen and nurses can clean may
-   *  rot away, slowly. the queen alone covers an early nest, and 8 nurses clean 80 eggs and larvae, which covers a big nest. Starts with Brood care. */
-  mould: { queenCleans: 16, nurseCleans: 8, rate: 1 / 400 },
+  /** Brood mould (from Brood care on): eggs and larvae nobody looks after grow slowly and may rot.
+   *  Each one not looked after rots about once per 1/rate seconds. Pupae never rot. */
+  mould: { rate: 1 / 400 },
   healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
