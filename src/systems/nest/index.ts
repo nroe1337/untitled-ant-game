@@ -2,6 +2,7 @@
 // Ten chambers break the surface. Each chamber type draws differently in the nest view.
 import type { GameSystem, Context } from '../../core/types';
 import { el, tileButton } from '../../core/ui';
+import { upgradeList, type UpgradeDef } from '../../core/upgrades';
 import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
@@ -36,7 +37,7 @@ const SECTIONS: [string, string[]][] = [
 ];
 const IDS = Object.keys(DEFS) as ChamberId[];
 
-interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[]; swappedBrood?: boolean }
+interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[]; swappedBrood?: boolean; ups?: Record<string, number> }
 const S = (ctx: Context) => ctx.state.nest as NestState;
 
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
@@ -98,6 +99,23 @@ function runQueue(ctx: Context) {
   build(ctx, id);
 }
 
+/** Chamber craft: each upgrade level makes every chamber of that kind give NEST.upgrade.per more. */
+const UP = NEST.upgrade;
+const power = (ctx: Context, id: ChamberId) => 1 + UP.per * (S(ctx).ups?.[id] ?? 0);
+const upCost = (id: ChamberId) => {
+  const late = DEFS[id].later?.cost ?? {};
+  const [r, v] = Object.entries(late)[0] ?? [];
+  const base: Costs = { clay: UP.clay, ...(r ? { [r]: (v ?? 1) * UP.lateMult } : UP.fallback) };
+  return (L: number): Costs => Object.fromEntries(Object.entries(base).map(([k, n]) => [k, Math.ceil((n ?? 0) * Math.pow(UP.growth, L))]));
+};
+const UPGRADES: UpgradeDef[] = (Object.keys(DEFS) as ChamberId[]).filter((id) => !UP.skip.includes(id)).map((id) => ({
+  id, name: DEFS[id].name, max: UP.max,
+  desc: `Every ${DEFS[id].name.toLowerCase()} gives ${Math.round(UP.per * 100)}% more of everything it gives, each level.`,
+  cost: upCost(id),
+  requires: (c: Context) => c.flags.has('tech:renovation') && count(c, id) >= UP.minBuilt,
+  onBuy: (c: Context) => applyEffects(c),
+  effect: (L: number) => (L ? `+${Math.round(UP.per * L * 100)}%` : ''),
+}));
 /** Storage chambers each hold NEST.storeGrowth times the one before, so N of them hold this many 'firsts'. */
 const grows = (id: ChamberId) => NEST.storeGrowthIds.includes(id);
 const stack = (ctx: Context, id: ChamberId) => { const n = count(ctx, id); return grows(id) ? (Math.pow(NEST.storeGrowth, n) - 1) / (NEST.storeGrowth - 1) : n; };
@@ -111,9 +129,9 @@ const roominess = (ctx: Context) => 1 + Object.entries(NEST.housingTechs).reduce
 const num = (n: number) => String(Number(n.toFixed(2)));
 /** A chamber's tooltip with the numbers it really gives now, after techs. */
 function liveDesc(ctx: Context, id: ChamberId) {
-  const m = storeMult(ctx, id) * nextScale(ctx, id);
+  const m = storeMult(ctx, id) * nextScale(ctx, id) * power(ctx, id);
   let d = DEFS[id].desc.replace(/\+(\d+) living space/, (_, n) =>
-    `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx))} living space`);
+    `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx) * power(ctx, id))} living space`);
   if (m !== 1) d = d.replace(/\+(\d+)(?![\d.]*%)(?! living)/g, (_, n) => `+${num(Number(n) * m)}`);
   // job slots this room gives (see COLONY.jobSlots)
   for (const [job, [room, per]] of Object.entries(COLONY.jobSlots)) if (room === id) d += `, +${per} ${job} slots`;
@@ -122,15 +140,15 @@ function liveDesc(ctx: Context, id: ChamberId) {
 
 function applyEffects(ctx: Context) {
   const mult = (id: ChamberId) => storeMult(ctx, id);
-  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * (k.endsWith('Cap') ? stack(ctx, id) * mult(id) : count(ctx, id)), 0);
+  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * (k.endsWith('Cap') ? stack(ctx, id) * mult(id) : count(ctx, id)) * power(ctx, id), 0);
   const roomier = roominess(ctx);
-  const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') : 0;
+  const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') * power(ctx, 'tunnel') : 0;
   ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide) * roomier));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
   for (const r of Object.keys(NEST.baseMaterialCap)) {
-    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * stack(ctx, id) * mult(id), 0));
+    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * stack(ctx, id) * mult(id) * power(ctx, id), 0));
   }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
   ctx.mods.set('defence', 'nest', sum('defence'));
@@ -143,7 +161,7 @@ function applyEffects(ctx: Context) {
   if (ctx.res.has('jelly')) ctx.res.setCapBonus('jelly', 'nest', sum('jellyCap'));
   ctx.mods.set('boatSlots', 'nest', sum('boats'));
   const m: Record<string, number> = {};
-  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id);
+  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * power(ctx, id);
   for (const id of IDS) for (const k of Object.keys(DEFS[id].mods ?? {})) ctx.mods.set(k, 'nest:mods', m[k] ?? 0);
 }
 
@@ -172,7 +190,7 @@ export const nest: GameSystem = {
     applyEffects(ctx);
     if (queueSlots(ctx)) runQueue(ctx);
     const g = count(ctx, 'granary');
-    if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * dt);
+    if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * power(ctx, 'granary') * dt);
     if (!ctx.flags.has('surface') && ctx.flags.has('tech:surface') && totalChambers(ctx) >= NEST.surfaceAtChambers) {
       ctx.flags.add('surface');
       ctx.log('A digger pushes upward and the soil gives way. Light. Wind. The surface.');
@@ -182,7 +200,7 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement;
+    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, ups: ReturnType<typeof upgradeList>, upBox: HTMLElement;
     return {
       title: 'Nest',
       group: 'Nest',
@@ -234,8 +252,10 @@ export const nest: GameSystem = {
           scroller.classList.toggle('whole', toggle.checked);
           try { localStorage.setItem('formicarium-whole-nest', toggle.checked ? '1' : '0'); } catch { /* storage blocked */ }
         });
+        ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPGRADES);
+        upBox = el('div.tilegroups.compact.chamberups', { hidden: true }, el('div.tilegroup', {}, el('div.tilehead', {}, 'Chamber upgrades'), ups.root));
         root.classList.add('nestpanel');
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid,
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox,
           el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), scroller);
       },
       update(_root, ctx) {
@@ -247,6 +267,7 @@ export const nest: GameSystem = {
           b.root.hidden = !visible(ctx, id);
           b.update(ctx);
         }
+        upBox.hidden = !ups.update(ctx);
         grid.querySelectorAll<HTMLElement>('.tilegroup').forEach((g) => { g.hidden = !Array.from(g.querySelectorAll<HTMLElement>('.tilewrap')).some((t) => !t.hidden); });
         const n = totalChambers(ctx);
         const bits = [ctx.flags.has('surface') ? `${n} chambers`
@@ -254,7 +275,7 @@ export const nest: GameSystem = {
         const def = ctx.mods.get('defence'), up = -ctx.mods.get('upkeep');
         if (def) bits.push(`defence ${def}`);
         if (up) bits.push(`upkeep reduced ${Math.round(up * 100)}%`);
-        if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0)).toFixed(2)} food/s`);
+        if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0) * power(ctx, 'granary')).toFixed(2)} food/s`);
         progress.textContent = bits.join(' · ');
         drawNest(canvas, ctx);
       },
