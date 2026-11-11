@@ -273,11 +273,12 @@ let picked: number | null = null;
 
 /** How far the queen has come: she fattens as this colony grows, and changes for good with each
  *  flight and, from the Age of Settlement on, each new age (Orbit is the last form). */
+const SETTLE = RESEARCH.ages.findIndex((a) => a.id === 'settlement');
 function queenLook(ctx: Context): QueenLook {
   const flights = (ctx.state.lineage as { flights?: number } | undefined)?.flights ?? 0;
   const ageId = (ctx.state.research as { age?: string } | undefined)?.age;
   const ageIdx = Math.max(0, RESEARCH.ages.findIndex((a) => a.id === ageId));
-  const tier = Math.min(6, Math.max(flights >= 3 ? 2 : flights >= 1 ? 1 : 0, ageIdx >= 2 ? ageIdx + 1 : 0));
+  const tier = Math.min(6, Math.max(flights >= 3 ? 2 : flights >= 1 ? 1 : 0, ageIdx >= SETTLE ? ageIdx - SETTLE + 3 : 0));
   return { tier, fat: Math.min(1, ctx.res.amt('ant') / 120) };
 }
 function drawNest(cv: HTMLCanvasElement, ctx: Context) {

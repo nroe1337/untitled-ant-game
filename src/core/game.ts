@@ -198,7 +198,7 @@ export class Game {
 
     root.append(
       el('header.top', {},
-        el('div.brand', {}, el('span.mark'), el('h1', {}, 'Formicarium')),
+        el('div.brand', {}, titleAnt(), el('h1', {}, 'Formicarium')),
         this.alertEl,
         el('div.tools', {}, this.pauseBtn, speedBtn, menuWrap)),
       this.layoutEl = el('div.layout', {},
@@ -467,4 +467,27 @@ export class Game {
     }
     this.refreshBars();
   }
+}
+
+/** Nate's ant (art/nate_ant_original.png, one pixel per drawn pixel) as the title's mark. */
+function titleAnt() {
+  const rows = [
+    '...#..#....',
+    '#...##...#.',
+    '.#..##..#..',
+    '..######...',
+    '....##.....',
+    '..######...',
+    '.#..##..#..',
+    '#..####..#.',
+    '..#.##.#...',
+    '..#....#...',
+    '.#......#..',
+  ];
+  const cv = document.createElement('canvas');
+  cv.width = 11; cv.height = 11; cv.className = 'titleant'; cv.setAttribute('aria-hidden', 'true');
+  const c = cv.getContext('2d')!;
+  c.fillStyle = '#c4532f';
+  rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') c.fillRect(x, y, 1, 1); });
+  return cv;
 }

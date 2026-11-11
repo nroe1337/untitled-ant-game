@@ -82,7 +82,7 @@ const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && rea
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
 type Dest = (typeof X.destinations)[number];
-const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx) * (1 - ctx.mods.get('nurseHeal'));
+const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx) * (1 - ctx.mods.get('nurseHeal')) * Math.max(0.1, 1 + ctx.mods.get('expSafety'));
 /** Most a bad trip can cost: up to this share of the party (always at least one). */
 const maxLost = (party: number) => Math.max(1, Math.round(party * X.lossShare));
 const riskText = (r: number, party: number) => {

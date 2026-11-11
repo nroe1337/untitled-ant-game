@@ -200,24 +200,21 @@ export const WAR = {
   provokeCost: { pheromone: 6 },
   raidShare: 0.3,           // fraction of rival army that raids
   maxRaiders: 30,
-  // the entrance battle (an auto-battler)
+  // the entrance battle (an auto-battler): one stack per kind of ant on each side, every ant bites every second
   battle: {
-    laneLength: 300,
-    raider:   { hp: 3, atk: 0.8, speed: 10, chitin: 1 },
-    brute:    { hp: 12, atk: 2, speed: 6, chitin: 4 },  // a big rival soldier, from wave 3
+    pace: 0.35,                      // all bites are scaled by this, so a fight lasts long enough to watch
+    raider:   { hp: 3, atk: 0.8, chitin: 1 },
+    brute:    { hp: 12, atk: 2, chitin: 4 },  // a big rival soldier, from wave 3
     // wave n brings raiders = base + n * perWave, and one brute every bruteEvery waves
     wave: { base: 2.5, perWave: 1.5, bruteEvery: 3, clearBonus: 1, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
-    guardRange: 120,
     rallyCooldown: 30,
     rallyMax: 8,                     // most workers that answer one rally
-    // the battle lines: the front of each side fights, the ranks behind add this share of their bite
-    spit: [1, 0.8, 0.6, 0.4, 0.2],   // our soldiers spit acid over the shoulders of the ones in front
-    raiderSupport: [1, 0.5],         // raiders only snap past the one in front
-    shoveEvery: 3, shove: 4,         // a brute at the front shoves our line back this far every few seconds
-    carrySpeed: 20,                  // rallied workers carry fallen soldiers home, wounded but alive
+    rescuePerWorker: 0.06,           // each rallied worker at the entrance: this chance that a fallen soldier is carried home alive
+    rescueMax: 0.5,
+    slipEvery: 1.5,                  // with nobody left at the entrance, a raider slips in this often (seconds)
     chitinPerKill: 1,
     stealPerBreach: 0.04,            // fraction of food stolen per raider that gets in
     maxSteal: 0.2,                   // never more than this per raid
@@ -225,12 +222,35 @@ export const WAR = {
     maxSoldierLoss: 0.25,            // never lose more than this share of soldiers per raid
   },
   fortifications: {
-    thorns:  { name: 'Thorn barricade', desc: 'Raiders move {p} slower each level.',          per: 0.04, base: { twig: 10 },             growth: 1.2,  max: 15 },
+    thorns:  { name: 'Thorn barricade', desc: 'Raiders bite {p} less each level, snagged on thorns.', per: 0.03, base: { twig: 10 },             growth: 1.2,  max: 15 },
     spitters:{ name: 'Acid spitters',   desc: 'Guard posts deal {p} more damage each level.', per: 0.05, base: { chitin: 3, resin: 1 },  growth: 1.2,  max: 30 },
     carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health each level.',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
     plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less food each level.', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },
     plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder each level.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
     alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
+  },
+  // war honours: earned by clearing waves and winning campaigns, spent on the honour upgrades below
+  honours: {
+    perWave: 1,            // per clean wave, plus 1 more for every 5 waves of depth
+    perFive: 1,
+    campaign: 3,           // per enemy tile taken (x3 for a home tile)
+  },
+  /** One-off rewards for the deepest wave cleared this colony. Each is given the moment the wave falls. */
+  milestones: [
+    { wave: 3,  id: 'hunt',    name: 'First blood',     desc: 'Soldiers hunt twice as well between fights.' },
+    { wave: 5,  id: 'drums',   name: 'War drums',       desc: 'Unlocks Auto-provoke: the rival is lured again the moment it can be.' },
+    { wave: 8,  id: 'feared',  name: 'Feared',          desc: 'Rivals give your trails a wide berth. Expeditions lose 20% fewer workers.' },
+    { wave: 10, id: 'scent',   name: 'Conquered scent', desc: 'Claiming map tiles costs 15% less.' },
+    { wave: 13, id: 'spoils',  name: 'Spoils of war',   desc: 'Campaigns bring back twice the loot.' },
+    { wave: 16, id: 'maps',    name: 'Captured maps',   desc: 'Prisoners give up their trails. The whole rival territory is revealed on the Map.' },
+    { wave: 20, id: 'legend',  name: 'Legend of the line', desc: 'Lineage from flights +10%.' },
+    { wave: 25, id: 'endless', name: 'Endless war',     desc: 'Every wave cleared gives double honours.' },
+  ],
+  honourUps: {
+    standards: { name: 'Battle standards', desc: 'Soldiers fight {p} harder each level.', per: 0.04, base: { honour: 2 }, growth: 1.25, max: 25 },
+    harvest:   { name: 'Husk harvest',     desc: 'Raiders leave {p} more chitin each level.', per: 0.1, base: { honour: 3 }, growth: 1.25, max: 20, needs: 'honour:5' },
+    regroup:   { name: 'Quick regroup',    desc: 'The rival takes the bait again {p} sooner each level.', per: -0.08, base: { honour: 4 }, growth: 1.3, max: 8, needs: 'honour:10' },
+    medics:    { name: 'Field medics',     desc: '{p} fewer soldiers die in each raid, each level.', per: -0.06, base: { honour: 6 }, growth: 1.3, max: 10, needs: 'honour:20' },
   },
   // campaigns on the map
   campaignTime: 120,
@@ -256,38 +276,38 @@ export const RESEARCH = {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
-    royal:      { name: 'Royal court',       age: 'forage', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['resin'],               desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
+    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
-    lining:     { name: 'Resin lining',      age: 'forage', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
+    lining:     { name: 'Resin lining',      age: 'conquest', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'], flag: 'legacy:flown', desc: 'Opens the Techniques tab.' },
     worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'], flag: 'legacy:flown', desc: 'Unlocks the Marching songs and Load bearing techniques.' },
     sharedlabour: { name: 'Shared labour',   age: 'forage', cost: { knowledge: 180, twig: 20 },           needs: ['worksongs', 'shelving'], flag: 'legacy:flown', desc: 'Unlocks the Mandible grit and Shared stomach techniques.' },
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 120 },          pop: 0.06, needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 12 },           pop: 0.1, needs: ['scouting'],             desc: 'Unlocks the Seed granary.' },
-    resin:      { name: 'Resin working',     age: 'forage', cost: { knowledge: 260, resin: 8 },          pop: 0.2, needs: ['cartography'],               desc: 'Unlocks the Resin gallery.' },
+    resin:      { name: 'Resin working',     age: 'conquest', cost: { knowledge: 260, resin: 8 },          pop: 0.2, needs: ['cartography'],               desc: 'Unlocks the Resin gallery.' },
     deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['plans'],            desc: 'Chambers give 25% more living space.' },
-    halls:      { name: 'Sleeping halls',    age: 'forage', cost: { knowledge: 360, twig: 80 },          pop: 0.27, needs: ['resin', 'deepgalleries'], desc: 'Unlocks the Worker hall: +12 living space each.' },
-    vaults:     { name: 'Vaulted roofs',     age: 'forage', cost: { knowledge: 480, resin: 30, twig: 70 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Chambers give 25% more living space.' },
+    halls:      { name: 'Sleeping halls',    age: 'conquest', cost: { knowledge: 360, twig: 80 },          pop: 0.27, needs: ['resin', 'deepgalleries'], desc: 'Unlocks the Worker hall: +12 living space each.' },
+    vaults:     { name: 'Vaulted roofs',     age: 'conquest', cost: { knowledge: 480, resin: 30, twig: 70 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Chambers give 25% more living space.' },
     partitions: { name: 'Paper partitions',  age: 'settlement', cost: { knowledge: 500, paper: 45 },     pop: 1.0, needs: ['papercraft'],          desc: 'Chambers give 50% more living space.' },
     plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 200 },          needs: ['shelving'],             desc: 'A building queue with 2 slots. Queued chambers are dug as soon as you can afford them.' },
     studyplans: { name: 'Study plans',       age: 'forage', cost: { knowledge: 420, food: 300 },          needs: ['plans', 'songs'],      desc: 'A research queue with 2 slots. Queued research is learned as soon as you can afford it.' },
     ledgers:    { name: 'Work ledgers',      age: 'settlement', cost: { knowledge: 650, paper: 60 },    needs: ['papercraft', 'studyplans'], desc: 'An upgrade queue with 2 slots. Queued upgrades are bought as soon as you can afford them.' },
-    frontier:   { name: 'Frontier sense',    age: 'forage', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['cartography'], desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
+    frontier:   { name: 'Frontier sense',    age: 'conquest', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['cartography'], desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 160 },          needs: ['seeds', 'shelving'],   desc: 'Unlocks the Midden.' },
-    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 50 },    pop: 0.15, needs: ['seeds'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
-    martial:    { name: 'Mandible drill',    age: 'forage', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['scouting'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
-    fortify:    { name: 'Fortification',     age: 'forage', cost: { knowledge: 450, twig: 90 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
-    husks:      { name: 'Husk masonry',      age: 'forage', cost: { knowledge: 480, chitin: 20 },        needs: ['fortify'],             desc: 'Unlocks the Hall of husks.' },
+    cartography:{ name: 'Mapping',           age: 'conquest', cost: { knowledge: 260, pheromone: 50 },    pop: 0.15, needs: ['seeds', 'plans'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
+    martial:    { name: 'Mandible drill',    age: 'conquest', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['cartography'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
+    fortify:    { name: 'Fortification',     age: 'conquest', cost: { knowledge: 450, twig: 90 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
+    husks:      { name: 'Husk masonry',      age: 'conquest', cost: { knowledge: 480, chitin: 20 },        needs: ['fortify'],             desc: 'Unlocks the Hall of husks.' },
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 380, seed: 20 },           needs: ['seeds', 'sanitation'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
-    castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
-    rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
-    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its first flight.' },
+    castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
+    rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
+    flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 100, food: 120 },          needs: ['worksongs'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
-    galleons:   { name: 'Wax hulls',         age: 'forage', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
+    galleons:   { name: 'Wax hulls',         age: 'conquest', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
     husbandry:  { name: 'Herding',           age: 'forage', cost: { knowledge: 350, food: 200 },         needs: ['fungus'], flag: 'legacy:flown', desc: 'Keep herds of aphids and other small insects. Opens the Herds tab and the Herder job.' },
     townlore:   { name: 'Town ways',         age: 'settlement', cost: { knowledge: 200, food: 180 },    pop: 0.8, needs: ['cartography', 'shelving'], flag: 'legacy:migrated', desc: 'Learn the town: kitchens, walls, drains. Opens the Town tab and the Town forager job.' },
     tasting:    { name: 'Tasting',           age: 'settlement', cost: { knowledge: 300, crumbs: 70 },  needs: ['townlore'],            desc: 'Some food is poisoned. Tasters find it. Unlocks the Taster job.' },
@@ -295,12 +315,14 @@ export const RESEARCH = {
     pavement:   { name: 'Street fighting',   age: 'settlement', cost: { knowledge: 380, crumbs: 90 },  needs: ['nightwork', 'martial'], desc: 'Soldiers can clear pavement ants from town sites.' },
     papercraft: { name: 'Paper nests',       age: 'settlement', cost: { knowledge: 450, paper: 45 },   needs: ['tasting'],            desc: 'Chewed paper makes walls. Opens the study and satellite nests.' },
     metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 700, grease: 35 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
-    campaigns:  { name: 'Campaigning',       age: 'forage', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
+    campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, { name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; pop?: number; desc: string }>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
     { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },
     { id: 'forage', name: 'Age of Forage', note: 'The surface, the garden, and everything that lives in it.' },
+    { id: 'conquest', name: 'Age of Conquest', note: 'Maps, a rival mound, and the land between.' },
+    { id: 'wings', name: 'Age of Wings', note: 'A royal court, new castes, and the first winged queens. A colony\'s road ends in a nuptial flight.' },
     { id: 'settlement', name: 'Age of Settlement', note: 'Across the water: houses, walls, and humans.' },
     { id: 'industry', name: 'Age of Industry', note: 'Water wheels, beetle rail and workshops.' },
     { id: 'network', name: 'Age of Network', note: 'One colony across a continent.' },
@@ -544,6 +566,7 @@ export const RES_DESC: Record<string, string> = {
   honeydew: 'Milked from herds. Pays for new herds.',
   wax: 'Made by scale insects. Builds wax stores and galleons.',
   chitin: 'Husks of fallen enemies. Builds fortifications and husk halls.',
+  honour: 'Earned by clearing raid waves and winning campaigns. Buys honour upgrades on the War tab.',
   venom: 'Taken from spiders. Arms your champion.',
   lineage: 'Earned by a nuptial flight. Spent on permanent perks.',
   heritage: 'Earned by migrating. Spent on migration perks.',

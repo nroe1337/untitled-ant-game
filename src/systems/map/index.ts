@@ -83,7 +83,7 @@ const outposts = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you' && t
 /** Claims get dearer in a straight line with the land you hold, so the whole map is reachable in the end. */
 const claimCost = (ctx: Context): Costs => {
   const extra = Math.max(0, owned(ctx).length - MAP.startTiles);
-  return Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.claimStep * extra))]));
+  return Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.claimStep * extra) * Math.max(0.2, 1 + ctx.mods.get('claimCost')))]));
 };
 const outpostCost = (ctx: Context): Costs =>
   Object.fromEntries(Object.entries(MAP.outpost.cost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.outpost.step * outposts(ctx)))]));
