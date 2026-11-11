@@ -248,9 +248,9 @@ const FADE_MS = 1400;
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const ROW_H = 22;
 /** Blend two #rrggbb colours (f = 0 gives a, 1 gives b), for glows that fade without transparency. */
-/** A triangular chamber: a peaked roof at y-6 widening down to a flat floor at y+5. */
-function tri(c: CanvasRenderingContext2D, cx: number, y: number, hw: number, color: string) {
-  for (let r = 0; r < 12; r++) { const w = Math.max(1, Math.round(hw * (r + 1) / 12)); rect(c, cx - w, y - 6 + r, w * 2, 1, color); }
+/** A domed chamber: a rounded cone of a roof from y-6, bulging out to a flat floor at y+5. */
+function dome(c: CanvasRenderingContext2D, cx: number, y: number, hw: number, color: string) {
+  for (let r = 0; r < 12; r++) { const f = (r + 1) / 12; const w = Math.max(2, Math.round(hw * (1 - (1 - f) ** 2.2))); rect(c, cx - w, y - 6 + r, w * 2, 1, color); }
 }
 
 function mix(a: string, b: string, f: number) {
@@ -342,7 +342,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         break;
       }
       case 'store': { // a food store: a heap that rises and falls with your stores, seeds and crumbs mixed in
-        tri(c, cx, y, 18, PAL.hole);
+        dome(c, cx, y, 18, PAL.hole);
         const h = Math.max(1, Math.round(fillFood * 5));
         for (let r = 0; r < h; r++) rect(c, cx - 11 + r, y + 4 - r - 1, 22 - r * 2, 1, r % 2 ? FOOD_DARK : PAL.food);
         if (h > 1) { rect(c, cx - 6, y + 3 - h + 1, 2, 1, PAL.seed); rect(c, cx + 3, y + 3 - Math.max(1, h - 1), 2, 1, CRUMB); }
@@ -358,7 +358,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       case 'gallery': { // a resin gallery: a big chamber sealed with an amber rim, a few drips hanging from the roof
         blob(c, cx, y, 22, 7, PAL.amber);
         blob(c, cx, y, 19, 5, PAL.hole);
-        rect(c, cx - 17, y - 5, 34, 1, RESIN_DARK);
+        rect(c, cx - 11, y - 4, 22, 1, RESIN_DARK); // the roof's dark seam, inside the amber wall
         for (const [dx, h] of [[-11, 2], [-3, 3], [6, 1], [13, 2]] as const) { rect(c, cx + dx, y - 4, 1, h, PAL.amber); rect(c, cx + dx, y - 4 + h, 1, 1, mix(PAL.amber, PAL.hole, 0.5)); }
         rect(c, cx - 15, y + 3, 30, 1, mix(PAL.hole, PAL.amber, 0.25)); // the sealed floor
         break;
@@ -392,7 +392,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         break;
       }
       case 'midden': { // the midden: a layered heap of waste, husks and old food, kept well away from the brood
-        tri(c, cx, y, 17, PAL.hole);
+        dome(c, cx, y, 17, PAL.hole);
         for (let r = 0; r < 5; r++) rect(c, cx - 2 - r * 2, y - 2 + r, 4 + r * 4, 1, r % 2 ? WASTE_DARK : PAL.waste);
         rect(c, cx - 5, y + 1, 2, 1, FOOD_DARK); rect(c, cx + 4, y, 2, 1, CHITIN); rect(c, cx + 1, y + 2, 1, 1, PAL.bone);
         rect(c, cx - 11, y + 3, 1, 1, PAL.waste); rect(c, cx + 11, y + 3, 2, 1, PAL.waste);
@@ -454,7 +454,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         for (let r = 0; r < 2; r++) for (let e = 0; e < 4; e++) rect(c, cx - 10 + e * 6 + r * 3, y - 3 + r * 4, 4, 3, PAL.seed);
         break;
       case 'spoil': { // a digging gallery: loose soil piled up the far wall, a few clods rolled down
-        tri(c, cx, y, 18, PAL.hole);
+        dome(c, cx, y, 18, PAL.hole);
         const mx = cx + (lane > 0 ? 5 : -5);
         for (let r = 0; r < 5; r++) rect(c, mx - 1 - r, y - 3 + r, 2 + r * 2, 1, PAL.dirt);
         rect(c, cx - (lane > 0 ? 6 : -5), y + 3, 2, 1, PAL.dirt); rect(c, cx - (lane > 0 ? 10 : -10), y + 3, 1, 1, PAL.dirt);
