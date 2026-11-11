@@ -354,12 +354,16 @@ export const RESEARCH = {
  */
 export const LATE_KNOWLEDGE = { from: 200, mult: 1.3 };
 /** Knowledge costs climb with each age, on top of the figures written above. */
+/** Each age's cheapest research is lifted toward this. */
+export const AGE_KNOWLEDGE_FLOOR: Record<string, number> = { forage: 140, conquest: 560, wings: 800, settlement: 1000, industry: 1300, network: 1700, orbital: 2100 };
 export const AGE_KNOWLEDGE: Record<string, number> = { dirt: 1, forage: 1.1, conquest: 1.25, wings: 1.45, settlement: 1.6, industry: 1.8, network: 2, orbital: 2.2 };
 for (const t of Object.values(RESEARCH.techs)) {
   let k = t.cost.knowledge;
   if (k === undefined) continue;
   if (t.age !== 'dirt' && k >= LATE_KNOWLEDGE.from) k *= LATE_KNOWLEDGE.mult;
   k *= AGE_KNOWLEDGE[t.age] ?? 1;
+  const floor = AGE_KNOWLEDGE_FLOOR[t.age] ?? 0;
+  if (k < floor) k += (floor - k) * 0.75; // cheap research is pulled most of the way up to the floor, keeping its order
   t.cost.knowledge = t.age === 'dirt' ? Math.round(k) : Math.round(k / 10) * 10;
 }
 
