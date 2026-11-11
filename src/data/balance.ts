@@ -378,6 +378,41 @@ export const CASTES = {
     major:   { name: 'Majors',   cost: { jelly: 8, chitin: 10 },  desc: 'Huge-headed fighters. Unlocks the Major job: each fights like 3 soldiers. One major per 5 soldiers.' },
     weaver:  { name: 'Weavers',  cost: { jelly: 6, leaf: 30 },    desc: 'Larvae spin silk while weavers hold them. Unlocks the Weaver job and Silk.' },
   } as Record<string, { name: string; cost: Record<string, number>; desc: string }>,
+  /**
+   * Caste tracks: a long path of upgrades for each caste, opened when that caste is bred.
+   * Each stage opens once the stage before it is maxed. Stages with max 1 are turning points.
+   * mod: the modifier each level adds `per` to (cap:ant adds living space instead).
+   */
+  tracks: {
+    minim: [
+      { id: 'mi1', name: 'Fine mandibles',  desc: 'Each gardener keeps {p} more beds clean each level.',             mod: 'job:gardener', per: 0.08, base: { jelly: 2, fungus: 30 },  growth: 1.3, max: 10 },
+      { id: 'mi2', name: 'Spore sense',     desc: 'Leafcutters cut {p} more each level.',              mod: 'job:leafcutter', per: 0.05, base: { jelly: 3, leaf: 40 }, growth: 1.3, max: 10 },
+      { id: 'mi3', name: 'Brood minders',   desc: 'Minims tend the eggs too. The brood grows {p} faster.', mod: 'brood', per: 0.1, base: { jelly: 30, fungus: 400 },    growth: 1, max: 1 },
+      { id: 'mi4', name: 'Fungus lore',     desc: 'Each gardener keeps another {p} more beds clean each level.',     mod: 'job:gardener', per: 0.1, base: { jelly: 6, fungus: 120 },  growth: 1.35, max: 10 },
+      { id: 'mi5', name: 'Nanitic foragers', desc: 'Minims ride out on foragers\' backs and guard them. Foragers bring {p} more.', mod: 'job:forager', per: 0.15, base: { jelly: 60, fungus: 900 }, growth: 1, max: 1 },
+    ],
+    replete: [
+      { id: 're1', name: 'Wider crops',     desc: 'Each replete holds {p} more food each level.',      mod: 'repleteHold', per: 0.25, base: { jelly: 2, food: 120 },  growth: 1.3, max: 8 },
+      { id: 're2', name: 'Quick swallow',   desc: 'Repletes fill {p} faster each level.',              mod: 'repleteFill', per: 0.2, base: { jelly: 3, food: 200 },   growth: 1.3, max: 8 },
+      { id: 're3', name: 'Honeypot rows',   desc: 'A gallery of hanging repletes: +{p} more repletes can work.', mod: 'repleteMax', per: 4, base: { jelly: 25, food: 1500, soil: 400 }, growth: 1, max: 1, unit: 'flat' as const },
+      { id: 're4', name: 'Sweet distillers', desc: 'Repletes make {p} more royal jelly each level.',    mod: 'repleteJelly', per: 0.25, base: { jelly: 5, food: 400 }, growth: 1.35, max: 10 },
+      { id: 're5', name: 'Living larder',   desc: 'The whole colony draws on the repletes. Upkeep {p} lower.', mod: 'upkeep', per: -0.1, base: { jelly: 50, food: 4000 }, growth: 1, max: 1 },
+    ],
+    major: [
+      { id: 'ma1', name: 'Heavy heads',     desc: 'Majors bite {p} harder each level.',                mod: 'majorAtk', per: 0.1, base: { jelly: 3, chitin: 15 },   growth: 1.3, max: 10 },
+      { id: 'ma2', name: 'Plated backs',    desc: 'Majors take {p} more punishment each level.',       mod: 'majorHp', per: 0.1, base: { jelly: 3, chitin: 20 },    growth: 1.3, max: 10 },
+      { id: 'ma3', name: 'Officer corps',   desc: 'One more major can serve per 5 soldiers: one per {p} fewer.', mod: 'majorRatio', per: 1, base: { jelly: 30, chitin: 150 }, growth: 1, max: 1, unit: 'flat' as const },
+      { id: 'ma4', name: 'Siege drill',     desc: 'Majors drill the soldiers. All soldiers fight {p} harder each level.', mod: 'soldierPower', per: 0.03, base: { jelly: 6, chitin: 40 }, growth: 1.35, max: 10 },
+      { id: 'ma5', name: 'Shock troops',    desc: 'Majors lead every charge: one per {p} fewer soldiers again.', mod: 'majorRatio', per: 1, base: { jelly: 60, chitin: 400 }, growth: 1, max: 1, unit: 'flat' as const },
+    ],
+    weaver: [
+      { id: 'we1', name: 'Fine silk',       desc: 'Weavers spin {p} more each level.',                 mod: 'job:weaver', per: 0.08, base: { jelly: 2, leaf: 40 },  growth: 1.3, max: 10 },
+      { id: 'we2', name: 'Silk ropes',      desc: 'Ropes for hauling. Expeditions bring back {p} more each level.', mod: 'expLoot', per: 0.03, base: { jelly: 3, silk: 8 }, growth: 1.3, max: 10 },
+      { id: 'we3', name: 'Silk nets',       desc: 'Nets strung over the trails. Soldiers hunt {p} better.', mod: 'hunting', per: 0.3, base: { jelly: 25, silk: 60 },     growth: 1, max: 1 },
+      { id: 'we4', name: 'Woven halls',     desc: 'Silk walls hang in every chamber: +{p} living space each level.', mod: 'cap:ant', per: 2, base: { jelly: 5, silk: 20 }, growth: 1.35, max: 10, unit: 'flat' as const },
+      { id: 'we5', name: 'Silk sails',      desc: 'Expedition parties glide home on silk. They lose {p} fewer workers.', mod: 'expSafety', per: -0.1, base: { jelly: 50, silk: 150 }, growth: 1, max: 1 },
+    ],
+  } as Record<string, { id: string; name: string; desc: string; mod: string; per: number; base: Record<string, number>; growth: number; max: number; unit?: 'pct' | 'flat' }[]>,
   upgrades: {
     glands: { name: 'Jelly glands', desc: 'Each level, every nurse makes {p} royal jelly per second from fungus.', per: 0.001, base: { jelly: 4, fungus: 30 }, growth: 1.25, max: 20, unit: 'flat' as const },
   },

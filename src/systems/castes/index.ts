@@ -14,6 +14,12 @@ const IDS = Object.keys(CASTES.types);
 const nurses = (ctx: Context) => ctx.state.jobs?.assigned?.nurse ?? 0;
 const glandRate = (ctx: Context) => nurses(ctx) * CASTES.upgrades.glands.per * (S(ctx).ups.glands ?? 0);
 const UPS = fromBalance(CASTES.upgrades, (ctx) => ctx.flags.has('tech:castes'));
+/** Caste tracks: each stage opens when the one before it is maxed. */
+const TRACKS = Object.fromEntries(Object.entries(CASTES.tracks).map(([caste, stages]) => [caste, fromBalance(
+  Object.fromEntries(stages.map((st, k) => [st.id, { ...st, needs: k ? stages[k - 1].id : '' }])),
+  (ctx, needs) => ctx.flags.has('caste:' + caste) && (!needs || (S(ctx).ups[needs] ?? 0) >= stages.find((x) => x.id === needs)!.max),
+)]));
+const stagesDone = (ctx: Context, caste: string) => CASTES.tracks[caste].filter((st) => (S(ctx).ups[st.id] ?? 0) >= st.max).length;
 
 /** Repletes feed the colony from their reserve: returns how much food they gave. */
 export function drawReserve(ctx: Context, want: number) {
@@ -42,11 +48,18 @@ export const castes: GameSystem = {
   tick(ctx, dt) {
     // repletes fill up from surplus food: only while the stores are more than half full
     const n = ctx.state.jobs?.assigned?.replete ?? 0;
-    ctx.res.setCapBonus('reserve', 'repletes', n * CASTES.replete.hold);
+    // caste tracks publish their modifiers
+    let living = 0;
+    for (const stages of Object.values(CASTES.tracks)) for (const st of stages) {
+      const v = st.per * (S(ctx).ups[st.id] ?? 0);
+      if (st.mod === 'cap:ant') living += v; else ctx.mods.set(st.mod, 'caste-' + st.id, v);
+    }
+    ctx.res.setCapBonus('ant', 'woven', living);
+    ctx.res.setCapBonus('reserve', 'repletes', n * CASTES.replete.hold * (1 + ctx.mods.get('repleteHold')));
     const over = ctx.res.amt('reserve') - ctx.res.cap('reserve'); // repletes moved off the job hand their food back
     if (over > 0) { ctx.res.source = 'Repletes reassigned'; ctx.res.add('reserve', -over); ctx.res.add('food', over); }
     const spare = ctx.res.amt('food') - ctx.res.cap('food') * 0.5;
-    const take = Math.min(n * CASTES.replete.fill * dt, ctx.res.cap('reserve') - ctx.res.amt('reserve'), spare);
+    const take = Math.min(n * CASTES.replete.fill * (1 + ctx.mods.get('repleteFill')) * dt, ctx.res.cap('reserve') - ctx.res.amt('reserve'), spare);
     if (take > 0) {
       ctx.res.source = 'Repletes filling';
       ctx.res.add('food', -take);
@@ -55,7 +68,7 @@ export const castes: GameSystem = {
     }
     // with the reserve full, spare food becomes a slow trickle of royal jelly
     const R = CASTES.replete;
-    const jelly = Math.min(n * R.jelly * dt, ctx.res.cap('jelly') - ctx.res.amt('jelly'), Math.max(0, spare - Math.max(0, take)) / R.food);
+    const jelly = Math.min(n * R.jelly * (1 + ctx.mods.get('repleteJelly')) * dt, ctx.res.cap('jelly') - ctx.res.amt('jelly'), Math.max(0, spare - Math.max(0, take)) / R.food);
     if (jelly > 0 && ctx.res.amt('reserve') >= ctx.res.cap('reserve') - 1e-6) {
       ctx.res.source = 'Repletes making jelly';
       ctx.res.add('food', -jelly * R.food);
@@ -72,6 +85,7 @@ export const castes: GameSystem = {
 
   panel: (() => {
     let chew: ActionButton, list: HTMLElement, ledger: HTMLElement, ups: ReturnType<typeof upgradeList>;
+    const tracks: { caste: string; head: HTMLElement; note: HTMLElement; box: HTMLElement; list: ReturnType<typeof upgradeList> }[] = [];
     const rows = new Map<string, ReturnType<typeof tileButton>>();
     return {
       title: 'Castes',
@@ -105,6 +119,13 @@ export const castes: GameSystem = {
           el('h3', {}, 'Royal kitchen'),
           ups.root,
         );
+        for (const caste of Object.keys(CASTES.tracks)) {
+          const L = upgradeList(ctx, () => S(ctx).ups, TRACKS[caste]);
+          const head = el('h3', {}, `${CASTES.types[caste].name}: the long road`), note = el('p.muted');
+          const box = el('div', {}, head, note, L.root);
+          root.append(box);
+          tracks.push({ caste, head, note, box, list: L });
+        }
       },
       update(_root, ctx) {
         chew.update(ctx);
@@ -117,6 +138,15 @@ export const castes: GameSystem = {
           ['Castes bred', `${IDS.filter((id) => ctx.flags.has('caste:' + id)).length} of ${IDS.length}`],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         ups.update(ctx);
+        for (const t of tracks) {
+          const bred = ctx.flags.has('caste:' + t.caste);
+          t.box.hidden = !bred;
+          if (!bred) continue;
+          const done = stagesDone(ctx, t.caste), all = CASTES.tracks[t.caste].length;
+          const st = CASTES.tracks[t.caste], after = st[done + 1];
+          t.note.textContent = done >= all ? `All ${all} stages done.` : `Stage ${done + 1} of ${all}: ${st[done].name}.` + (after ? ` Max it to open ${after.name}${all - done - 2 > 0 ? `, then ${all - done - 2} more` : ''}.` : ' The last stage.');
+          t.list.update(ctx);
+        }
       },
     };
   })(),
