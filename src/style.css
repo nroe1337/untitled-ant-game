@@ -66,7 +66,7 @@ body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 button { font: inherit; color: inherit; }
-.action { position: relative; overflow: hidden; display: inline-grid; text-align: left; min-width: 180px; padding: 8px 12px;
+.action { position: relative; overflow: hidden; display: inline-grid; text-align: center; justify-items: center; min-width: 180px; padding: 8px 12px;
   background: #2d2721; border: 2px solid #5c4a39; cursor: pointer; animation: appear .5s ease-out;
   transition: background-color .12s, border-color .12s; }
 .action:hover:not(:disabled) { border-color: #8a6f55; background: #342d26; }
@@ -299,11 +299,12 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tilegroups.compact { gap: 6px; max-width: 640px; }
 .tilegroups.compact .tilegroup { grid-template-columns: 92px minmax(0, 1fr); align-items: start; gap: 8px; }
 .tilegroups.compact .tilehead { font-size: 10px; padding-top: 7px; }
-.tilegroups.compact .tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px; max-width: none; }
-.tilegroups.compact .action.tile { min-height: 28px; padding: 4px 26px 4px 8px; font-size: 13px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+/* the right padding balances the row headings on the left, so the grid sits evenly */
+.tilegroups.compact .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; max-width: none; padding-right: 16px; }
+.tilegroups.compact .action.tile { min-height: 30px; padding: 4px 20px; font-size: 12.5px; line-height: 1.15; overflow: hidden; }
 .tilegroups.compact .action.tile .badge { font-size: 11px; line-height: 14px; min-width: 20px; }
-@media (hover: none) { .tilegroups.compact .action.tile { padding: 4px 24px 4px 8px; } .tilegroups.compact .action.tile .cost { font-size: 10px; } }
-@media (max-width: 520px) { .tilegroups.compact .tilegroup { grid-template-columns: 1fr; gap: 3px; } .tilegroups.compact .tilehead { padding-top: 2px; } }
+@media (hover: none) { .tilegroups.compact .action.tile { padding: 4px 20px; } .tilegroups.compact .action.tile .cost { font-size: 10px; } }
+@media (max-width: 520px) { .tilegroups.compact .tiles { padding-right: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); } .tilegroups.compact .tilegroup { grid-template-columns: 1fr; gap: 3px; } .tilegroups.compact .tilehead { padding-top: 2px; } }
 .neststat { margin: 0; font-size: 13px; }
 .panel.nestpanel { gap: 8px; }
 .panel.nestpanel .tilegroups.compact { margin: 4px 0; }
