@@ -21,8 +21,10 @@ import { town } from './town';
 import { supercolony } from './supercolony';
 import { stats } from './stats';
 import { happenings } from './happenings';
+import { seasons } from './seasons';
 
 export const SYSTEMS: GameSystem[] = [
+  seasons,
   brood,
   jobs,
   techniques,

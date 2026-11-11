@@ -338,3 +338,10 @@ details.info[open] > summary { margin-bottom: 6px; }
 
 /* the ant mark before the title */
 .brand .titleant { width: 22px; height: 22px; border: 0; image-rendering: pixelated; position: relative; top: -1px; margin-right: -2px; }
+
+/* the year, above the Chronicle */
+.queue.season .row { gap: 4px; font-size: 13px; margin-bottom: 4px; }
+.queue.season[data-season="spring"] .bar .fill { background: #8fbf5a; }
+.queue.season[data-season="summer"] .bar .fill { background: #c9a03a; }
+.queue.season[data-season="autumn"] .bar .fill { background: #c4532f; }
+.queue.season[data-season="winter"] .bar .fill { background: #9fb7c9; }

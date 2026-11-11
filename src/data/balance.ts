@@ -576,3 +576,23 @@ export const RES_DESC: Record<string, string> = {
   memory: 'Earned from archive milestones. Spent on accords.',
   unity: 'Earned from the regions you hold. Spent on supercolony perks.',
 };
+
+/**
+ * Seasons: from the Age of Wings on, the year turns. Each season lasts `length` seconds of game time.
+ * mods: what each season publishes (the same mod names other systems already read).
+ * Winter stops expeditions and sky sorties (mod 'winter'), and the nuptial flight waits for a warm
+ * evening in spring or summer (mod 'cold'). Each winter the colony gets through without a death
+ * from hunger adds `winterLineage` to the flight.
+ */
+export const SEASONS = {
+  length: 360,
+  list: [
+    { id: 'spring', name: 'Spring', note: 'The soil softens. The brood quickens.', mods: { brood: 0.25 } },
+    { id: 'summer', name: 'Summer', note: 'Long days and warm evenings. Foraging is rich.', mods: { 'job:forager': 0.25, expLoot: 0.1 } },
+    { id: 'autumn', name: 'Autumn', note: 'Seeds fall and resin runs. Store what you can.', mods: { 'job:forager': 0.1, expLoot: 0.3, cold: 1 } },
+    { id: 'winter', name: 'Winter', note: 'The surface freezes. The colony huddles on what it stored.', mods: { 'job:forager': -0.75, 'job:leafcutter': -0.5, brood: -0.5, upkeep: -0.5, winter: 1, cold: 1 } },
+  ] as { id: string; name: string; note: string; mods: Record<string, number> }[],
+  warnBefore: 60,           // seconds of warning before winter comes
+  winterLineage: 3,         // lineage per winter survived with no one starving
+};
+

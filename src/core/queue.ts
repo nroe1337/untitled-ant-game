@@ -90,4 +90,10 @@ export function dockQueue(title: string, rank: number, update: (strip: ReturnTyp
   docked.sort((a, b) => a.rank - b.rank);
   queueDock.replaceChildren(...docked.map((d) => d.root));
 }
+/** Dock any element above the Chronicle (e.g. the season strip). Lower ranks sit higher. */
+export function dockStrip(rank: number, root: HTMLElement, run: (ctx: Context) => void) {
+  docked.push({ rank, root, run });
+  docked.sort((a, b) => a.rank - b.rank);
+  queueDock.replaceChildren(...docked.map((d) => d.root));
+}
 export function updateDock(ctx: Context) { for (const d of docked) d.run(ctx); }
