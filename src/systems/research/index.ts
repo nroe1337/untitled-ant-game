@@ -159,6 +159,6 @@ export const researchDone: GameSystem = {
 export function currentAge(ctx: Context) {
   let best = 0;
   for (const id of IDS) if (done(ctx, id) || available(ctx, id)) best = Math.max(best, RESEARCH.ages.findIndex((a) => a.id === TECHS[id].age));
-  if (ctx.flags.has('legacy:migrated')) best = Math.max(best, 2);
+  if (ctx.flags.has('legacy:migrated')) best = Math.max(best, RESEARCH.ages.findIndex((a) => a.id === 'settlement'));
   return RESEARCH.ages[best];
 }

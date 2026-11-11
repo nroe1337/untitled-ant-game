@@ -157,6 +157,7 @@ export const lineage: GameSystem = {
         root.append(
           el('p.flavor', {}, 'One warm evening the winged ones climb out and take to the air. Only a queen needs to land.'),
           el('p.muted', {}, 'A flight ends this colony and starts a new one. You keep Lineage, its perks, and the territory on your map. Everything else starts over.'),
+          el('p.muted', {}, 'The Age of Wings is the end of a colony\'s road. Your line is meant to fly several times: each flight earns Lineage, and each colony after it grows faster and reaches further. Pushing on without flying works, but it drags. Once the line has flown 3 times and a galleon has found the far shore, it can migrate into the Age of Settlement.'),
           mound,
           ledger, el('div.row', {}, flyBtn), note,
           el('h3', {}, 'Perks of the line'),
