@@ -41,7 +41,7 @@ export const GUIDE: GuidePage[] = [
   },
   {
     age: 'forage',
-    goal: 'Make the colony run itself, start expeditions, and research the way to the Map.',
+    goal: 'Make the colony run itself, start expeditions, and lay the groundwork for mapping the garden.',
     steps: [
       { head: 'Automate jobs', do: [
         'Learn [Daily routine].',
@@ -76,13 +76,14 @@ export const GUIDE: GuidePage[] = [
         'Learn [Sanitation] and dig a [Midden]. It lowers how much the colony eats.',
       ] },
     ],
-    next: 'Learn [Mapping]. The {Map} tab opens and the Age of Conquest begins.',
+    next: 'Learn [Seed lore] and [Digging plans]. [Mapping] becomes available and the Age of Conquest begins.',
   },
   {
     age: 'conquest',
     goal: 'Claim the garden, beat back the rival, and build room for a much bigger colony.',
     steps: [
       { head: 'Claim land', do: [
+        'Learn [Mapping] first. It opens the {Map} tab.',
         'On the {Map} tab, click a tile next to your land, then claim it.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
