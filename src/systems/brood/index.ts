@@ -203,7 +203,7 @@ export const brood: GameSystem = {
       if (m >= MO.rot) hurts.push('eggs rot', 'food spoils');
       if (m >= MO.weak) hurts.push(`workers work at ${Math.round(mouldWork(ctx) * 100)}%`);
       if (m >= MO.sick) hurts.push('workers are dying');
-      ctx.alert('mould', m >= MO.half ? `Mould ${Math.floor(m)}: ${hurts.join(', ')}. Add nurses.` : null);
+      ctx.alert('mould', m >= MO.half ? `Mould ${Math.floor(m)}: ${hurts.join(', ')}. Add nurses, or scrub it by hand on the Queen tab.` : null);
     }
 
     // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
@@ -216,6 +216,7 @@ export const brood: GameSystem = {
     let lay: ActionButton, forage: ActionButton;
     const eggBar = progressBar(), larvaBar = progressBar();
     let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, layWrap: HTMLElement, hint: HTMLElement;
+    let scrub: ActionButton, scrubWrap: HTMLElement;
     let ledger: HTMLElement, royalHead: HTMLElement;
     let royal: ReturnType<typeof upgradeList>;
     return {
@@ -235,6 +236,13 @@ export const brood: GameSystem = {
           desc: 'Scrape together a little food.',
           onBuy: (c) => c.res.lump('food', BROOD.forageClick),
         });
+        scrub = actionButton({
+          ctx, label: 'Scrub the mould', cooldown: MO.scrubCooldown,
+          desc: `Scrape ${MO.scrubClick} mould off the walls by hand. A way back when the nest is overgrown.`,
+          enabled: (c) => c.res.amt('mould') >= 1,
+          onBuy: (c) => { c.res.source = 'Scrubbed by hand'; c.res.add('mould', -Math.min(MO.scrubClick, c.res.amt('mould'))); c.res.source = 'Brood'; },
+        });
+        scrubWrap = el('div', {}, scrub.root);
         eggTxt = el('span'); larvaTxt = el('span'); pupaTxt = el('span'); hint = el('p.muted');
         ledger = el('div.ledger');
         royalHead = el('h3', {}, 'Royal care');
@@ -243,7 +251,7 @@ export const brood: GameSystem = {
         layWrap = el('div', {}, lay.root);
         root.append(
           el('div.queen', {}, icon('queen', 64), el('p.flavor', {}, 'The queen rests in a small earthen cell. Everything begins with her.')),
-          el('div.row', {}, forageWrap, layWrap),
+          el('div.row', {}, forageWrap, layWrap, scrubWrap),
           el('div.stat', {}, el('span.statlabel', {}, icon('egg', 24), eggTxt), eggBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('larva', 24), larvaTxt), larvaBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('pupa', 24), pupaTxt)),
@@ -254,7 +262,8 @@ export const brood: GameSystem = {
       },
       update(_root, ctx) {
         const s = S(ctx);
-        lay.update(ctx); forage.update(ctx);
+        lay.update(ctx); forage.update(ctx); scrub.update(ctx);
+        scrubWrap.hidden = !ctx.flags.has('tech:brood') || !ctx.res.get('mould').seen;
         // Lay opens after a few forages; it stays open after that
         if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
         layWrap.hidden = !ctx.flags.has('queen:lays');
