@@ -51,6 +51,8 @@ const SOURCE_LABELS: Record<string, string> = {
   garden: 'Fungus gardens', castes: 'Castes', waters: 'Boats', lineage: 'Swarm Spire', husbandry: 'Herds',
   champion: 'Hunts', town: 'Town', supercolony: 'Continent', migration: 'Migration',
 };
+/** Resource group shown under its own Environment heading in the sidebar. */
+const ENV = 'Environment';
 const GROUP_ORDER = ['Colony', 'Nest', 'Research', 'World', 'War', 'Legacy'];
 function sortChildren(bar: HTMLElement) {
   const kids = Array.from(bar.children) as HTMLElement[];
@@ -83,6 +85,9 @@ export class Game {
   private groups = new Map<string, { btn: HTMLButtonElement; last: string }>();
   private panelHost!: HTMLElement;
   private resList!: HTMLElement;
+  /** Bad resources (mould and the like) get their own heading under the Stores. */
+  private envList!: HTMLElement;
+  private envHead!: HTMLElement;
 
   constructor(systems: GameSystem[]) {
     this.systems = systems;
@@ -148,6 +153,8 @@ export class Game {
   // ---------- layout ----------
   private buildLayout(root: HTMLElement) {
     this.resList = el('div.res-list');
+    this.envList = el('div.res-list.env');
+    this.envHead = el('h2.kicker.env-head', { hidden: true }, 'Environment');
     this.tabBar = el('nav.tabs');
     this.groupBar = el('nav.groups', { hidden: true });
     // On phones the Stores list is its own top tab (CSS hides this button on wide screens).
@@ -202,7 +209,7 @@ export class Game {
         this.alertEl,
         el('div.tools', {}, this.pauseBtn, speedBtn, menuWrap)),
       this.layoutEl = el('div.layout', {},
-        el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList),
+        el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList, this.envHead, this.envList),
         el('main.main', {}, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
         el('aside.story', {}, queueDock, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
@@ -307,7 +314,9 @@ export class Game {
         const amt = el('span.amt'), rate = el('span.rate');
         const tint = RES_TINT[r.id];
         const rowEl = el('div.res', {}, el('span.name', tint ? { style: `color: ${tint}` } : {}, icon(r.id), r.name), amt, rate);
-        this.resList.append(rowEl);
+        const env = r.group === ENV;
+        (env ? this.envList : this.resList).append(rowEl);
+        if (env) this.envHead.hidden = false;
         row = { row: rowEl, amt, rate };
         this.resRows.set(r.id, row);
         // keep sidebar order, with a small label above each group
@@ -316,6 +325,7 @@ export class Game {
           .sort((a, b) => ctx.res.get(a[0]).order - ctx.res.get(b[0]).order)
           .forEach(([id, v]) => {
             const g = ctx.res.get(id).group;
+            if (g === ENV) { this.envList.append(v.row); return; }
             if (g !== group) {
               group = g;
               let head = this.groupHeads.get(g);
