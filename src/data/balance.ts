@@ -17,9 +17,9 @@ export const BROOD = {
   queenTends: 4,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
   /** Mould, a bad resource (from Brood care on). Every chamber in the nest adds a little; the queen and
-   *  nurses scrub it away. The queen keeps up with 16 chambers, each nurse with 12 more (8 nurses: 112).
+   *  nurses scrub it away. The queen keeps up with 8 chambers, each nurse with 8 more (12 after Grooming).
    *  Mould slows the brood: speed = 1 / (1 + mould / half). Worse past each threshold below. */
-  mould: { perRoom: 0.01, queenClean: 0.16, nurseClean: 0.12, cap: 100, half: 25,
+  mould: { perRoom: 0.01, queenClean: 0.08, nurseClean: 0.08, groomedClean: 0.12, cap: 100, half: 25,
     rot: 50, rotEvery: 30,            // 50+: an egg rots every 30 s
     spoil: 50, spoilShare: 0.004,     // 50+: food stores spoil, up to 0.4%/s at 100
     weak: 75, weakMax: 0.3,           // 75+: workers fall sick and work up to 30% slower at 100
@@ -294,7 +294,8 @@ export const RESEARCH = {
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly idle workers go straight to it.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
-    ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 110, soil: 140 },        needs: ['widetunnels'],         desc: 'Unlocks the Air shaft, which scrubs a slow trickle of mould.' },
+    ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['grooming', 'shelving'], desc: 'Unlocks the Air shaft, which scrubs a slow trickle of mould.' },
+    grooming:   { name: 'Grooming',          age: 'forage', cost: { knowledge: 120, food: 140 },        needs: ['routine'],             desc: 'Nurses learn to groom the walls: each scrubs 12 chambers\' worth of mould instead of 8.' },
     shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 50% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
     lining:     { name: 'Resin lining',      age: 'conquest', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
