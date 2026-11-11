@@ -146,6 +146,7 @@ export const jobs: GameSystem = {
     ctx.res.define({ id: 'food', name: 'Food', cap: NEST.baseFoodCap, order: 1 });
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
     ctx.res.define({ id: 'pheromone', name: 'Pheromone', cap: 40, order: 4 });
+    ctx.res.define({ id: 'clay', name: 'Clay', cap: JOBS.clayCap, order: 5, integer: true });
     ctx.state.jobs = { assigned: Object.fromEntries(JOB_DEFS.map((j) => [j.id, 0])), tech: {} } satisfies JobsState;
   },
 
@@ -233,6 +234,7 @@ export const jobs: GameSystem = {
       if (!n) continue;
       ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
+      if (j.id === 'digger' && ctx.flags.has('tech:deepdig')) ctx.res.add('clay', JOBS.diggerClay * n * mult * jobMult(ctx, j.id) * dt);
     }
     // Off duty, soldiers and majors hunt near the nest, so they never sit idle between fights.
     const hunters = offDutyFighters(ctx);

@@ -25,7 +25,7 @@ const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 /** Walking ants: a soft amber-tan, so they read as ants instead of white specks. */
 const ANT_TINT = '#d6b98c';
 const SECTIONS: [string, string[]][] = [
-  ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall']],
+  ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall', 'clayhall']],
   ['Brood', ['brood', 'nursery', 'warmth']],
   ['Stores', ['store', 'storeroom', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'waxworks', 'pantry']],
   ['Food', ['granary', 'cistern', 'rest', 'midden', 'fungus', 'sporecellar', 'stable']],
@@ -266,7 +266,7 @@ function mix(a: string, b: string, f: number) {
 }
 // colours for the later chambers, kept here so the shared palette stays small
 const TWIG = '#7a5a38', RESIN_DARK = '#6b3f16', WARM_DIM = '#4a2a18', DEW = '#b8d4e0', MEMORY = '#8fb4c9', JELLY = '#e8d27a';
-const DEEP = '#1f3442', LEAF = '#4f6a2e', LEAF_RIB = '#6f8a3a';
+const DEEP = '#1f3442', CLAY = '#8a4f3a', LEAF = '#4f6a2e', LEAF_RIB = '#6f8a3a';
 const LARVA = '#d9cfae', FOOD_DARK = '#6f8044', WASTE_DARK = '#3a332b', HUSK_DARK = '#5a4f9a';
 const CHITIN = '#a8452e', CAP = '#8a6a5a', APHID = '#a8c060', CRUMB = '#c8a878', CRUST = '#9a6e40', PAPER = '#9e988c';
 /** 0..1 and back, smoothly, over `period` seconds. */
@@ -616,6 +616,13 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       case 'paperhall': { // a paper hall: chewed-paper walls dividing many small rooms
         rect(c, cx - 18, y - 6, 36, 12, PAPER);
         for (let r = 0; r < 2; r++) for (let e = 0; e < 5; e++) rect(c, cx - 16 + e * 7, y - 5 + r * 6, 6, 4, PAL.hole);
+        break;
+      }
+      case 'clayhall': { // a clay hall: a tall vault lined with smooth red clay, ribbed with clay arches
+        dome(c, cx, y, 19, CLAY);
+        dome(c, cx, y + 1, 16, PAL.hole);
+        for (const px of [cx - 9, cx, cx + 9]) rect(c, px, y - 3, 1, 8, CLAY);
+        for (let i = 0; i < 4; i++) { const sx = cx - 13 + i * 7; rect(c, sx, y + 3, 3, 2, ANT_TINT); rect(c, sx + 3, y + 4, 1, 1, ANT_TINT); }
         break;
       }
       default:

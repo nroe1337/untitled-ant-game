@@ -123,6 +123,11 @@ export const GUIDE: GuidePage[] = [
         'Use |jelly| to breed minims, repletes, majors or weavers.',
         'Each caste has a long road of 5 stages. Push one caste first.',
       ] },
+      { head: 'Dig into the clay', do: [
+        'Learn [Deep diggers]. Your diggers now also bring up |clay|.',
+        'Dig [Clay hall]s for lots of living space.',
+        'Big nests need clay too: later Halls of husks, Memory vaults and Paper halls cost some.',
+      ] },
       { head: 'Watch the seasons', do: [
         'From now on the year turns.',
         'Winter stops expeditions and sky sorties.',
