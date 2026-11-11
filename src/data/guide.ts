@@ -54,7 +54,7 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Clear the air', do: [
         'Learn [Ventilation] and dig [Purification chamber]s.',
-        'Each one scrubs as much |mould| as a nurse, with no workers.',
+        'Each one scrubs the |mould| of 6 chambers, with no workers.',
         'Dig one every few chambers so mould stays low as the nest grows.',
       ], tip: '!Purification chambers matter.! Without them you need more and more nurses as you dig, and every nurse is a worker taken off another job.' },
       { head: 'Explore the surface', do: [
