@@ -14,8 +14,22 @@ const B = WAR.battle;
 const F = WAR.fortifications;
 const GAP = 6, BIG_GAP = 9, REACH = 6; // spacing in each battle line, and how close the two fronts stand to fight
 
-interface Unit { x: number; hp: number; max: number; kind: 'raider' | 'soldier' | 'worker'; big?: boolean; atk?: number; speed?: number }
-interface Battle { units: Unit[]; chitin?: number; kills: number; breaches: number; soldiersLost: number; workersLost: number; rallied: number; soldiersAtStart: number }
+interface Unit {
+  x: number; hp: number; max: number; kind: 'raider' | 'soldier' | 'worker'; big?: boolean; atk?: number; speed?: number;
+  /** a rallied worker sent to fetch a fallen soldier (the body's id), and whether it has it yet */
+  fetch?: number; carrying?: boolean;
+  /** a brute's time until its next shove */
+  shove?: number;
+}
+interface Body { id: number; x: number; big?: boolean; taken?: boolean }
+interface Corpse { x: number; age: number; big?: boolean }
+interface Battle {
+  units: Unit[]; chitin?: number; kills: number; breaches: number; soldiersLost: number; workersLost: number; rallied: number; soldiersAtStart: number;
+  /** fallen soldiers waiting to be carried home, and how many were */
+  bodies?: Body[]; rescued?: number; nextBody?: number;
+  /** dead raiders on their backs, fading */
+  corpses?: Corpse[];
+}
 interface Campaign { target: number; army: number; elapsed: number; duration: number }
 interface WarState {
   rivalArmy: number;
@@ -125,40 +139,87 @@ function rally(ctx: Context) {
   if (n) ctx.log(`${n} workers drop what they carry and rush to the entrance.`, 'info');
 }
 
+/** The battle lines: raiders front first, and the defenders standing in line (not workers off carrying the fallen). */
+const lines = (b: Battle) => ({
+  raiders: b.units.filter((u) => u.kind === 'raider').sort((a, z) => a.x - z.x),
+  defenders: b.units.filter((u) => u.kind !== 'raider' && u.fetch == null).sort((a, z) => z.x - a.x),
+});
+const gapOf = (u: Unit) => (u.big ? BIG_GAP : GAP);
+/** Which ranks behind the front are close enough to help: their place in line, and how much of their bite lands. */
+function helpers(line: Unit[], share: readonly number[]) {
+  const out: [Unit, number][] = [];
+  for (let i = 1; i < Math.min(line.length, share.length); i++) {
+    if (Math.abs(line[i].x - line[0].x) > i * BIG_GAP + 2) break; // still marching up
+    out.push([line[i], share[i]]);
+  }
+  return out;
+}
+const defBite = (ctx: Context, u: Unit) => (u.kind === 'soldier' ? (u.atk ?? B.soldier.atk) * power(ctx) : B.worker.atk);
+
 function stepBattle(ctx: Context, dt: number) {
   const s = S(ctx), b = s.battle!;
-  const raiders = b.units.filter((u) => u.kind === 'raider').sort((a, z) => a.x - z.x);
-  const defenders = b.units.filter((u) => u.kind !== 'raider').sort((a, z) => z.x - a.x);
+  const { raiders, defenders } = lines(b);
   const front = raiders[0];
   const wall = defenders[0];
   const slow = 1 + F.thorns.per * fl(ctx, 'thorns');
-  const gap = (u: Unit) => (u.big ? BIG_GAP : GAP);
 
   // towers (nest defence) shoot the front raider in range
   if (front && front.x < B.guardRange) front.hp -= defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters')) * dt;
 
-  // the two lines meet front to front: only the first of each side fights, the rest wait their turn in order
+  // the two lines meet front to front. The front of each side fights; the ranks just behind help:
+  // our soldiers spit acid over the front one's shoulder, raiders shove and snap past theirs
   const touching = !!(front && wall && front.x - wall.x <= REACH);
   if (touching) {
-    wall.hp -= (front.atk ?? B.raider.atk) * dt;
-    front.hp -= (wall.kind === 'soldier' ? (wall.atk ?? B.soldier.atk) * power(ctx) : B.worker.atk) * dt;
+    let toWall = front.atk ?? B.raider.atk;
+    for (const [r, k] of helpers(raiders, B.raiderSupport)) toWall += (r.atk ?? B.raider.atk) * k;
+    let toFront = defBite(ctx, wall);
+    for (const [d, k] of helpers(defenders, B.spit)) if (d.kind === 'soldier') toFront += defBite(ctx, d) * k;
+    wall.hp -= toWall * dt;
+    front.hp -= toFront * dt;
+    // a brute shoves the whole line back a step now and then
+    if (front.big) {
+      front.shove = (front.shove ?? B.shoveEvery) - dt;
+      if (front.shove <= 0) { front.shove = B.shoveEvery; for (const d of defenders) d.x -= B.shove; }
+    }
   }
   raiders.forEach((r, i) => {
     if (i === 0 && touching) return;
-    const stop = i === 0 ? (wall ? wall.x + REACH : -Infinity) : raiders[i - 1].x + gap(raiders[i - 1]);
+    const stop = i === 0 ? (wall ? wall.x + REACH : -Infinity) : raiders[i - 1].x + gapOf(raiders[i - 1]);
     r.x = Math.max(stop, r.x - ((r.speed ?? B.raider.speed) / slow) * dt);
   });
   defenders.forEach((d, i) => {
     if (i === 0 && touching) return;
-    const stop = i === 0 ? (front ? front.x - REACH : 60) : defenders[i - 1].x - gap(d);
+    const stop = i === 0 ? (front ? front.x - REACH : 60) : defenders[i - 1].x - gapOf(d);
     d.x = Math.min(stop, d.x + 8 * dt); // step up to meet them, or close the gap left by the fallen
   });
+
+  // rallied workers at the back fetch the fallen and carry them inside: they live, wounded
+  b.bodies ??= [];
+  for (const body of b.bodies) {
+    if (body.taken) continue;
+    const w = b.units.filter((u) => u.kind === 'worker' && u.fetch == null).sort((a, z) => a.x - z.x)[0]; // the one furthest back
+    if (!w || (wall && w === wall)) break;
+    w.fetch = body.id; body.taken = true;
+  }
+  for (const w of b.units.filter((u) => u.fetch != null)) {
+    const body = b.bodies.find((x) => x.id === w.fetch);
+    if (!w.carrying && body) {
+      w.x = Math.min(body.x, w.x + B.carrySpeed * dt);
+      if (w.x >= body.x - 0.5) { w.carrying = true; b.bodies.splice(b.bodies.indexOf(body), 1); }
+    } else {
+      w.carrying = true;
+      w.x -= B.carrySpeed * dt;
+      if (w.x <= 0) { b.units.splice(b.units.indexOf(w), 1); b.rescued = (b.rescued ?? 0) + 1; }
+    }
+  }
+
   // remove the dead and the raiders that got in
+  b.corpses = (b.corpses ?? []).filter((c) => (c.age += dt) < 1.6);
   for (const u of [...b.units]) {
     if (u.hp <= 0) {
       b.units.splice(b.units.indexOf(u), 1);
-      if (u.kind === 'raider') { b.kills++; b.chitin = (b.chitin ?? 0) + (u.big ? B.brute.chitin : B.raider.chitin); }
-      if (u.kind === 'soldier') b.soldiersLost++;
+      if (u.kind === 'raider') { b.kills++; b.chitin = (b.chitin ?? 0) + (u.big ? B.brute.chitin : B.raider.chitin); b.corpses.push({ x: u.x, age: 0, big: u.big }); }
+      if (u.kind === 'soldier') { b.soldiersLost++; b.nextBody = (b.nextBody ?? 0) + 1; b.bodies.push({ id: b.nextBody, x: u.x, big: u.big }); }
       if (u.kind === 'worker') b.workersLost++;
     } else if (u.kind === 'raider' && u.x <= 10) {
       b.units.splice(b.units.indexOf(u), 1);
@@ -173,7 +234,9 @@ function endBattle(ctx: Context) {
   s.battle = null;
   s.raids++;
   // losses are capped so a raid hurts but never ruins you
-  const soldierLoss = Math.min(b.soldiersLost, Math.ceil(b.soldiersAtStart * B.maxSoldierLoss));
+  // soldiers being carried in when the fight ends make it home too
+  const rescued = Math.min(b.soldiersLost, (b.rescued ?? 0) + b.units.filter((u) => u.carrying).length);
+  const soldierLoss = Math.min(b.soldiersLost - rescued, Math.ceil(b.soldiersAtStart * B.maxSoldierLoss));
   const workerLoss = Math.min(b.workersLost, 2);
   const lost = soldierLoss + workerLoss;
   if (lost) { ctx.res.add('ant', -lost); loseFighters(ctx, soldierLoss); }
@@ -187,12 +250,14 @@ function endBattle(ctx: Context) {
   const parts = [`${b.kills} raiders killed (+${chitin} chitin)`];
   if (b.breaches) parts.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   if (lost) parts.push(`${lost} of ours fell`);
+  if (rescued) parts.push(`${rescued} wounded carried home`);
   if (clean) { s.won++; s.wave = waveOf(ctx) + 1; parts.push(`Wave cleared. Next: wave ${s.wave}, ${describeWave(s.wave)}`); }
   else parts.push(`Some got through, so wave ${waveOf(ctx)} must be fought again`);
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];
   if (soldierLoss) lines.push(`${soldierLoss} soldier${soldierLoss > 1 ? 's' : ''} fell`);
   if (workerLoss) lines.push(`${workerLoss} worker${workerLoss > 1 ? 's' : ''} fell`);
+  if (rescued) lines.push(`${rescued} wounded carried home`);
   if (b.breaches) lines.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   lines.push(clean ? `Next: wave ${s.wave}` : `Wave ${waveOf(ctx)} must be fought again`);
   showResult(ctx, 'The raid', { win: clean, title: clean ? 'Victory' : 'They got through', lines });
@@ -291,7 +356,7 @@ export const war: GameSystem = {
           onBuy: (c) => startBattle(c),
         });
         rallyBtn = actionButton({
-          ctx, label: 'Rally the workers', desc: `Up to ${B.rallyMax} idle workers and foragers join the fight.`,
+          ctx, label: 'Rally the workers', desc: `Up to ${B.rallyMax} idle workers and foragers rush out to carry the fallen home, and fight if the line reaches them.`,
           enabled: (c) => !!S(c).battle && S(c).rallyCd <= 0, onBuy: (c) => rally(c),
         });
         refillBox = el('input', { type: 'checkbox', id: 'war-refill' }) as HTMLInputElement;
@@ -311,7 +376,7 @@ export const war: GameSystem = {
         root.append(
           el('p.flavor', {}, 'They know where we are now. Hold the entrance, then take the fight to them.'),
           el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and a wave cleared without losses leaves more. Chitin builds fortifications, husk halls, training grounds and majors.'),
-          el('p.muted', {}, 'How it works: your soldiers hold the entrance in a line, majors in front. Only the front of each line fights; the next steps up when one falls. Nest defence (guard posts, stone tiles, husk halls) bites the front raider from the walls. Rallied workers join the back of the line.'),
+          el('p.muted', {}, 'How it works: your soldiers hold the entrance in a line, majors in front. The fronts fight, and the next steps up when one falls. Nest defence (guard posts, stone tiles, husk halls) bites the front raider from the walls. Our soldiers behind the front spit acid over its shoulder, so a longer line hits harder. Rallied workers carry fallen soldiers home alive, and fight if the line reaches them.'),
           cv, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap), ledger,
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
           campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Select an enemy tile next to your territory on the Map, then launch.'),
@@ -361,7 +426,12 @@ export const war: GameSystem = {
 };
 
 // ---- the entrance lane: flat pixels, no text ----
-const HP_LEFT = '#8fbf5a', HP_LOST = '#b0473c';
+const HP_LEFT = '#8fbf5a', HP_LOST = '#b0473c', ACID = '#d4e06a';
+/** Blend two #rrggbb colours. */
+function mix(a: string, b: string, f: number) {
+  const ch = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  return '#' + [0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * f).toString(16).padStart(2, '0')).join('');
+}
 function drawEntrance(cv: HTMLCanvasElement, b: Battle | null) {
   const c = setup(cv);
   const W = cv.width, H = cv.height;
@@ -375,18 +445,42 @@ function drawEntrance(cv: HTMLCanvasElement, b: Battle | null) {
     return;
   }
   const scale = (W - 20) / (WAR.battle.laneLength + 40);
+  const X = (x: number) => 12 + x * scale;
+  // dead raiders on their backs, legs up, fading into the dirt
+  for (const k of b.corpses ?? []) {
+    const col = mix(PAL.rival, PAL.bg, Math.min(1, k.age / 1.6));
+    const w = k.big ? 6 : 3, x = X(k.x);
+    rect(c, x, H - 10, w, 2, col);
+    for (let l = 0; l < w; l += 2) rect(c, x + l, H - 11, 1, 1, col);
+  }
+  // fallen soldiers waiting to be fetched
+  for (const body of b.bodies ?? []) if (!body.taken || b.units.some((u) => u.fetch === body.id && !u.carrying)) rect(c, X(body.x), H - 10, body.big ? 6 : 4, 2, mix(PAL.you, PAL.bg, 0.45));
   for (const u of b.units) {
-    const x = 12 + u.x * scale;
+    const x = X(u.x);
     if (x > W) continue;
     const bob = Math.floor(t * 8 + u.x) % 2;
     const col = u.kind === 'raider' ? PAL.rival : u.kind === 'soldier' ? PAL.you : PAL.bone;
     const w = u.big ? 6 : u.kind === 'soldier' ? 4 : 3;
+    const low = u.fetch != null ? 2 : 0; // fetchers run along the near side, in front of the line
     if (u.big) rect(c, x, H - 14 - bob, 6, 5, col);
-    else rect(c, x, H - 11 - bob, w, 2, col);
+    else rect(c, x, H - 11 - bob + low, w, 2, col);
+    if (u.carrying) rect(c, x - 1, H - 14 - bob + low, 4, 2, mix(PAL.you, PAL.bg, 0.3)); // a wounded soldier held overhead
     if (u.hp < u.max) { // health left in green over the lost part in red
       const by = u.big ? H - 17 : H - 14;
       rect(c, x, by, w, 1, HP_LOST);
       rect(c, x, by, Math.max(1, Math.round((u.hp / u.max) * w)), 1, HP_LEFT);
     }
+  }
+  // acid arcing from the ranks behind our front onto the front raider
+  const { raiders, defenders } = lines(b);
+  const front = raiders[0], wall = defenders[0];
+  if (front && wall && front.x - wall.x <= REACH) {
+    helpers(defenders, B.spit).forEach(([d], i) => {
+      if (d.kind !== 'soldier') return;
+      const p = (t * 1.4 + i * 0.29) % 1;
+      const x0 = X(d.x) + 3, x1 = X(front.x) + 1;
+      const h = 5 + (i + 1) * 2;
+      rect(c, x0 + (x1 - x0) * p, H - 13 - Math.sin(Math.PI * p) * h, 1, 1, ACID);
+    });
   }
 }
