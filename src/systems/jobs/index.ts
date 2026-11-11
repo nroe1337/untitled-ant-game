@@ -186,7 +186,7 @@ export const jobs: GameSystem = {
     const starving = unpaid > 0 && totalAnts(ctx) > 0;
     const runsOut = foodRunsOutIn(ctx, have);
     const stock = have + (ctx.res.has('reserve') ? ctx.res.amt('reserve') : 0);
-    const low = stock > 0 && runsOut < COLONY.starveWarnSeconds;
+    const low = stock > 0 && totalAnts(ctx) > 0 && runsOut < COLONY.starveWarnSeconds; // no workers yet: nobody can starve
     if (!s.warned && low) {
       s.warned = true;
       ctx.log(`Food is running low. At this rate it is gone in about ${Math.ceil(runsOut)}s, and then workers will starve.`, 'warn');
