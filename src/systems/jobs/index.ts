@@ -48,7 +48,7 @@ const TECH_MODS: Record<string, [string, number]> = {
 };
 
 interface JobsState {
-  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; lowest?: number;
+  assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; warnCd?: number; lowest?: number;
   /** The queen's decree (an archive accord): the worker mix new workers are sent to match. Kept across colonies. */
   decree?: Record<string, number>; decreeOn?: boolean;
 }
@@ -187,11 +187,14 @@ export const jobs: GameSystem = {
     const runsOut = foodRunsOutIn(ctx, have);
     const stock = have + (ctx.res.has('reserve') ? ctx.res.amt('reserve') : 0);
     const low = stock > 0 && totalAnts(ctx) > 0 && runsOut < COLONY.starveWarnSeconds; // no workers yet: nobody can starve
-    if (!s.warned && low) {
+    // the Chronicle says it once, then not again for a few minutes, and only after food has truly recovered
+    s.warnCd = Math.max(0, (s.warnCd ?? 0) - dt);
+    if (!s.warned && low && s.warnCd <= 0) {
       s.warned = true;
+      s.warnCd = COLONY.starveWarnEvery;
       ctx.log(`Food is running low. At this rate it is gone in about ${Math.ceil(runsOut)}s, and then workers will starve.`, 'warn');
     }
-    if (!low && stock > 0) s.warned = false;
+    if (stock > 0 && runsOut > COLONY.starveWarnSeconds * 2) s.warned = false;
     ctx.alert('starving', starving
       ? 'Your workers are starving. They will die one by one until food comes in. Put more workers on foraging.'
       : low ? `Food runs out in about ${Math.ceil(runsOut)}s. Then workers start to starve.` : null);
