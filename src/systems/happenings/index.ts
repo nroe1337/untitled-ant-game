@@ -118,6 +118,7 @@ export const happenings: GameSystem = {
     ctx.state.happenings = { next: 120, recent: [] } satisfies HState;
   },
   tick(ctx, dt) {
+    if (!ctx.state.brood?.firstAnt) return; // quiet until the first worker is born
     const s = S(ctx);
     s.next -= dt;
     if (s.next > 0) return;
