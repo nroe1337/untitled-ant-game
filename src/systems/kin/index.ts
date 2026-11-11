@@ -6,10 +6,10 @@
 import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
-import { KIN, WORLD } from '../../data/balance';
+import { KIN, WORLD, type KinQuest } from '../../data/balance';
 import { W, layout, ring, cxy } from '../map/world';
 
-interface Rel { trust: number; q: number; base?: number | null; giftCd: number; merged?: boolean }
+interface Rel { trust: number; q: number; base?: number | null; bases?: (number | null)[] | null; giftCd: number; merged?: boolean }
 interface KinState { rel: Record<string, Rel>; count: Record<string, number>; lastWinters?: number }
 const S = (ctx: Context) => ctx.state.kin as KinState;
 const rel = (ctx: Context, id: string) => (S(ctx).rel[id] ??= { trust: 0, q: 0, giftCd: 0 });
@@ -17,7 +17,8 @@ const kinDef = (id: string) => WORLD.kin.find((k) => k.id === id)!;
 const temper = (id: string) => KIN.tempers[kinDef(id).temper];
 const tierOf = (trust: number) => KIN.tiers.reduce((t, x, i) => (trust >= x.at ? i : t), 0);
 const pct = (v: number) => Math.round(Math.abs(v) * 100) + '%';
-const quest = (id: string, r: Rel) => KIN.quests[id]?.[r.q];
+/** The current step: one or two paths, either of which finishes it. */
+const quest = (id: string, r: Rel): KinQuest[] | undefined => KIN.quests[id]?.[r.q];
 /** Gifts warm a colony only so far: each quest done lets trust climb another step. */
 const giftCap = (r: Rel) => Math.min(100, KIN.tiers[1].at + KIN.questTrust * r.q);
 const found = (ctx: Context) => W(ctx).kin;
@@ -34,16 +35,15 @@ function counter(ctx: Context, kind: string): number {
   }
 }
 const absolute = (kind: string) => kind === 'tiles' || kind === 'landmarks' || kind === 'flights';
-function progress(ctx: Context, id: string, r: Rel): [number, number] {
-  const q = quest(id, r);
-  if (!q || q.kind === 'give') return [0, 1];
+function progress(ctx: Context, r: Rel, q: KinQuest, k: number): [number, number] {
+  if (q.kind === 'give') return [0, 1];
   const now = counter(ctx, q.kind);
-  return [Math.max(0, absolute(q.kind) ? now : now - (r.base ?? now)), q.n ?? 1];
+  return [Math.max(0, absolute(q.kind) ? now : now - (r.bases?.[k] ?? now)), q.n ?? 1];
 }
 
-function complete(ctx: Context, id: string) {
-  const r = rel(ctx, id), q = quest(id, r)!;
-  r.q++; r.base = null;
+function complete(ctx: Context, id: string, q: KinQuest) {
+  const r = rel(ctx, id);
+  r.q++; r.base = null; r.bases = null;
   r.trust = Math.min(100, r.trust + KIN.questTrust);
   const k = kinDef(id);
   ctx.announce(q.name, `${k.name} is pleased. Trust: ${KIN.tiers[tierOf(r.trust)].name}.`, { small: true, kicker: 'Kin quest done' });
@@ -101,11 +101,11 @@ export const kin: GameSystem = {
       if (tier >= 2) mods[t.gift.mod] = (mods[t.gift.mod] ?? 0) + t.gift.per / 2;
       if (tier >= 3) trade += KIN.tradeFood;
       // quests open once they know you
-      const q = quest(id, r);
-      if (tier >= 1 && q && q.kind !== 'give') {
-        if (r.base == null) r.base = counter(ctx, q.kind);
-        const [have, need] = progress(ctx, id, r);
-        if (have >= need) complete(ctx, id);
+      const step = quest(id, r);
+      if (tier >= 1 && step) {
+        r.bases ??= step.map((q, k) => (k === 0 && r.base != null ? r.base : q.kind === 'give' ? null : counter(ctx, q.kind))); // older saves kept one base
+        const done = step.find((q, k) => q.kind !== 'give' && progress(ctx, r, q, k)[0] >= progress(ctx, r, q, k)[1]);
+        if (done) complete(ctx, id, done);
       }
     }
     for (const t of Object.values(KIN.tempers)) ctx.mods.set(t.gift.mod, 'kin', mods[t.gift.mod] ?? 0);
@@ -114,13 +114,14 @@ export const kin: GameSystem = {
   },
 
   panel: (() => {
-    interface Card { id: string; root: HTMLElement; bar: ReturnType<typeof progressBar>; trust: HTMLElement; tier: HTMLElement; quest: HTMLElement; prog: HTMLElement; perks: HTMLElement; buttons: ActionButton[] }
+    interface Card { id: string; root: HTMLElement; bar: ReturnType<typeof progressBar>; trust: HTMLElement; tier: HTMLElement; quest: HTMLElement; paths: HTMLElement[]; prog: HTMLElement; perks: HTMLElement; buttons: ActionButton[] }
     let list: HTMLElement, cards: Card[] = [], sig = '';
     const card = (ctx: Context, id: string): Card => {
       const k = kinDef(id), t = temper(id), r = rel(ctx, id);
       const c = ctx.state.map ? layout(ctx.state.map.seed).findIndex((x) => x.kin === id) : -1;
       const bar = progressBar();
       const trust = el('span.mono'), tier = el('p.muted'), q = el('p'), prog = el('p.muted'), perks = el('div.ledger');
+      const paths = (quest(id, r) ?? []).map(() => el('p.path'));
       const buttons: ActionButton[] = [];
       const row = el('div.row');
       if (!r.merged) {
@@ -133,9 +134,9 @@ export const kin: GameSystem = {
         buttons.push(gift(t.likes));
         if (t.likes !== 'food') buttons.push(gift('food'));
         const qd = quest(id, r);
-        if (qd?.kind === 'give') buttons.push(actionButton({
-          ctx, label: qd.name, costs: () => qd.costs ?? {}, desc: qd.text,
-          enabled: (cx) => tierOf(rel(cx, id).trust) >= 1, onBuy: (cx) => complete(cx, id),
+        for (const p of qd ?? []) if (p.kind === 'give') buttons.push(actionButton({
+          ctx, label: p.name, costs: () => p.costs ?? {}, desc: p.text,
+          enabled: (cx) => tierOf(rel(cx, id).trust) >= 1, onBuy: (cx) => complete(cx, id, p),
         }));
         if (!qd && r.trust >= 100) buttons.push(actionButton({
           ctx, label: 'Join as one colony', desc: `${KIN.merge.workers} workers now, +${KIN.merge.living} living space and their gift for every colony of your line. Their land stays theirs to work.`,
@@ -144,8 +145,8 @@ export const kin: GameSystem = {
         row.append(...buttons.map((b) => b.root));
       }
       const head = el('div.row', {}, el('h3', {}, k.name), el('span.muted', {}, `${k.temper}, ${c >= 0 ? `cell ${cxy(c).join(',')}, ${ring(c)} from the garden` : 'far away'}`));
-      const root = el('div.kin', {}, head, el('div.row', {}, bar.root, trust), tier, q, prog, row, perks);
-      return { id, root, bar, trust, tier, quest: q, prog, perks, buttons };
+      const root = el('div.kin', {}, head, el('div.row', {}, bar.root, trust), tier, q, ...paths, prog, row, perks);
+      return { id, root, bar, trust, tier, quest: q, paths, prog, perks, buttons };
     };
     return {
       title: 'Kin',
@@ -170,11 +171,16 @@ export const kin: GameSystem = {
           c.tier.textContent = r.merged ? 'Joined with your colony.' : `${KIN.tiers[ti].name}. ${KIN.tiers[ti].note.replace('{t}', fmt(KIN.tradeFood))}` + (next ? ` Next: ${next.name} at ${next.at}.` : '');
           const q = quest(c.id, r);
           c.quest.hidden = r.merged || !q;
-          if (q) c.quest.textContent = `Quest ${r.q + 1} of 4, ${q.name}: ${q.text}`;
-          const [have, need] = progress(ctx, c.id, r);
+          if (q) c.quest.textContent = `Quest ${r.q + 1} of 4` + (q.length > 1 ? '. Either path will do:' : ':');
+          (q ?? []).forEach((p, k) => {
+            const line = c.paths[k]; if (!line) return;
+            line.hidden = !!r.merged;
+            let tail = '';
+            if (ti >= 1 && p.kind !== 'give') { const [have, need] = progress(ctx, r, p, k); tail = ` (${Math.min(have, need)} / ${need}${absolute(p.kind) ? '' : ', counted from when they asked'})`; }
+            line.replaceChildren(el('strong', {}, p.name + '. '), p.text + tail);
+          });
           c.prog.hidden = r.merged || !q;
-          c.prog.textContent = !q ? '' : ti < 1 ? 'They will not ask anything of strangers. Win them over with gifts first.'
-            : q.kind === 'give' ? 'Send it when you can.' : `${Math.min(have, need)} / ${need}` + (absolute(q.kind) ? '' : ', counted from when they asked');
+          c.prog.textContent = !q ? '' : ti < 1 ? 'They will not ask anything of strangers. Win them over with gifts first.' : '';
           if (!r.merged && r.giftCd > 0) c.prog.textContent += ` Next gift in ${Math.ceil(r.giftCd / ctx.speed)}s.`;
           if (!r.merged && r.trust >= giftCap(r) && q) c.prog.textContent += ' Gifts can\'t win more trust until this quest is done.';
           const foes = KIN.feuds.filter(([a, b]) => a === c.id || b === c.id).map(([a, b]) => (a === c.id ? b : a));

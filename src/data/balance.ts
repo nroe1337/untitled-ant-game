@@ -387,7 +387,7 @@ export const LINEAGE = {
   /**
    * The Swarm Spire: a wonder the colony builds before its flight (Civ style).
    * Each stage takes resources, carried in by hand or by Builders, then may need time to settle.
-   * Sized for a colony of about 100-150 workers; the aim is a first flight at 6-8 hours.
+   * Costs and settling time were raised 4x on 2026-11-11 (Nate): the flight should be a real project.
    */
   wonder: {
     haul: 10,                // units carried per manual haul
@@ -398,11 +398,11 @@ export const LINEAGE = {
     sources: { twig: 'expeditions (the stump, the hedge) and grass tiles on the Map', resin: 'expeditions to the old leaf, the stump or the edge of the stones, and stone tiles on the Map', seed: 'Seed lore, expeditions and bare soil tiles on the Map', jelly: 'chewing it in the Castes tab' } as Record<string, string>,
     held: ['twig', 'resin', 'seed', 'silk', 'jelly'],  // what the Spire holds back from other purchases (see Lineage)
     stages: [
-      { id: 'footing',    name: 'Foundation',        cost: { soil: 350 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
-      { id: 'galleries',  name: 'Galleries',         cost: { soil: 200, twig: 25, resin: 6 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
-      { id: 'nursery',    name: 'Royal nursery',     cost: { food: 500, seed: 30, jelly: 15 },    time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
-      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 25, food: 300 },              time: 1200, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 35, resin: 6, seed: 15 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+      { id: 'footing',    name: 'Foundation',        cost: { soil: 1400 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 800, twig: 100, resin: 24 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'nursery',    name: 'Royal nursery',     cost: { food: 2000, seed: 120, jelly: 60 },    time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
+      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 100, food: 1200 },              time: 4800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 140, resin: 24, seed: 60 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
   },
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
@@ -652,6 +652,7 @@ export const WORLD = {
  * cells (world cells seen from the air), winters (winters lived through) - all counted from when the quest
  * is taken - and tiles, landmarks, flights (totals reached).
  */
+export interface KinQuest { kind: string; n?: number; costs?: Record<string, number>; name: string; text: string }
 export const KIN = {
   questTrust: 20,                 // trust for each quest done
   feudCost: 8,                    // trust the feuding kin loses when you finish a quest for its enemy
@@ -674,36 +675,56 @@ export const KIN = {
   } as Record<string, { likes: string; gift: { mod: string; per: number; text: string } }>,
   giftSize: { pheromone: 60, chitin: 15, food: 300, resin: 12, knowledge: 120 } as Record<string, number>,
   feuds: [['ember', 'moss'], ['gilded', 'root'], ['reed', 'ember']] as [string, string][],
+  /** Four steps per kin. Most steps offer two paths: either one finishes the step. */
   quests: {
     reed: [
-      { kind: 'cells', n: 2, name: 'Eyes in the sky', text: 'They watch from the reeds. Show them you see as far as they do: reveal two more cells from the air.' },
-      { kind: 'give', costs: { pheromone: 150 }, name: 'Border scent', text: 'Trade scent marks, so neither colony mistakes the other in the dark.' },
-      { kind: 'exp', n: 6, name: 'Clear paths', text: 'Bring six expeditions home. Busy trails are safe trails.' },
-      { kind: 'winters', n: 1, name: 'A winter side by side', text: 'Live through a winter beside them. Only then will they believe you mean to stay.' },
+      [{ kind: 'cells', n: 2, name: 'Eyes in the sky', text: 'They watch from the reeds. Show them you see as far as they do: reveal two more cells from the air.' },
+       { kind: 'give', costs: { food: 300 }, name: 'Bread at the border', text: 'Or simply feed their scouts when they pass. Watchers get hungry.' }],
+      [{ kind: 'give', costs: { pheromone: 150 }, name: 'Border scent', text: 'Trade scent marks, so neither colony mistakes the other in the dark.' },
+       { kind: 'give', costs: { twig: 60 }, name: 'Boundary stakes', text: 'Mark the border with twigs instead. They trust what they can see.' }],
+      [{ kind: 'exp', n: 6, name: 'Clear paths', text: 'Bring six expeditions home. Busy trails are safe trails.' },
+       { kind: 'give', costs: { resin: 30 }, name: 'Sealed trails', text: 'Seal the trail walls with resin, so nothing nests in them.' }],
+      [{ kind: 'winters', n: 1, name: 'A winter side by side', text: 'Live through a winter beside them. Only then will they believe you mean to stay.' },
+       { kind: 'give', costs: { seed: 60 }, name: 'Winter seed', text: 'Fill their granary against the cold. That is a promise too.' }],
     ],
     ember: [
-      { kind: 'raids', n: 3, name: 'Show your mandibles', text: 'They respect strength and nothing else. Win three raids.' },
-      { kind: 'give', costs: { chitin: 40 }, name: 'Husks as tribute', text: 'Send them husks of your enemies. A gift between equals.' },
-      { kind: 'capture', n: 2, name: 'Take the field', text: 'Take two tiles from the rival mound or the spider.' },
-      { kind: 'raids', n: 5, name: 'A war worth singing of', text: 'Win five more raids. Their soldiers are watching.' },
+      [{ kind: 'raids', n: 3, name: 'Show your mandibles', text: 'They respect strength and nothing else. Win three raids.' },
+       { kind: 'give', costs: { chitin: 30 }, name: 'Trophies', text: 'Or bring trophies from raids already won. They will count the husks.' }],
+      [{ kind: 'give', costs: { chitin: 40 }, name: 'Husks as tribute', text: 'Send them husks of your enemies. A gift between equals.' },
+       { kind: 'give', costs: { food: 600 }, name: 'A soldiers\' feast', text: 'Feed their soldiers before a battle. They will remember who did.' }],
+      [{ kind: 'capture', n: 2, name: 'Take the field', text: 'Take two tiles from an enemy.' },
+       { kind: 'give', costs: { resin: 40, twig: 40 }, name: 'Arms for the Hollow', text: 'Resin-hardened twig spikes for their gate.' }],
+      [{ kind: 'raids', n: 5, name: 'A war worth singing of', text: 'Win five more raids. Their soldiers are watching.' },
+       { kind: 'give', costs: { chitin: 80 }, name: 'A war chest', text: 'A hoard of husks, to arm the Hollow for a generation.' }],
     ],
     moss: [
-      { kind: 'give', costs: { food: 400 }, name: 'A full stomach', text: 'They are hungry and afraid to forage. Send food.' },
-      { kind: 'exp', n: 3, name: 'Escort', text: 'Bring three expeditions home, and let their foragers walk behind yours.' },
-      { kind: 'tiles', n: 20, name: 'A safe border', text: 'Hold twenty tiles of the garden, so nothing reaches them through you.' },
-      { kind: 'winters', n: 1, name: 'Shared stores', text: 'Live through a winter. They will huddle in your shadow.' },
+      [{ kind: 'give', costs: { food: 400 }, name: 'A full stomach', text: 'They are hungry and afraid to forage. Send food.' },
+       { kind: 'give', costs: { seed: 30 }, name: 'Seed for the halls', text: 'Seeds keep. Food does not. They would rather have seeds.' }],
+      [{ kind: 'exp', n: 3, name: 'Escort', text: 'Bring three expeditions home, and let their foragers walk behind yours.' },
+       { kind: 'give', costs: { pheromone: 120 }, name: 'Safe trails', text: 'Lay strong scent along their foraging trails, so they never get lost.' }],
+      [{ kind: 'tiles', n: 20, name: 'A safe border', text: 'Hold twenty tiles of land, so nothing reaches them through you.' },
+       { kind: 'give', costs: { twig: 80, soil: 150 }, name: 'A wall', text: 'Build a low wall of twig and soil between them and the world.' }],
+      [{ kind: 'winters', n: 1, name: 'Huddle', text: 'Live through a winter. They will huddle in your shadow.' },
+       { kind: 'give', costs: { food: 1200 }, name: 'Shared stores', text: 'Fill their stores to the roof before the cold.' }],
     ],
     gilded: [
-      { kind: 'give', costs: { resin: 25 }, name: 'A taste of amber', text: 'Resin, to start. They will tell you what they want next.' },
-      { kind: 'give', costs: { seed: 40 }, name: 'Seed money', text: 'Forty seeds, sound and dry.' },
-      { kind: 'landmarks', n: 2, name: 'Where the treasure is', text: 'Find two landmarks from the air. They want to know where the riches are.' },
-      { kind: 'give', costs: { food: 1500, resin: 60 }, name: 'The great bargain', text: 'A fortune in food and resin. Then they are yours.' },
+      [{ kind: 'give', costs: { resin: 25 }, name: 'A taste of amber', text: 'Resin, to start. They will tell you what they want next.' },
+       { kind: 'give', costs: { twig: 60 }, name: 'Straight twigs', text: 'They are building. Straight twigs fetch a fine price.' }],
+      [{ kind: 'give', costs: { seed: 40 }, name: 'Seed money', text: 'Forty seeds, sound and dry.' },
+       { kind: 'give', costs: { pheromone: 120 }, name: 'Scent to sell', text: 'They sell trail scent to lost foragers. Supply them.' }],
+      [{ kind: 'landmarks', n: 2, name: 'Where the treasure is', text: 'Find two landmarks from the air. They want to know where the riches are.' },
+       { kind: 'cells', n: 3, name: 'Prospecting', text: 'Reveal three more cells from the air, and tell them what you saw.' }],
+      [{ kind: 'give', costs: { food: 1500, resin: 60 }, name: 'The great bargain', text: 'A fortune in food and resin. Then they are yours.' },
+       { kind: 'give', costs: { chitin: 60, seed: 80 }, name: 'The other bargain', text: 'Husks and seed instead. They will haggle, then accept.' }],
     ],
     root: [
-      { kind: 'winters', n: 1, name: 'Patience', text: 'They have seen a hundred winters. Live through one, and come back.' },
-      { kind: 'give', costs: { knowledge: 300 }, name: 'What the elders know', text: 'Share what your elders have learned. They will judge it.' },
-      { kind: 'cells', n: 4, name: 'The old places', text: 'Reveal four more cells from the air. They remember the world before the garden.' },
-      { kind: 'flights', n: 2, name: 'A line that has flown', text: 'Your line must have flown twice. They do not join with colonies, only with lines.' },
+      [{ kind: 'winters', n: 1, name: 'Patience', text: 'They have seen a hundred winters. Live through one, and come back.' },
+       { kind: 'give', costs: { knowledge: 200 }, name: 'A question worth asking', text: 'Bring them a good question. They have had the same answers for years.' }],
+      [{ kind: 'give', costs: { knowledge: 300 }, name: 'What the elders know', text: 'Share what your elders have learned. They will judge it.' },
+       { kind: 'give', costs: { jelly: 6 }, name: 'A taste of the queen', text: 'Royal jelly, so their old queen knows yours.' }],
+      [{ kind: 'cells', n: 4, name: 'The old places', text: 'Reveal four more cells from the air. They remember the world before the garden.' },
+       { kind: 'landmarks', n: 2, name: 'The old signs', text: 'Find two landmarks. They were waymarks once, when Old Root was young.' }],
+      [{ kind: 'flights', n: 2, name: 'A line that has flown', text: 'Your line must have flown twice. They do not join with colonies, only with lines.' }],
     ],
-  } as Record<string, { kind: string; n?: number; costs?: Record<string, number>; name: string; text: string }[]>,
+  } as Record<string, KinQuest[][]>,
 };
