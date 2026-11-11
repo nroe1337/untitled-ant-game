@@ -59,7 +59,7 @@ function advance(ctx: Context) {
   const w = wonder(ctx), st = W.stages[w.stage];
   if (!st || !stagePaid(ctx)) return;
   if (w.settle < st.time) return;
-  ctx.log(st.id === 'spire' ? 'The Swarm Spire is finished. On the next warm evening, the winged ones can fly. (Lineage tab)' : `${st.name} is done. The Swarm Spire rises.`, 'story');
+  ctx.log(st.id === 'spire' ? 'The Swarm Spire is finished. On the next warm evening, the winged ones can fly. (Legacy tab)' : `${st.name} is done. The Swarm Spire rises.`, 'story');
   w.stage++; w.paid = {}; w.settle = 0;
 }
 
@@ -122,7 +122,7 @@ export const lineage: GameSystem = {
     const moundBar = progressBar();
     return {
       title: 'Lineage',
-      group: 'Lineage',
+      group: 'Legacy',
       mount(root, ctx) {
         ledger = el('div.ledger');
         note = el('p.muted');

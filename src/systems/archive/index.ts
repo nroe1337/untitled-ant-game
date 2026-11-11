@@ -105,7 +105,7 @@ export const archive: GameSystem = {
     let summary: HTMLElement, accords: HTMLElement;
     return {
       title: 'Archive',
-      group: 'Lineage',
+      group: 'Legacy',
       mount(root, ctx) {
         const list = el('div.ledger');
         for (const id of IDS) {

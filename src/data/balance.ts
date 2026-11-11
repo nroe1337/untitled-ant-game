@@ -206,7 +206,7 @@ export const WAR = {
     raider:   { hp: 3, atk: 0.8, speed: 10, chitin: 1 },
     brute:    { hp: 12, atk: 2, speed: 6, chitin: 4 },  // a big rival soldier, from wave 3
     // wave n brings raiders = base + n * perWave, and one brute every bruteEvery waves
-    wave: { base: 3, perWave: 1.5, bruteEvery: 3, clearBonus: 1, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
+    wave: { base: 2.5, perWave: 1.5, bruteEvery: 3, clearBonus: 1, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
@@ -280,7 +280,7 @@ export const RESEARCH = {
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 380, seed: 20 },           needs: ['seeds', 'sanitation'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
     castes:     { name: 'Caste lore',        age: 'forage', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'forage', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
-    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Lineage tab, where the colony builds the Swarm Spire for its first flight.' },
+    flight:     { name: 'Winged queens',     age: 'forage', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes'],              desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its first flight.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 100, food: 120 },          needs: ['worksongs'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
     galleons:   { name: 'Wax hulls',         age: 'forage', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
     husbandry:  { name: 'Herding',           age: 'forage', cost: { knowledge: 350, food: 200 },         needs: ['fungus'], flag: 'legacy:flown', desc: 'Keep herds of aphids and other small insects. Opens the Herds tab and the Herder job.' },
