@@ -27,6 +27,7 @@ const ANT_TINT = '#d6b98c';
 const SECTIONS: [string, string[]][] = [
   ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall', 'clayhall']],
   ['Brood', ['brood', 'nursery', 'warmth']],
+  ['Environment', ['airshaft']],
   ['Stores', ['store', 'storeroom', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'waxworks', 'pantry']],
   ['Food', ['granary', 'cistern', 'rest', 'midden', 'fungus', 'sporecellar', 'stable']],
   ['Knowledge', ['library', 'memory']],
