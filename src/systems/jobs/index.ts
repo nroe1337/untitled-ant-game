@@ -93,8 +93,9 @@ function followRoutine(ctx: Context) {
   if (!id || !ctx.flags.has('tech:routine') || (s.decreeOn && ctx.flags.has('accord:decree'))) return;
   const j = JOB_DEFS.find((d) => d.id === id);
   if (!j || !jobOpen(ctx, j)) return;
-  const e = ctx.state.expeditions as { reserve?: boolean; reserved?: number } | undefined;
-  const free = idleAnts(ctx) - (e?.reserve ? e.reserved ?? 0 : 0);
+  const e = ctx.state.expeditions as { reserve?: boolean; short?: number } | undefined;
+  // the expedition reserve refills its losses before the default job gets anyone
+  const free = idleAnts(ctx) - (e?.reserve ? e.short ?? 0 : 0); // workers already held in reserve count as busy
   const n = Math.min(fresh, free, jobMax(ctx, id) - (s.assigned[id] ?? 0));
   if (n > 0) s.assigned[id] = (s.assigned[id] ?? 0) + n;
 }
