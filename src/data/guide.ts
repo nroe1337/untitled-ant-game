@@ -35,7 +35,7 @@ export const GUIDE: GuidePage[] = [
         'After [Brood care], every chamber slowly gathers |mould|. Put workers on Nurse to scrub it away.',
         'Dig a [Food store] or [Soil pit] whenever a resource sits at its cap.',
         'Put a few workers on Elder for |knowledge|.',
-      ], tip: '!Keep |mould| low.! It slows the brood. At 500 eggs rot and food spoils; at 750 workers fall sick. The queen keeps up with 8 chambers, each nurse 8 more ([Grooming] raises it to 12). Overgrown? [Scrub the mould] on the {Queen} tab.' },
+      ], tip: '!Keep |mould| low.! It slows the brood. At 500 eggs rot and food spoils; at 750 workers fall sick. The queen keeps up with 8 chambers, each nurse 8 more. Later, [Grooming] raises it to 12. Overgrown? [Scrub the mould] on the {Queen} tab.' },
     ],
     next: 'Learn [Upward tunnels] and reach 10 chambers. The Age of Forage begins.',
   },
@@ -99,6 +99,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',
         'Dig [Worker hall]s. Living space is the main limit this age.',
+        'More chambers means more |mould|. Learn [Grooming] so each nurse scrubs 12 chambers instead of 8.',
       ] },
       { head: 'Take to the water', do: [
         'Learn [Leaf rafts] to open the {Waters} tab.',
