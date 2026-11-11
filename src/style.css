@@ -345,3 +345,9 @@ details.info[open] > summary { margin-bottom: 6px; }
 .queue.season[data-season="summer"] .bar .fill { background: #c9a03a; }
 .queue.season[data-season="autumn"] .bar .fill { background: #c4532f; }
 .queue.season[data-season="winter"] .bar .fill { background: #9fb7c9; }
+
+/* Map: Garden / World views */
+.mapview { display: grid; gap: 14px; }
+.mapview[hidden] { display: none; }
+.maptoggle { margin-bottom: 0; }
+canvas.map.world { cursor: pointer; }

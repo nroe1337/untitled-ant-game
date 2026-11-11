@@ -306,6 +306,7 @@ export const RESEARCH = {
     fortify:    { name: 'Fortification',     age: 'conquest', cost: { knowledge: 450, twig: 90 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      age: 'conquest', cost: { knowledge: 480, chitin: 20 },        needs: ['fortify'],             desc: 'Unlocks the Hall of husks.' },
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 380, seed: 20 },           needs: ['seeds', 'sanitation'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
+    sky:        { name: 'Sky scouts',        age: 'wings', cost: { knowledge: 380, pheromone: 150 },   pop: 0.3, needs: ['royal'],     desc: 'Winged scouts rise above the garden and see how far the world goes. Opens the World view of the Map.' },
     castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
@@ -596,3 +597,49 @@ export const SEASONS = {
   winterLineage: 3,         // lineage per winter survived with no one starving
 };
 
+
+/**
+ * The world: from the Age of Wings the Map zooms out. The garden is one cell of a size x size grid,
+ * and every cell is a whole local map of its own. Winged scouts fly sorties to reveal cells.
+ * Claiming land in other cells comes with later research and prestige layers.
+ */
+export const WORLD = {
+  size: 7,
+  home: [3, 3] as [number, number],
+  /** Terrain mix per biome: thresholds on a 0..1 noise for stone (above) and soil (below), and how wet it is. */
+  biomes: {
+    meadow: { name: 'Meadow', note: 'Tall grass to the horizon. Seeds everywhere.', stone: 0.75, soil: 0.3, water: 0.02 },
+    woods:  { name: 'Woodland edge', note: 'Roots, bark and deep shade. Resin bleeds from the trunks.', stone: 0.6, soil: 0.4, water: 0.03 },
+    pond:   { name: 'Pond', note: 'Open water ringed with reeds. Nothing crosses without a boat.', stone: 0.8, soil: 0.35, water: 0.45 },
+    field:  { name: 'Ploughed field', note: 'Turned earth in long rows.', stone: 0.82, soil: 0.62, water: 0.01 },
+    scree:  { name: 'Rock garden', note: 'Stones stacked by human hands. Warm in the sun.', stone: 0.45, soil: 0.3, water: 0.0 },
+    yard:   { name: 'Yard', note: 'Slabs, a shed, and the smell of humans.', stone: 0.7, soil: 0.35, water: 0.0, paved: 0.4 },
+  } as Record<string, { name: string; note: string; stone: number; soil: number; water: number; paved?: number }>,
+  sortie: {
+    scouts: 4, scoutsPerRing: 3,          // scouts in a sortie: base + per ring of distance from home
+    cost: { food: 180, pheromone: 20 },   // per ring of distance
+    time: 30, timePerRing: 25,            // seconds
+    birds: 0.06,                          // chance per ring that birds take the sortie
+    downwind: { time: 0.7, birds: 0.5 },  // flying with the wind
+    upwind: { time: 1.5, birds: 1.6 },    // flying into it
+    windEvery: 150,                       // seconds before the wind turns
+    find: { food: 250, seed: 12, resin: 6, twig: 25 }, // what a sortie brings home, per ring
+  },
+  /** Landmarks: found once by a sortie, they help every colony of the line after that. */
+  landmarks: [
+    { id: 'oak',     name: 'The old oak',    desc: 'Aphids crowd its bark. Foragers bring home {p} more.', mod: 'job:forager', per: 0.1 },
+    { id: 'compost', name: 'A compost heap', desc: 'Warm rot. The brood grows {p} faster.', mod: 'brood', per: 0.1 },
+    { id: 'beetles', name: 'Beetle graves',  desc: 'Old husks to practise on. Soldiers hunt {p} better.', mod: 'hunting', per: 0.25 },
+    { id: 'fruit',   name: 'A fallen pear',  desc: 'Sweet and rotting. Expeditions bring back {p} more.', mod: 'expLoot', per: 0.15 },
+    { id: 'mound',   name: 'An empty mound', desc: 'Someone lived here once. Flights earn {p} more Lineage.', mod: 'lineageGain', per: 0.05 },
+    { id: 'barrel',  name: 'The rain barrel', desc: 'Its shadow keeps the ground soft. Claims cost {p} less.', mod: 'claimCost', per: -0.1 },
+  ],
+  /** Kin colonies: other nests of your own kind. Found by sorties; diplomacy opens later. */
+  kin: [
+    { id: 'reed',   name: 'The Reed Mound',   temper: 'wary' },
+    { id: 'ember',  name: 'Ember Hollow',     temper: 'proud' },
+    { id: 'moss',   name: 'The Moss Halls',   temper: 'timid' },
+    { id: 'gilded', name: 'The Gilded Nest',  temper: 'greedy' },
+    { id: 'root',   name: 'Old Root',         temper: 'ancient' },
+  ],
+};
