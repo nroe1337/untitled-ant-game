@@ -1,3 +1,6 @@
+/** Live hover text for a store, registered by the system that owns it (shown under its description). */
+export const RES_TIPS: Record<string, (ctx: any) => string> = {};
+
 export interface ResourceDef {
   id: string;
   name: string;

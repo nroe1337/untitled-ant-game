@@ -392,3 +392,5 @@ canvas.map.world { cursor: pointer; }
 .g-next > span { display: block; }
 .env-head { margin-top: 22px; }
 .res-list.env .res .name { color: #b98fa0; }
+.res .envbar { grid-column: 1 / -1; flex-basis: 100%; height: 5px; background: var(--raise); margin: 2px 0 4px; }
+.res .envbar .fill { display: block; height: 100%; width: 0; transition: width .4s, background .4s; }

@@ -19,12 +19,12 @@ export const BROOD = {
   /** Mould, a bad resource (from Brood care on). Every chamber in the nest adds a little; the queen and
    *  nurses scrub it away. The queen keeps up with 8 chambers, each nurse with 8 more (12 after Grooming).
    *  Mould slows the brood: speed = 1 / (1 + mould / half). Worse past each threshold below. */
-  mould: { perRoom: 0.01, queenClean: 0.08, nurseClean: 0.08, groomedClean: 0.12, cap: 100, half: 25,
-    rot: 50, rotEvery: 30,            // 50+: an egg rots every 30 s
-    spoil: 50, spoilShare: 0.004,     // 50+: food stores spoil, up to 0.4%/s at 100
-    weak: 75, weakMax: 0.3,           // 75+: workers fall sick and work up to 30% slower at 100
-    sick: 90, sickEvery: 60,          // 90+: a sick worker dies every 60 s
-    scrubClick: 4, scrubCooldown: 2 }, // the Queen tab's Scrub button: always a way back
+  mould: { perRoom: 0.1, queenClean: 0.8, nurseClean: 0.8, groomedClean: 1.2, cap: 1000, half: 250,
+    rot: 500, rotEvery: 30,           // 500+: an egg rots every 30 s
+    spoil: 500, spoilShare: 0.004,    // 500+: food stores spoil, up to 0.4%/s at 1000
+    weak: 750, weakMax: 0.3,          // 750+: workers fall sick and work up to 30% slower at 1000
+    sick: 900, sickEvery: 60,         // 900+: a sick worker dies every 60 s
+    scrubClick: 40, scrubCooldown: 2 }, // the Queen tab's Scrub button: always a way back
   healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
@@ -117,7 +117,7 @@ export const NEST = {
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, needs: 'tech:surface' },
     rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, needs: 'tech:surface' },
-    airshaft:  { name: 'Air shaft',        base: { soil: 30, food: 10 }, growth: 1.3,           desc: 'Fresh air scrubs 0.06 mould/s (6 chambers worth)', mods: { mouldClean: 0.06 }, max: 15, needs: 'tech:ventilation' },
+    airshaft:  { name: 'Air shaft',        base: { soil: 30, food: 10 }, growth: 1.3,           desc: 'Fresh air scrubs 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 15, needs: 'tech:ventilation' },
     warmth:    { name: 'Warming chamber',  base: { soil: 40, food: 20 }, growth: 1.32,          desc: 'Brood grows 3% faster', mods: { brood: 0.03 }, max: 15, needs: 'tech:surface' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'tech:surface' },
     twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'tech:surface' },
@@ -288,7 +288,7 @@ export const RESEARCH = {
   techs: {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
-    brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses.' },
+    brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Brood chamber and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
     royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
@@ -599,6 +599,7 @@ export const HUSBANDRY = {
 
 /** What each resource is, for the hover text in the Stores pane. */
 export const RES_DESC: Record<string, string> = {
+  mould: 'A bad store. Every chamber gathers a little. It slows the brood, and past 500 it rots eggs, spoils food and sickens workers. The queen, nurses and Air shafts scrub it away.',
   ant: 'Adult ants. Each eats food and can take a job.',
   food: 'Feeds workers and larvae. Foragers bring it in.',
   reserve: 'Food banked by repletes, fed back when stores run dry.',
