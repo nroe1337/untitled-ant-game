@@ -37,8 +37,8 @@ const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 /** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
 const MO = BROOD.mould;
-/** Mould scrubbed away per second by the queen and nurses. */
-export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * MO.nurseClean;
+/** Mould scrubbed away per second by the queen, nurses and Air shafts. */
+export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * MO.nurseClean + ctx.mods.get('mouldClean');
 /** Mould added per second by the eggs and larvae in the nest. */
 export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? (ctx.res.amt('egg') + ctx.res.amt('larva')) * MO.perBrood : 0);
 /** Share of full speed the brood grows at, given the mould. */

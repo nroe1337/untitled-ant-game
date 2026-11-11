@@ -325,7 +325,7 @@ export const jobs: GameSystem = {
               `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +
               `\nLooked after now: ${Math.min(brood, care)} of ${brood}.` +
               (ctx.flags.has('tech:brood')
-                ? `\nMould: the brood makes ${mouldMade(ctx).toFixed(2)}/s. The queen scrubs ${BROOD.mould.queenClean}/s and each nurse ${BROOD.mould.nurseClean}/s (${mouldClean(ctx).toFixed(2)}/s now).` +
+                ? `\nMould: the brood makes ${mouldMade(ctx).toFixed(2)}/s. The queen scrubs ${BROOD.mould.queenClean}/s and each nurse ${BROOD.mould.nurseClean}/s${ctx.mods.get('mouldClean') ? `, Air shafts ${ctx.mods.get('mouldClean').toFixed(2)}/s` : ''} (${mouldClean(ctx).toFixed(2)}/s now).` +
                   `\nBrood speed from mould: ${Math.round(mouldSpeed(ctx) * 100)}%.`
                 : '');
           }
