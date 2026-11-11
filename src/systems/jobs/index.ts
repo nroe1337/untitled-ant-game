@@ -53,6 +53,8 @@ interface JobsState {
   decree?: Record<string, number>; decreeOn?: boolean;
   /** Daily routine: idle workers go to this job. Kept across colonies. */
   defaultJob?: string;
+  /** Workers last tick: only a rise (new hatchlings) is sent to the default job. */
+  routineHome?: number;
 }
 const S = (ctx: Context) => ctx.state.jobs as JobsState;
 /** Per-worker rates get three significant figures, so 'each' times the count matches the total. */
@@ -85,12 +87,15 @@ const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requ
 /** Daily routine: idle workers go to the default job (after any decree), leaving those held for expeditions. */
 function followRoutine(ctx: Context) {
   const s = S(ctx), id = s.defaultJob;
+  // Only newly hatched workers follow the routine, so workers you move by hand stay where you put them.
+  const home = totalAnts(ctx), fresh = Math.max(0, home - (s.routineHome ?? home));
+  s.routineHome = home;
   if (!id || !ctx.flags.has('tech:routine') || (s.decreeOn && ctx.flags.has('accord:decree'))) return;
   const j = JOB_DEFS.find((d) => d.id === id);
   if (!j || !jobOpen(ctx, j)) return;
   const e = ctx.state.expeditions as { reserve?: boolean; reserved?: number } | undefined;
   const free = idleAnts(ctx) - (e?.reserve ? e.reserved ?? 0 : 0);
-  const n = Math.min(free, jobMax(ctx, id) - (s.assigned[id] ?? 0));
+  const n = Math.min(fresh, free, jobMax(ctx, id) - (s.assigned[id] ?? 0));
   if (n > 0) s.assigned[id] = (s.assigned[id] ?? 0) + n;
 }
 /** Send idle workers to whichever decreed job is furthest below its share. Never moves anyone already working. */

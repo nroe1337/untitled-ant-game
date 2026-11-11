@@ -292,7 +292,7 @@ export const RESEARCH = {
     royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
-    routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly idle workers go straight to it.' },
+    routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['grooming', 'shelving'], desc: 'Unlocks the Air shaft, which scrubs a slow trickle of mould.' },
     grooming:   { name: 'Grooming',          age: 'forage', cost: { knowledge: 120, food: 140 },        needs: ['routine'],             desc: 'Nurses learn to groom the walls: each scrubs 12 chambers\' worth of mould instead of 8.' },
