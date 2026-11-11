@@ -277,7 +277,7 @@ export const expeditions: GameSystem = {
         reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
         reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) s.reserved = 0; });
         reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced from idle workers right away." },
-          reserveBox, ' Reserve workers', reserveCount = el('span.muted'));
+          reserveBox, ' reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
         lootEl = el('p.muted');
@@ -315,7 +315,8 @@ export const expeditions: GameSystem = {
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
           `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}. Trips can be repeated as often as you like.`;
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
-          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5.`;
+          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns. Shift-click moves 5.` +
+          (s.party < 30 && 'twig' in dest.loot ? ' Short on twigs? Big parties of 30 to 50 bring home far more.' : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
@@ -412,6 +413,8 @@ const SCENES: Record<string, Scene> = {
   } },
 };
 
+const CARRY = [PAL.food, PAL.seed, '#b8966a']; // crumbs, seeds and twig bits carried home
+
 function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
   const LANE = 40;
   const H = LANE * Math.max(1, parties.length);
@@ -438,11 +441,17 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
     if (!p) return;
     const out = prog < 0.5;
     const base = out ? 40 + prog * 2 * 200 : 240 - (prog - 0.5) * 2 * 200;
-    for (let i = 0; i < Math.min(p.ants, 12); i++) {
-      const x = base - (out ? 1 : -1) * i * 7;
+    // a big party walks as a column several abreast; on the way home each ant carries a crumb of loot
+    const shown = Math.min(p.ants, 48);
+    const rows = shown > 24 ? 3 : shown > 10 ? 2 : 1;
+    for (let i = 0; i < shown; i++) {
+      const row = i % rows, col = Math.floor(i / rows);
+      const x = base - (out ? 1 : -1) * (col * 7 + row * 3);
+      const y = y0 + LANE - 11 - (rows - 1 - row) * 3;
       const bob = Math.floor(t * 8 + i) % 2;
-      rect(c, x, y0 + LANE - 11 - bob, 4, 2, PAL.bone);
-      rect(c, x + (out ? 4 : -1), y0 + LANE - 12 - bob, 1, 1, PAL.bone);
+      rect(c, x, y - bob, 4, 2, PAL.bone);
+      rect(c, x + (out ? 4 : -1), y - 1 - bob, 1, 1, PAL.bone);
+      if (!out) rect(c, x - 2, y - 1 - bob, 2, 2, CARRY[i % CARRY.length]);
     }
   });
 }

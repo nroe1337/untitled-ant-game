@@ -22,7 +22,7 @@ const WORDS: Record<string, string[]> = {
 };
 
 /** Text inside these is left alone: the Stores list (already tinted), section labels, flavour lines and age titles, names on buttons and tabs, headings, inputs. */
-const SKIP = '.rn, .res-list, .tilehead, .flavor, .age, .fanfare, button, .gtab, .tab, h1, h2, h3, input, textarea, select, script, style, canvas, svg';
+const SKIP = '.rn, .res-list, .tilehead, .tile.done, .flavor, .age, .fanfare, button, .gtab, .tab, h1, h2, h3, input, textarea, select, script, style, canvas, svg';
 
 /**
  * Colours resource names wherever they appear in the page's text. Only resources the
