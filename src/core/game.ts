@@ -198,7 +198,7 @@ export class Game {
 
     root.append(
       el('header.top', {},
-        el('div.brand', {}, el('span.mark'), el('h1', {}, 'Formicarium'), titleAnt()),
+        el('div.brand', {}, titleAnt(), el('h1', {}, 'Formicarium')),
         this.alertEl,
         el('div.tools', {}, this.pauseBtn, speedBtn, menuWrap)),
       this.layoutEl = el('div.layout', {},
@@ -469,7 +469,7 @@ export class Game {
   }
 }
 
-/** Nate's ant (art/nate_ant_original.png, one pixel per drawn pixel) beside the title, tilted 45 degrees. */
+/** Nate's ant (art/nate_ant_original.png, one pixel per drawn pixel) as the title's mark. */
 function titleAnt() {
   const rows = [
     '...#..#....',
