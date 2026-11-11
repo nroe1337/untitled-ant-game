@@ -25,6 +25,8 @@ export const HOME = WORLD.home[1] * N + WORLD.home[0];
 export const cxy = (c: number) => [c % N, Math.floor(c / N)] as const;
 export const ring = (c: number) => { const [x, y] = cxy(c); return Math.max(Math.abs(x - WORLD.home[0]), Math.abs(y - WORLD.home[1])); };
 const SW = WORLD.sortie;
+/** Captain's mark upgrades, read from mods once a tick (the sortie helpers below take no ctx). */
+const SKY = { speed: 0, loot: 0, risk: 0 };
 
 export function newWorld(): WorldState {
   return { seen: [HOME], wind: Math.floor(Math.random() * 4), windT: 0, sortie: null, found: [], kin: [], sorties: 0, lost: 0 };
@@ -195,8 +197,8 @@ export function windFor(w: WorldState, c: number): Wind {
 const windMul = (wind: Wind, k: 'time' | 'birds') => (wind === 'down' ? SW.downwind[k] : wind === 'up' ? SW.upwind[k] : 1);
 export const sortieCost = (c: number) => Object.fromEntries(Object.entries(SW.cost).map(([k, v]) => [k, v * ring(c)]));
 export const sortieAnts = (c: number) => SW.scouts + SW.scoutsPerRing * ring(c);
-export const sortieTime = (w: WorldState, c: number) => Math.round((SW.time + SW.timePerRing * ring(c)) * windMul(windFor(w, c), 'time'));
-export const sortieRisk = (w: WorldState, c: number) => Math.min(0.6, SW.birds * ring(c) * windMul(windFor(w, c), 'birds'));
+export const sortieTime = (w: WorldState, c: number) => Math.round((SW.time + SW.timePerRing * ring(c)) * windMul(windFor(w, c), 'time') / (1 + SKY.speed));
+export const sortieRisk = (w: WorldState, c: number) => Math.min(0.6, SW.birds * ring(c) * windMul(windFor(w, c), 'birds') * Math.max(0, 1 + SKY.risk));
 export const isSeen = (w: WorldState, c: number) => w.seen.includes(c);
 /** Sorties fly to fogged cells next to (or diagonal to) a cell already seen. */
 export function frontier(w: WorldState, c: number) {
@@ -232,7 +234,9 @@ export function finishSortie(ctx: Context) {
   if (!w.seen.includes(s.cell)) w.seen.push(s.cell);
   const cell = layout(ctx.state.map.seed)[s.cell], r = ring(s.cell);
   const got: string[] = [];
-  for (const [k, v] of Object.entries(SW.find)) if (ctx.res.has(k) && ctx.res.get(k).seen) { const n = Math.round(v * r * (0.6 + Math.random() * 0.8)); ctx.res.add(k, n); got.push(`${n} ${ctx.res.get(k).name.toLowerCase()}`); }
+  for (const [k, v] of Object.entries(SW.find)) if (ctx.res.has(k) && ctx.res.get(k).seen) { const n = Math.round(v * r * (0.6 + Math.random() * 0.8) * (1 + SKY.loot)); ctx.res.add(k, n); got.push(`${n} ${ctx.res.get(k).name.toLowerCase()}`); }
+  const marks = SW.marksPerRing * r;
+  ctx.res.add('captmark', marks); got.push(`${marks} captain's marks`);
   ctx.log(`The sortie comes home from the ${biomeName(cell).toLowerCase()}` + (got.length ? ` with ${got.join(', ')}.` : '.'), 'info');
   if (cell.landmark && !w.found.includes(cell.landmark)) {
     w.found.push(cell.landmark);
@@ -248,6 +252,7 @@ export function finishSortie(ctx: Context) {
 
 export function tickWorld(ctx: Context, dt: number) {
   const w = W(ctx);
+  SKY.speed = ctx.mods.get('sortieSpeed'); SKY.loot = ctx.mods.get('sortieLoot'); SKY.risk = ctx.mods.get('sortieRisk');
   if (!skyOpen(ctx)) return;
   if (!w.intro) {
     w.intro = true;

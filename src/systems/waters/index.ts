@@ -4,14 +4,18 @@
 // Emits 'expedition:return' with a tile, which the map uses to reveal fog.
 import type { GameSystem, Context } from '../../core/types';
 import { el, progressBar, tileButton } from '../../core/ui';
+import { fromBalance, upgradeList } from '../../core/upgrades';
 import { fmtCosts } from '../../core/resources';
 import { WATERS } from '../../data/balance';
 
 interface Voyage { dest: string; elapsed: number; time: number; eventAt: number; event: number | null; met: boolean; bonus: Record<string, number>; lostCrew: number }
 interface Boat { type: string; hull: number; name: string; voyage: Voyage | null }
-interface WatersState { boats: Boat[]; dest: string; built: number; voyages: number; reached: string[]; settlements: string[]; founded: number }
+interface WatersState { boats: Boat[]; dest: string; built: number; voyages: number; reached: string[]; settlements: string[]; founded: number; ups?: Record<string, number> }
 const S = (ctx: Context) => ctx.state.waters as WatersState;
 const BOATS = WATERS.boats;
+const NU = WATERS.navUps;
+const NAV_UPS = fromBalance(NU);
+const nl = (ctx: Context, id: keyof typeof NU) => S(ctx).ups?.[id] ?? 0;
 const destOf = (id: string) => WATERS.voyages.find((v) => v.id === id)!;
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const NAMES = ['Dewdrop', 'Old Leaf', 'Brave Stem', 'Petal', 'Long Reach', 'Driftwood', 'Little Queen', 'Mossback', 'Seedpod', 'Far Scent'];
@@ -66,11 +70,14 @@ function arrive(ctx: Context, b: Boat) {
   s.voyages++;
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
-    const n = Math.round(rand(lo, hi)) + (v.bonus[rid] ?? 0);
+    const n = Math.round(rand(lo, hi) * (1 + NU.holds.per * nl(ctx, 'holds'))) + (v.bonus[rid] ?? 0);
     if (n > 0 && ctx.res.has(rid)) { ctx.res.add(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
   }
   for (const [rid, n] of Object.entries(v.bonus)) if (!(rid in d.loot) && ctx.res.has(rid)) { ctx.res.add(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
+  if (v.lostCrew) v.lostCrew = Math.max(0, Math.round(v.lostCrew * (1 + NU.lifelines.per * nl(ctx, 'lifelines'))));
   if (v.lostCrew) ctx.res.add('ant', -v.lostCrew);
+  const marks = Math.max(1, Math.round(d.time / WATERS.navEvery));
+  ctx.res.add('navmark', marks); got.push(`${marks} navigator's mark${marks > 1 ? 's' : ''}`);
   ctx.bus.emit('expedition:return', { dest: 'voyage:' + d.id, tile: d.tile });
   ctx.ping('waters');
   if (!s.reached.includes(d.id)) {
@@ -96,6 +103,7 @@ export const waters: GameSystem = {
 
   init(ctx) {
     ctx.state.waters = { boats: [], dest: 'puddle', built: 0, voyages: 0, reached: [], settlements: [], founded: 0 } satisfies WatersState;
+    ctx.res.define({ id: 'navmark', name: "Navigator's marks", order: 52, integer: true, stepped: true, group: 'Marks' });
   },
 
   keep(ctx) {
@@ -108,6 +116,8 @@ export const waters: GameSystem = {
   tick(ctx, dt) {
     const s = S(ctx);
     s.reached ??= []; s.settlements ??= []; s.founded ??= 0;
+    ctx.mods.set('voyageSpeed', 'navmarks', NU.charts.per * nl(ctx, 'charts'));
+    ctx.mods.set('boatSlots', 'navmarks', NU.slipway.per * nl(ctx, 'slipway'));
     for (const id of s.settlements) {
       const d = destOf(id);
       for (const [r, v] of Object.entries(d.settle!.yields)) if (ctx.res.has(r)) ctx.res.add(r, v * dt);
@@ -131,6 +141,7 @@ export const waters: GameSystem = {
   },
 
   panel: (() => {
+    let navUps: ReturnType<typeof upgradeList>, navHead: HTMLElement;
     let destSel: HTMLSelectElement, fleet: HTMLElement, buildRow: HTMLElement, note: HTMLElement, settleBox: HTMLElement, settleSection: HTMLElement;
     let settleSig = '';
     const builders: { type: string; btn: ReturnType<typeof tileButton> }[] = [];
@@ -172,6 +183,8 @@ export const waters: GameSystem = {
           note,
           el('h3', {}, 'Your boats'),
           fleet,
+          navHead = el('h3', {}, "Navigator's marks"),
+          (navUps = upgradeList(ctx, () => (S(ctx).ups ??= {}), NAV_UPS)).root,
           settleSection = el('div.section', {}, el('h3', {}, 'Settlements'),
             el('p.muted', {}, `Found a settlement on ground your boats have reached. ${WATERS.settle.workers} workers stay there for good and send home what they gather. Settlements count toward migration.`),
             settleBox),
@@ -179,6 +192,8 @@ export const waters: GameSystem = {
       },
       update(_root, ctx) {
         const s = S(ctx);
+        navHead.hidden = !navUps.update(ctx) || !ctx.res.get('navmark').seen;
+        navUps.root.hidden = navHead.hidden;
         for (const b of builders) { b.btn.update(ctx); b.btn.root.hidden = !!BOATS[b.type].needs && !ctx.flags.has(BOATS[b.type].needs!); }
         // destinations
         const opts = shown(ctx).map((v) => `${v.id}:${v.name}`).join('|');

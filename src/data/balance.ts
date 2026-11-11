@@ -496,6 +496,15 @@ export const LINEAGE = {
 /** Boats and voyages. */
 export const WATERS = {
   maxBoats: 3,
+  /** Navigator's marks: a boat that comes home earns one per this many seconds of the voyage (at least 1). */
+  navEvery: 120,
+  /** Spent only on these, on the Waters tab. */
+  navUps: {
+    charts:    { name: 'Star charts',    desc: 'Voyages are {p} faster each level.',                  per: 0.06,  base: { navmark: 6 },  growth: 1.3,  max: 10 },
+    holds:     { name: 'Deep holds',     desc: 'Boats bring back {p} more each level.',               per: 0.1,   base: { navmark: 8 },  growth: 1.3,  max: 10 },
+    lifelines: { name: 'Lifelines',      desc: '{p} fewer crew are lost on the water each level.',     per: -0.15, base: { navmark: 10 }, growth: 1.35, max: 5 },
+    slipway:   { name: 'Second slipway', desc: 'Each level lets {p} more boat sail at once.',          per: 1,     base: { navmark: 40 }, growth: 2.5,  max: 2, unit: 'flat' as const },
+  },
   boats: {
     raft:   { name: 'Leaf raft',  cost: { leaf: 20, twig: 6 },              crew: 3, hull: 3, speed: 1 },
     barque: { name: 'Bark boat',  cost: { twig: 25, resin: 8, silk: 10 },   crew: 5, hull: 6, speed: 1.5, needs: 'caste:weaver' },
@@ -638,6 +647,8 @@ export const RES_DESC: Record<string, string> = {
   jelly: 'Chewed from food on the Castes tab, or made by repletes. Breeds new castes and royal upgrades. Holds 20, and each Royal nursery holds 10 more.',
   twig: 'Brought home by expeditions and from grass on the Map. Builds sturdier chambers, outposts and boats. Twig lofts hold more.',
   seed: 'Brought home by expeditions and from bare soil on the Map. Stocks granaries and pays for seed research. Seed vaults hold more.',
+  navmark: 'Earned by boats that come home: one for every 2 minutes on the water. Buys navigation upgrades on the Waters tab. Kept until spent.',
+  captmark: 'Earned by winged sorties that come home: more for farther cells. Buys flight upgrades in the World view of the Map. Kept until spent.',
   resin: 'Brought home by expeditions and from stones on the Map. Seals chambers, granaries and hulls. Resin vats hold more.',
   amber: 'A rare find on expeditions and voyages. Lines the later Nurses\' dens. Keen antennae make it turn up more often.',
   trailmark: 'Earned by every expedition that comes home. Buys trail upgrades and later Scent chambers. Has no limit.',
@@ -707,6 +718,13 @@ export const WORLD = {
     upwind: { time: 1.5, birds: 1.6 },    // flying into it
     windEvery: 150,                       // seconds before the wind turns
     find: { food: 250, seed: 12, resin: 6, twig: 25 }, // what a sortie brings home, per ring
+    marksPerRing: 3,                      // captain's marks for a sortie that comes home, per ring
+  },
+  /** Captain's marks: earned by sorties, spent only on these, in the World view of the Map. */
+  skyUps: {
+    tailwind: { name: 'Tailwinds',   desc: 'Sorties fly {p} faster each level.',            per: 0.08,  base: { captmark: 4 }, growth: 1.3, max: 8 },
+    keen:     { name: 'Keen eyes',   desc: 'Sorties bring home {p} more each level.',       per: 0.15,  base: { captmark: 5 }, growth: 1.3, max: 8 },
+    flock:    { name: 'Flock sense', desc: 'Birds take sorties {p} less often each level.', per: -0.08, base: { captmark: 6 }, growth: 1.3, max: 6 },
   },
   /** Landmarks: found once by a sortie, they help every colony of the line after that. */
   landmarks: [
