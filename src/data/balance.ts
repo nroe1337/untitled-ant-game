@@ -24,7 +24,7 @@ export const BROOD = {
     spoil: 500, spoilShare: 0.004,    // 500+: food stores spoil, up to 0.4%/s at 1000
     weak: 750, weakMax: 0.3,          // 750+: workers fall sick and work up to 30% slower at 1000
     sick: 900, sickEvery: 60,         // 900+: a sick worker dies every 60 s
-    scrubClick: 40, scrubCooldown: 2 }, // the Queen tab's Scrub button: always a way back
+    scrubClick: 10, scrubCooldown: 0.5 }, // the Queen tab's Scrub button: always a way back
   healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
