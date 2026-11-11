@@ -360,3 +360,25 @@ canvas.map.world { cursor: pointer; }
 .kin .path { margin: 0; padding-left: 10px; border-left: 2px solid var(--line); }
 .job .defjob { width: auto; padding: 0 8px; color: var(--muted); }
 .job .defjob.on { color: var(--accent); }
+
+/* Guide (Legacy tab): step-by-step pages, colour-coded names */
+.guide { max-width: 640px; }
+.guide h3 { margin: 14px 0 8px; }
+.g-label { display: inline-block; font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .06em;
+  padding: 1px 6px; margin-right: 8px; border: 1px solid currentColor; vertical-align: 1px; }
+.g-goal { background: var(--raise); border-left: 3px solid var(--accent); padding: 8px 12px; margin: 0 0 14px; }
+.g-goal .g-label { color: var(--accent); }
+.g-steps { margin: 0; padding-left: 26px; display: grid; gap: 14px; }
+.g-steps > li::marker { color: var(--accent); font-weight: 700; }
+.g-head { font-weight: 600; margin-bottom: 4px; }
+.g-steps ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.g-steps ul li::marker { color: var(--muted); }
+.g-tip { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.g-tip .g-label { color: var(--good); }
+.g-next { margin: 18px 0 10px; padding: 8px 12px; border: 1px dashed var(--line); }
+.g-next .g-label { color: var(--warn); }
+.g-key { font-size: 12px; margin-top: 16px; }
+.g-tab { color: #7fb6d9; font-weight: 600; }
+.g-thing { color: var(--warn); font-weight: 600; }
+.g-res { color: var(--good); font-weight: 600; }
+.g-warn { color: #e0705a; font-weight: 600; }
