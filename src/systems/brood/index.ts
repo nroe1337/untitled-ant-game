@@ -4,6 +4,7 @@ import { actionButton, el, progressBar, type ActionButton } from '../../core/ui'
 import { icon } from '../../core/sprites';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
+import { RES_TIPS } from '../../core/resources';
 import { BROOD, COLONY, NEST } from '../../data/balance';
 
 interface BroodState {
@@ -21,6 +22,7 @@ interface BroodState {
   rot?: number;
   sick?: number;
   mouldWarned?: boolean;
+  mouldIntro?: boolean;
   royal: Record<string, number>;
 }
 
@@ -44,6 +46,12 @@ export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.ass
 /** Chambers in the nest: every one of them gathers a little mould. */
 export const roomCount = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
 export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCount(ctx) * MO.perRoom : 0);
+RES_TIPS.mould = (ctx: Context) => {
+  const m = ctx.res.amt('mould'), next = [[MO.half, 'the brood grows at half speed'], [MO.rot, 'eggs rot and food spoils'], [MO.weak, 'workers fall sick and slow down'], [MO.sick, 'sick workers die']] as [number, string][];
+  const n = next.find(([at]) => m < at);
+  return `${roomCount(ctx)} chambers gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and shafts scrub ${fmt(mouldClean(ctx))}/s.\n` +
+    `Brood speed now: ${Math.round(mouldSpeed(ctx) * 100)}%.` + (n ? ` At ${n[0]}: ${n[1]}.` : '');
+};
 /** Share of full speed the brood grows at, given the mould. */
 export const mouldSpeed = (ctx: Context) => 1 / (1 + ctx.res.amt('mould') / MO.half);
 /** Share of full work speed: from `weak` up, sick workers slow every job. */
@@ -99,7 +107,7 @@ export const brood: GameSystem = {
     ctx.res.define({ id: 'food', name: 'Food', cap: NEST.baseFoodCap, order: 1 });
     ctx.res.define({ id: 'egg', name: 'Eggs', cap: BROOD.baseBroodCap, order: 10, integer: true, stepped: true, group: 'Brood' });
     ctx.res.define({ id: 'larva', name: 'Larvae', cap: BROOD.baseBroodCap, order: 11, integer: true, stepped: true, group: 'Brood' });
-    ctx.res.define({ id: 'mould', name: 'Mould', cap: BROOD.mould.cap, order: 900, group: 'Environment' });
+    ctx.res.define({ id: 'mould', name: 'Mould', cap: BROOD.mould.cap, order: 900, integer: true, group: 'Environment' });
     // used by royal upgrades; other systems fill them
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
@@ -180,9 +188,9 @@ export const brood: GameSystem = {
     }
     // Mould: chambers gather it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
     if (ctx.flags.has('tech:brood')) {
-      const net = mouldMade(ctx) - mouldClean(ctx);
-      res.source = 'Damp chambers'; if (net > 0) res.add('mould', net * dt);
-      res.source = 'Nurses scrubbing'; if (net < 0) res.add('mould', net * dt);
+      if (!s.mouldIntro) { s.mouldIntro = true; ctx.log('Damp creeps into the chambers: mould. Every chamber gathers a little, and it slows the brood. The queen and nurses scrub it away (Environment, in the Stores).', 'story'); }
+      res.source = 'Damp chambers'; res.add('mould', mouldMade(ctx) * dt);
+      res.source = 'Queen, nurses and shafts scrubbing'; res.add('mould', -mouldClean(ctx) * dt);
       res.source = 'Brood';
       const m = res.amt('mould');
       if (m >= MO.rot && res.amt('egg') >= 1) {

@@ -1,5 +1,5 @@
 import type { Context, GameSystem } from './types';
-import { Resources, fmt } from './resources';
+import { Resources, fmt, RES_TIPS } from './resources';
 import { EventBus } from './events';
 import { Mods } from './mods';
 import { el, costFocus } from './ui';
@@ -77,7 +77,7 @@ export class Game {
   private tabs = new Map<string, Tab>();
   private active = '';
   private groupHeads = new Map<string, HTMLElement>();
-  private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement; last?: number; step?: number; until?: number }>();
+  private resRows = new Map<string, { row: HTMLElement; amt: HTMLElement; rate: HTMLElement; bar?: HTMLElement; last?: number; step?: number; until?: number }>();
   private logEl!: HTMLElement;
   private tabBar!: HTMLElement;
   private groupBar!: HTMLElement;
@@ -317,7 +317,10 @@ export class Game {
         const env = r.group === ENV;
         (env ? this.envList : this.resList).append(rowEl);
         if (env) this.envHead.hidden = false;
-        row = { row: rowEl, amt, rate };
+        // environment stores get a bar underneath that fills (and reddens) as things get worse
+        const bar = env ? el('span.fill') : undefined;
+        if (bar) rowEl.append(el('div.envbar', {}, bar));
+        row = { row: rowEl, amt, rate, bar };
         this.resRows.set(r.id, row);
         // keep sidebar order, with a small label above each group
         let group = '';
@@ -337,6 +340,11 @@ export class Game {
       }
       const cap = ctx.res.cap(r.id);
       row.amt.textContent = fmt(r.amount, r.integer) + (isFinite(cap) ? ` / ${fmt(cap, true)}` : '');
+      if (row.bar && isFinite(cap)) {
+        const f = Math.max(0, Math.min(1, r.amount / cap));
+        row.bar.style.width = `${(f * 100).toFixed(1)}%`;
+        row.bar.style.background = f < 0.25 ? 'var(--good)' : f < 0.5 ? 'var(--warn)' : f < 0.75 ? '#d07a3a' : '#c4402f';
+      }
       if (r.stepped) {
         // Whole-step stores (eggs, larvae, workers) have no steady rate: flash the change for a moment instead.
         const now = performance.now(), whole = Math.floor(r.amount);
@@ -351,14 +359,14 @@ export class Game {
       } else {
         const flat = Math.abs(r.rate) < 0.005;
         row.rate.textContent = flat ? '0/s' : (r.rate > 0 ? '+' : '') + fmt(r.rate) + '/s';
-        row.rate.className = 'rate ' + (flat ? 'flat' : r.rate < 0 ? 'neg' : 'pos');
+        row.rate.className = 'rate ' + (flat ? 'flat' : (r.rate < 0) !== (r.group === ENV) ? 'neg' : 'pos'); // for a bad store, rising is the bad direction
       }
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
       row.row.classList.toggle('costfocus', focus.includes(r.id));
       const held = ctx.res.held(r.id);
       const rtip = r.sources.length && !r.stepped ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
       if ((row.rate.dataset.tip ?? '') !== rtip) row.rate.dataset.tip = rtip;
-      const tip = [RES_DESC[r.id] ?? '', held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : ''].filter(Boolean).join('\n');
+      const tip = [RES_DESC[r.id] ?? '', RES_TIPS[r.id]?.(ctx) ?? '', held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : ''].filter(Boolean).join('\n');
       if ((row.row.dataset.tip ?? '') !== tip) { row.row.dataset.tip = tip; row.row.classList.toggle('held', held > 0); }
     }
 
