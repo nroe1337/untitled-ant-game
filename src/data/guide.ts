@@ -32,10 +32,10 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Research the basics', do: [
         'Learn [Storage chambers], [Brood care] and [Elder memory].',
-        'After [Brood care], eggs and larvae make |mould|. Put workers on Nurse to scrub it away.',
+        'After [Brood care], every chamber slowly gathers |mould|. Put workers on Nurse to scrub it away.',
         'Dig a [Food store] or [Soil pit] whenever a resource sits at its cap.',
         'Put a few workers on Elder for |knowledge|.',
-      ], tip: '!Keep |mould| low.! It slows the brood. At 50 eggs rot and food spoils; at 75 workers fall sick. The queen keeps up with about 15 brood, each nurse 6 more.' },
+      ], tip: '!Keep |mould| low.! It slows the brood. At 50 eggs rot and food spoils; at 75 workers fall sick. The queen keeps up with 16 chambers, each nurse 15 more.' },
     ],
     next: 'Learn [Upward tunnels] and reach 10 chambers. The Age of Forage begins.',
   },

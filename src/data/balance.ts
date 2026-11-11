@@ -16,10 +16,10 @@ export const BROOD = {
   nurseTends: 3,            // eggs or larvae each nurse looks after
   queenTends: 4,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
-  /** Mould, a bad resource (from Brood care on). Every egg and larva adds a little; the queen and nurses
-   *  scrub it away. Mould slows the brood: speed = 1 / (1 + mould / half). Worse past each threshold below.
-   *  The queen alone keeps up with 15 brood; each nurse with 6 more (8 nurses: about 60). */
-  mould: { perBrood: 0.02, queenClean: 0.3, nurseClean: 0.12, cap: 100, half: 25,
+  /** Mould, a bad resource (from Brood care on). Every chamber in the nest adds a little; the queen and
+   *  nurses scrub it away. The queen keeps up with 16 chambers, each nurse with 15 more (8 nurses: 136).
+   *  Mould slows the brood: speed = 1 / (1 + mould / half). Worse past each threshold below. */
+  mould: { perRoom: 0.01, queenClean: 0.16, nurseClean: 0.15, cap: 100, half: 25,
     rot: 50, rotEvery: 30,            // 50+: an egg rots every 30 s
     spoil: 50, spoilShare: 0.004,     // 50+: food stores spoil, up to 0.4%/s at 100
     weak: 75, weakMax: 0.3,           // 75+: workers fall sick and work up to 30% slower at 100
