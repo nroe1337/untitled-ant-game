@@ -5,6 +5,7 @@
 import type { Context } from '../../core/types';
 import { PAL, rect } from '../../core/pixel';
 import { MAP, WORLD } from '../../data/balance';
+import { TOWN } from '../../data/town';
 import type { Terrain, Tile } from './index';
 
 export interface Sortie { cell: number; elapsed: number; duration: number; ants: number; risk: number; wind: Wind }
@@ -252,17 +253,70 @@ export function tickWorld(ctx: Context, dt: number) {
   for (const l of WORLD.landmarks) ctx.mods.set(l.mod, 'landmarks', sum[l.mod] ?? 0);
 }
 
+// ---- the far shore: across a strip of sea east of the world, the human town ----
+// Its cells are the town's sites. A galleon sees the shore (legacy:farshore); after a migration it is home.
+export const TOWN_SITES = Object.keys(TOWN.sites);
+const TCOLS = 3, TX = N + 1, TY = 2;
+export const WIDTH = N + 1 + TCOLS;
+export const TOWN0 = 100;
+export const isTown = (c: number | null): c is number => c != null && c >= TOWN0;
+export const townSite = (c: number) => TOWN_SITES[c - TOWN0];
+const TROWS = Math.ceil(TOWN_SITES.length / TCOLS);
+/** The cell under grid square x, y of the world view: a world cell, a town cell, or null (the sea). */
+export function gridCell(x: number, y: number): number | null {
+  if (x >= 0 && x < N && y >= 0 && y < N) return y * N + x;
+  const k = (y - TY) * TCOLS + (x - TX);
+  return x >= TX && x < WIDTH && y >= TY && y < TY + TROWS && k < TOWN_SITES.length ? TOWN0 + k : null;
+}
+const gridXY = (c: number) => (isTown(c) ? [TX + ((c - TOWN0) % TCOLS), TY + Math.floor((c - TOWN0) / TCOLS)] : cxy(c));
+export const shoreSeen = (ctx: Context) => ctx.flags.has('legacy:farshore') || ctx.flags.has('legacy:migrated');
+export const townHome = (ctx: Context) => ctx.flags.has('legacy:migrated');
+/** Each site's ground, shaped by what it is. */
+const TOWN_GROUND: Record<string, (x: number, y: number, r: number) => Terrain> = {
+  compost: (x, y, r) => (r < 0.75 ? 'soil' : 'grass'),
+  kitchen: (x, y, r) => ((x % 9 === 4 && y % 7 === 3) || r > 0.97 ? 'stone' : 'paved'),
+  walls: (x, y, r) => (x % 10 < 2 || y % 8 < 1 ? 'stone' : r < 0.2 ? 'soil' : 'paved'),
+  drain: (x, y, r) => (Math.abs(y - 12) < 2 ? 'water' : r < 0.5 ? 'stone' : 'soil'),
+  office: (x, y, r) => ((x > 6 && x < 14 && y > 4 && y < 10) || (x > 24 && x < 34 && y > 13 && y < 20) || r > 0.96 ? 'stone' : 'paved'),
+  shed: (x, y, r) => (r < 0.35 ? 'soil' : r > 0.9 ? 'stone' : 'paved'),
+};
+const townTerrains = new Map<string, Terrain[]>();
+export function townTerrain(seed: number, c: number): Terrain[] {
+  const key = seed + ':' + c; const hit = townTerrains.get(key); if (hit) return hit;
+  const R = rng(seed ^ (c * 7919)), f = TOWN_GROUND[townSite(c)] ?? (() => 'paved' as Terrain);
+  const out: Terrain[] = [];
+  for (let y = 0; y < MAP.rows; y++) for (let x = 0; x < MAP.cols; x++) out.push(f(x, y, R()));
+  townTerrains.set(key, out);
+  return out;
+}
+/** What the town says about a site, for the map. Reads ctx.state.town. */
+export function siteStatus(ctx: Context, c: number): string {
+  const id = townSite(c), d = TOWN.sites[id], t = ctx.state.town;
+  if (!townHome(ctx)) return 'Seen from the galleon. Migrate to live here.';
+  if (d.needs && !ctx.flags.has(d.needs)) return 'Needs research before anyone can work it.';
+  if (d.rival && !t?.cleared?.includes(id)) return 'Pavement ants hold it. Clear them from the Town tab.';
+  if ((t?.sealed?.[id] ?? 0) > 0) return 'Sealed by the humans, for now.';
+  return 'Open. Town foragers work it.';
+}
+
 // ---- drawing ----
 const TC: Record<Terrain, string> = { grass: PAL.grass, soil: PAL.dirt, stone: PAL.stone, water: PAL.water, paved: PAL.paved };
 const OC: Record<string, string> = { you: PAL.you, rival: PAL.rival, spider: PAL.spider, humans: PAL.humans };
 const off = document.createElement('canvas');
-off.width = N * MAP.cols; off.height = N * MAP.rows;
+off.width = WIDTH * MAP.cols; off.height = N * MAP.rows;
 const FOG1 = '#100e0c', FOG2 = '#1c1814';
 
 /** Paint the whole world at one pixel per local tile. */
-function paintWorld(seed: number, w: WorldState, home: Tile[]) {
+function paintWorld(seed: number, w: WorldState, home: Tile[], shore: boolean) {
   const c = off.getContext('2d')!;
   const cells = layout(seed);
+  // the sea, and the far shore across it
+  rect(c, N * MAP.cols, 0, (WIDTH - N) * MAP.cols, N * MAP.rows, PAL.water);
+  for (let k = 0; k < TOWN_SITES.length; k++) {
+    const [gx, gy] = gridXY(TOWN0 + k), X0 = gx * MAP.cols, Y0 = gy * MAP.rows;
+    if (!shore) { rect(c, X0, Y0, MAP.cols, MAP.rows, FOG1); continue; }
+    townTerrain(seed, TOWN0 + k).forEach((t, i) => rect(c, X0 + (i % MAP.cols), Y0 + Math.floor(i / MAP.cols), 1, 1, TC[t]));
+  }
   for (let cc = 0; cc < N * N; cc++) {
     const [gx, gy] = cxy(cc), X0 = gx * MAP.cols, Y0 = gy * MAP.rows;
     if (cc === HOME) {
@@ -282,8 +336,8 @@ function paintWorld(seed: number, w: WorldState, home: Tile[]) {
 }
 
 /** Draw the world into cv, zoomed between the garden cell (z=0) and the whole grid (z=1). */
-export function drawWorld(cv: HTMLCanvasElement, seed: number, w: WorldState, home: Tile[], z: number, hover: number | null, selected: number | null) {
-  paintWorld(seed, w, home);
+export function drawWorld(cv: HTMLCanvasElement, seed: number, w: WorldState, home: Tile[], z: number, hover: number | null, selected: number | null, shore = false, townIsHome = false, held: string[] = []) {
+  paintWorld(seed, w, home, shore);
   const c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
   const e = z < 1 ? 1 - Math.pow(1 - z, 3) : 1; // ease out
@@ -291,17 +345,27 @@ export function drawWorld(cv: HTMLCanvasElement, seed: number, w: WorldState, ho
   const sx = hx * fw * (1 - e), sy = hy * fh * (1 - e), sw = fw + (off.width - fw) * e, sh = fh + (off.height - fh) * e;
   c.drawImage(off, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
   if (z < 1) return;
-  const CW = cv.width / N, CH = cv.height / N;
-  for (let i = 1; i < N; i++) { rect(c, i * CW, 0, 1, cv.height, PAL.fog); rect(c, 0, i * CH, cv.width, 1, PAL.fog); }
+  const CW = cv.width / WIDTH, CH = cv.height / N;
+  for (let i = 1; i <= N; i++) rect(c, i * CW, 0, 1, cv.height, PAL.fog);
+  for (let i = 1; i < N; i++) rect(c, 0, i * CH, N * CW, 1, PAL.fog);
+  for (let i = N + 2; i < WIDTH; i++) rect(c, i * CW, TY * CH, 1, TROWS * CH, PAL.fog);
+  for (let i = 0; i <= TROWS; i++) rect(c, TX * CW, (TY + i) * CH, TCOLS * CW, 1, PAL.fog);
   const box = (cc: number | null, col: string) => {
     if (cc == null) return;
-    const [x, y] = cxy(cc), X = x * CW, Y = y * CH;
+    const [x, y] = gridXY(cc), X = x * CW, Y = y * CH;
     rect(c, X, Y, CW, 2, col); rect(c, X, Y + CH - 2, CW, 2, col); rect(c, X, Y, 2, CH, col); rect(c, X + CW - 2, Y, 2, CH, col);
   };
   box(HOME, PAL.you);
+  if (townIsHome) for (let k = 0; k < TOWN_SITES.length; k++) box(TOWN0 + k, held.includes(TOWN_SITES[k]) ? PAL.foe : PAL.you);
   if (w.sortie && Math.floor(performance.now() / 400) % 2) box(w.sortie.cell, PAL.bone);
   box(hover, PAL.stone);
   box(selected, PAL.bone);
+}
+
+/** One town cell, close up. */
+export function drawTownCell(cv: HTMLCanvasElement, seed: number, cc: number) {
+  const c = cv.getContext('2d')!;
+  townTerrain(seed, cc).forEach((t, i) => rect(c, (i % MAP.cols) * 8, Math.floor(i / MAP.cols) * 8, 8, 8, TC[t]));
 }
 
 /** One foreign cell, close up, at the garden's 8px scale, with borders like the garden map. */

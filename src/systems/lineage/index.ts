@@ -112,9 +112,8 @@ export const lineage: GameSystem = {
 
   keep(ctx) {
     const s = S(ctx);
-    // carry unspent lineage as part of total; perks stay bought
-    // a migration starts the line over: lineage and its perks are traded for heritage
-    if (ctx.state.migration?.migrating) return { perks: {}, flights: s.flights, best: s.best, total: 0, pending: true };
+    // carry unspent lineage as part of total; perks stay bought. Deeper prestiges (migration, supercolony)
+    // never wipe the line: they pay their own currencies, and flights can always be ground for more.
     return { perks: s.perks, flights: s.flights, best: s.best, total: s.total, pending: true };
   },
 
