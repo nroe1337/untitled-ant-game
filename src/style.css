@@ -14,6 +14,14 @@
   --display: "IM Fell English", Georgia, serif;
   --body: "IBM Plex Sans", system-ui, sans-serif;
 }
+
+/* Scrollbars: thin, rounded and quiet, with no arrows or track; a little brighter on hover */
+* { scrollbar-width: thin; scrollbar-color: #4a4239 transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #4a4239; border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #6a5d50; background-clip: padding-box; }
+::-webkit-scrollbar-corner, ::-webkit-scrollbar-button { display: none; background: transparent; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
@@ -212,7 +220,7 @@ input[type=checkbox] { accent-color: var(--accent); }
 .levelpick .ghost.on { border-color: var(--accent); }
 .drops { font-size: 0.9em; line-height: 1.5; }
 /* a deep nest scrolls inside its own frame instead of pushing the page down */
-.nestscroll { max-height: 560px; max-width: 642px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--line) transparent; }
+.nestscroll { max-height: 560px; max-width: 642px; overflow-y: auto; overscroll-behavior: contain; }
 .nestscroll:focus-visible { outline: 2px solid var(--accent); }
 /* records: achievements as a quiet grid; locked ones are dim */
 .feats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
