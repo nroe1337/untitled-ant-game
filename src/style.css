@@ -337,7 +337,7 @@ details.info[open] > summary { margin-bottom: 6px; }
 @media (max-width: 520px) { .field { gap: 6px; padding: 10px 8px 8px; } .field .side { gap: 6px; } .fighter { min-width: 56px; } .fighter canvas { width: 54px; height: 30px; } .field .gate { display: none; } .field .side { flex: 1; } }
 
 /* the ant mark before the title */
-.brand .titleant { width: 22px; height: 22px; border: 0; image-rendering: pixelated; position: relative; top: -1px; margin-right: -2px; }
+.brand .titleant { width: 22px; height: 22px; flex-shrink: 0; border: 0; image-rendering: pixelated; position: relative; top: -1px; margin-right: -2px; }
 
 /* the year, above the Chronicle */
 .queue.season .row { gap: 4px; font-size: 13px; margin-bottom: 4px; }

@@ -489,5 +489,13 @@ function titleAnt() {
   const c = cv.getContext('2d')!;
   c.fillStyle = '#c4532f';
   rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) if (r[x] === '#') c.fillRect(x, y, 1, 1); });
+  // each ant pixel must cover a whole number of screen pixels, or browser zoom and display scaling
+  // (125%, 150%...) stretch some columns and rows wider than others
+  const fit = () => {
+    const dpr = window.devicePixelRatio || 1, k = Math.max(1, Math.round(2 * dpr));
+    cv.style.width = cv.style.height = `${(11 * k) / dpr}px`;
+  };
+  fit();
+  window.addEventListener('resize', fit);
   return cv;
 }
