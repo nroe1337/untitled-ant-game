@@ -78,7 +78,7 @@ const markCost = (ctx: Context) => {
   return Object.fromEntries(Object.entries(X.markTrailCost).map(([r, n]) => [r, Math.ceil(n * Math.sqrt(d.time / X.destinations[0].time))]));
 };
 const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
-const canSend = (ctx: Context) => S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
+const canSend = (ctx: Context) => ctx.mods.get('winter') <= 0 && S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
 type Dest = (typeof X.destinations)[number];
@@ -337,7 +337,7 @@ export const expeditions: GameSystem = {
             p.event ? el('span.muted', {}, p.event) : null);
         }) : [el('div.caption', {}, el('span.muted', {}, 'The trail is quiet.'))]));
 
-        statusEl.textContent = !canSend(ctx) && s.parties.length < maxParties(ctx)
+        statusEl.textContent = ctx.mods.get('winter') > 0 ? 'Winter: the trails are frozen. Parties wait for spring.' : !canSend(ctx) && s.parties.length < maxParties(ctx)
           ? `Need ${s.party} idle workers. Take some off their jobs.`
           : s.parties.length >= maxParties(ctx) ? 'Every column is out on the trail.' : '';
         ledger.replaceChildren(...[

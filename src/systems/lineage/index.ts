@@ -5,7 +5,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { BROOD, LINEAGE } from '../../data/balance';
+import { BROOD, LINEAGE, SEASONS } from '../../data/balance';
 
 interface Wonder { stage: number; paid: Record<string, number>; settle: number; hold?: boolean }
 interface LineageState { perks: Record<string, number>; flights: number; best: number; total: number; pending?: boolean; wonder?: Wonder }
@@ -19,13 +19,15 @@ function score(ctx: Context) {
   const techs = [...ctx.flags].filter((f) => f.startsWith('tech:')).length;
   const chambers = ctx.state.nest?.order?.length ?? 0;
   const waves = ctx.state.war?.won ?? 0;
-  const parts = { born: Math.floor(Math.sqrt(born)), techs, chambers: Math.floor(chambers / 10), waves: Math.floor(waves / 2) };
-  return { parts, total: Math.floor((parts.born + parts.techs + parts.chambers + parts.waves) * (1 + ctx.mods.get('lineageGain'))) };
+  const parts = { born: Math.floor(Math.sqrt(born)), techs, chambers: Math.floor(chambers / 10), waves: Math.floor(waves / 2), winters: (ctx.state.seasons?.winters ?? 0) * SEASONS.winterLineage };
+  return { parts, total: Math.floor((parts.born + parts.techs + parts.chambers + parts.waves + parts.winters) * (1 + ctx.mods.get('lineageGain'))) };
 }
 const W = LINEAGE.wonder;
 const wonder = (ctx: Context) => (S(ctx).wonder ??= { stage: 0, paid: {}, settle: 0 });
 const moundDone = (ctx: Context) => wonder(ctx).stage >= W.stages.length;
-const canFly = (ctx: Context) => ctx.flags.has('tech:flight') && moundDone(ctx);
+/** A flight needs a warm evening: not in autumn or winter (once the year turns). */
+const warm = (ctx: Context) => ctx.mods.get('cold') <= 0;
+const canFly = (ctx: Context) => ctx.flags.has('tech:flight') && moundDone(ctx) && warm(ctx);
 
 /** How much of resource r the current stage still needs. */
 const owed = (ctx: Context, r: string) => {
@@ -174,11 +176,12 @@ export const lineage: GameSystem = {
           ['  from techs known', `+${sc.parts.techs}`],
           ['  from chambers', `+${sc.parts.chambers} (one per 10)`],
           ['  from raid waves won', `+${sc.parts.waves} (one per 2)`],
+          ...(ctx.state.seasons?.started ? [['  from winters survived', `+${sc.parts.winters} (${SEASONS.winterLineage} each, if no one starved)`]] : []),
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         const ok = canFly(ctx);
         flyBtn.disabled = !ok;
         note.textContent = !ctx.flags.has('tech:flight') ? 'Research Winged queens to start the Swarm Spire.'
-          : ok ? 'Perks are bought with Lineage and kept forever.' : 'Finish the Swarm Spire to send a flight.';
+          : ok ? 'Perks are bought with Lineage and kept forever.' : moundDone(ctx) && !warm(ctx) ? 'The Spire is ready, but the evenings are cold. The flight waits for spring.' : 'Finish the Swarm Spire to send a flight.';
         mound.hidden = !ctx.flags.has('tech:flight');
         haul.update(ctx);
         holdBox.checked = wonder(ctx).hold !== false;
