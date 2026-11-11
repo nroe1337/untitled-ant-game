@@ -52,6 +52,11 @@ export const GUIDE: GuidePage[] = [
         'Learn [Wider tunnels], [Packed walls] and [Memory songs].',
         'They are cheap and make every chamber better.',
       ] },
+      { head: 'Clear the air', do: [
+        'Learn [Ventilation] and dig [Purification chamber]s.',
+        'Each one scrubs as much |mould| as a nurse, with no workers.',
+        'Dig one every few chambers so mould stays low as the nest grows.',
+      ], tip: '!Purification chambers matter.! Without them you need more and more nurses as you dig, and every nurse is a worker taken off another job.' },
       { head: 'Explore the surface', do: [
         'Open the {Surface} tab and send expeditions.',
         'They bring back |twig| and |seed|, which are hard to get any other way.',
