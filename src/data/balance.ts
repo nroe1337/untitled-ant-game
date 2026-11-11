@@ -50,7 +50,8 @@ export const COLONY = {
   starvingPenalty: 0.75,    // job output multiplier while food is 0
   starveFoodPerDeath: 4,    // unpaid food that costs one worker's life (very gradual)
   starveWarnSeconds: 90,    // warn when food will run out within this many seconds
-  starveWarnEvery: 300,     // the Chronicle repeats that warning at most this often (seconds)
+  starveWarnEvery: 15,      // the Chronicle repeats that warning at most this often (seconds)
+  starveWarnAfter: 8,       // food must stay low this long before the Chronicle warns (ignores blips)
   // Small on purpose (+1% a level): prestige and later systems multiply these up over time.
   techniques: {
     trails:   { name: 'Scent trails',        desc: 'Foragers gather {p} more food each level.',        per: 0.03,  base: { pheromone: 24 },          growth: 1.6, max: 13, needs: 'surface' },
