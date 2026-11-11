@@ -39,8 +39,10 @@ const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 const MO = BROOD.mould;
 /** Mould scrubbed away per second by the queen, nurses and Air shafts. */
 export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * MO.nurseClean + ctx.mods.get('mouldClean');
-/** Mould added per second by the eggs and larvae in the nest. */
-export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? (ctx.res.amt('egg') + ctx.res.amt('larva')) * MO.perBrood : 0);
+/** Mould added per second by the nest's chambers. */
+/** Chambers in the nest: every one of them gathers a little mould. */
+export const roomCount = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
+export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCount(ctx) * MO.perRoom : 0);
 /** Share of full speed the brood grows at, given the mould. */
 export const mouldSpeed = (ctx: Context) => 1 / (1 + ctx.res.amt('mould') / MO.half);
 /** Share of full work speed: from `weak` up, sick workers slow every job. */
@@ -175,10 +177,10 @@ export const brood: GameSystem = {
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
     }
-    // Mould: brood makes it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
+    // Mould: chambers gather it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
     if (ctx.flags.has('tech:brood')) {
       const net = mouldMade(ctx) - mouldClean(ctx);
-      res.source = 'Brood'; if (net > 0) res.add('mould', net * dt);
+      res.source = 'Damp chambers'; if (net > 0) res.add('mould', net * dt);
       res.source = 'Nurses scrubbing'; if (net < 0) res.add('mould', net * dt);
       res.source = 'Brood';
       const m = res.amt('mould');
