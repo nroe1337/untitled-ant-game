@@ -40,6 +40,7 @@ export const SYSTEMS: GameSystem[] = [
   garden,
   castes,
   waters,
+  stats,
   guide,
   lineage,
   husbandry,
@@ -48,7 +49,6 @@ export const SYSTEMS: GameSystem[] = [
   migration,
   town,
   supercolony,
-  stats,
   genome,
   happenings,
 ];
