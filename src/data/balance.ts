@@ -155,9 +155,9 @@ export const EXPEDITIONS = {
     { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.25, wipe: 0.1, loot: { food: [4, 8], twig: [1.3, 2.6] } },
     { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 5,   tile: [3, 3],  loss: 0.375, wipe: 0.15, loot: { food: [6, 12], seed: [1, 3], resin: [0, 1] } },
     { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 18,  tile: [6, -3], loss: 0.52, wipe: 0.22, loot: { twig: [3.9, 7.8], resin: [1, 2], seed: [1, 2] } },
-    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 50, tile: [10, 1], loss: 0.64, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4] } },
+    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 50, tile: [10, 1], loss: 0.64, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], pheromone: [2, 4], chitin: [0.3, 0.8] } },
     { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 110, tile: [12, -2], loss: 0.73, wipe: 0.38, loot: { food: [20, 35], resin: [2, 4] } },
-    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9] } },
+    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9], chitin: [2, 4] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
@@ -658,7 +658,7 @@ export const RES_DESC: Record<string, string> = {
   honeydew: 'Milked from herds by herders. Buys new herds and herd upgrades. Every animal you keep holds 2 more.',
   clay: 'Brought up by diggers after Deep diggers. Builds Clay halls and props up big nests. Holds up to 200.',
   wax: 'Grown by scale insects and mealybugs in your herds. Builds Wax stores, galleons and island colonies. Wax stores hold more.',
-  chitin: 'Left by fallen raiders and hunted creatures. Builds fortifications, husk halls and majors. Husk harvest raises the drop.',
+  chitin: 'Left by fallen raiders and hunted creatures. Expeditions to the stream bank and the far hedge find old shells too. Builds fortifications, husk halls and majors. Husk harvest raises the drop.',
   honour: 'Earned by clearing raid waves and winning campaigns. Buys honour upgrades on the War tab. Kept until spent.',
   venom: 'Taken from spider raiders. Arms your champion. Kept until spent.',
   crumbs: 'Gathered by town foragers at the kitchen floor and the study. Builds satellite nests and pays for town research. Holds up to 120.',
