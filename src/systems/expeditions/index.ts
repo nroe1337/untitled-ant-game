@@ -187,7 +187,8 @@ function finish(ctx: Context, p: Party) {
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
   if (s.runs === X.rivalAfterRuns && !ctx.flags.has('rival')) {
     ctx.flags.add('rival');
-    ctx.log('A returning scout is shaking. To the east, a foreign colony. Many of them. (Mandible drill can now be researched)', 'warn');
+    const when = ctx.flags.has('tech:cartography') ? 'Mandible drill can now be researched' : 'Mandible drill opens once Mapping is learned';
+    ctx.log(`A returning scout is shaking. To the east, a foreign colony. Many of them. (${when})`, 'warn');
   }
 }
 
@@ -199,7 +200,7 @@ export const expeditions: GameSystem = {
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'amber', name: 'Amber', order: 24, integer: true, stepped: true, group: 'Surface' });
-    ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 25, integer: true, stepped: true, group: 'Surface' });
+    ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 50, integer: true, stepped: true, group: 'Marks' });
     ctx.state.expeditions = { runs: 0, party: X.minParty, dest: 'grass', parties: [], ups: {}, marked: false, auto: true, rare: 0, earned: 0 } satisfies ExpState;
     ctx.bus.on('loaded', () => {
       const s = S(ctx);

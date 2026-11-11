@@ -57,13 +57,15 @@ export const mouldSpeed = (ctx: Context) => 1 / (1 + ctx.res.amt('mould') / MO.h
 /** Share of full work speed: from `weak` up, sick workers slow every job. */
 export const mouldWork = (ctx: Context) => { const m = ctx.res.amt('mould'); return m < MO.weak ? 1 : 1 - MO.weakMax * Math.min(1, (m - MO.weak) / (MO.cap - MO.weak)); };
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
+/** Eggs or larvae each nurse looks after; Nurses' dens add more. */
+export const nurseTends = (ctx: Context) => BROOD.nurseTends + ctx.mods.get('nurseTends');
 export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity'));
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
   const brood = ctx.res.amt('egg') + ctx.res.amt('larva');
   if (brood <= 0) return mouldSpeed(ctx);
-  const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends);
+  const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseTends(ctx));
   return (tended + (brood - tended) * BROOD.untendedSpeed) / brood * mouldSpeed(ctx);
 };
 const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
@@ -207,7 +209,7 @@ export const brood: GameSystem = {
         s.sick = (s.sick ?? 0) + dt / MO.sickEvery;
         if (s.sick >= 1) { s.sick -= 1; res.add('ant', -1); ctx.log('A worker sickens in the mould and dies.', 'warn'); }
       } else s.sick = 0;
-      if (m >= MO.half && !s.mouldWarned) { s.mouldWarned = true; ctx.log('Mould is building up in the brood chamber. The brood grows slower. More nurses would scrub it away.', 'warn'); }
+      if (m >= MO.half && !s.mouldWarned) { s.mouldWarned = true; ctx.log('Mould is building up around the brood. The brood grows slower. More nurses would scrub it away.', 'warn'); }
       if (m < MO.half / 2) s.mouldWarned = false;
       const hurts = [`brood grows at ${Math.round(mouldSpeed(ctx) * 100)}% speed`];
       if (m >= MO.rot) hurts.push('eggs rot', 'food spoils');
@@ -284,14 +286,14 @@ export const brood: GameSystem = {
         larvaBar.set(growingNow >= 1 ? s.larvaProgress % 1 : 0);
         pupaTxt.textContent = pupae >= 1 ? `Pupae waiting for room: ${pupae}` : 'No pupae yet.';
         hint.textContent = broodUsed(ctx) >= broodCap(ctx)
-          ? 'The brood cell is full. Research Brood care, then build a Brood chamber in the Nest.' : '';
+          ? 'The brood cell is full. Research Brood care, then build a Warming chamber in the Nest.' : '';
         const lines = [
           ['Workers born', String(s.born)],
           ['Egg hatches in', `${fmt(hatchTime(ctx))}s`],
           ['Larva grows in', `${fmt(growTime(ctx))}s, eating ${larvaFood(ctx).toFixed(2)} food/s`],
         ];
         const brood = Math.floor(broodUsed(ctx));
-        const care = BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends;
+        const care = BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseTends(ctx);
         if (brood > BROOD.queenTends || care > BROOD.queenTends) lines.push(['Brood looked after', `${Math.min(brood, care)} of ${brood}` + (brood > care ? ' (the rest grow at half speed)' : '')]);
         const auto = nurseRate(ctx) + queenRate(ctx);
         if (auto) lines.push(['Eggs laid without you', `${auto.toFixed(3)}/s`]);
