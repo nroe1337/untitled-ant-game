@@ -51,6 +51,8 @@ interface JobsState {
   assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; warnCd?: number; lowFor?: number; lowest?: number;
   /** The queen's decree (an archive accord): the worker mix new workers are sent to match. Kept across colonies. */
   decree?: Record<string, number>; decreeOn?: boolean;
+  /** Daily routine: idle workers go to this job. Kept across colonies. */
+  defaultJob?: string;
 }
 const S = (ctx: Context) => ctx.state.jobs as JobsState;
 /** Per-worker rates get three significant figures, so 'each' times the count matches the total. */
@@ -80,6 +82,17 @@ const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
 const jobMult = (ctx: Context, id: string) => 1 + ctx.mods.get('job:' + id);
 const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requires);
 
+/** Daily routine: idle workers go to the default job (after any decree), leaving those held for expeditions. */
+function followRoutine(ctx: Context) {
+  const s = S(ctx), id = s.defaultJob;
+  if (!id || !ctx.flags.has('tech:routine') || (s.decreeOn && ctx.flags.has('accord:decree'))) return;
+  const j = JOB_DEFS.find((d) => d.id === id);
+  if (!j || !jobOpen(ctx, j)) return;
+  const e = ctx.state.expeditions as { reserve?: boolean; reserved?: number } | undefined;
+  const free = idleAnts(ctx) - (e?.reserve ? e.reserved ?? 0 : 0);
+  const n = Math.min(free, jobMax(ctx, id) - (s.assigned[id] ?? 0));
+  if (n > 0) s.assigned[id] = (s.assigned[id] ?? 0) + n;
+}
 /** Send idle workers to whichever decreed job is furthest below its share. Never moves anyone already working. */
 function followDecree(ctx: Context) {
   const s = S(ctx);
@@ -134,7 +147,7 @@ export const jobs: GameSystem = {
 
   keep(ctx) {
     const s = S(ctx);
-    return { assigned: Object.fromEntries(JOB_DEFS.map((j) => [j.id, 0])), tech: {}, decree: s.decree, decreeOn: s.decreeOn } satisfies JobsState;
+    return { assigned: Object.fromEntries(JOB_DEFS.map((j) => [j.id, 0])), tech: {}, decree: s.decree, decreeOn: s.decreeOn, defaultJob: s.defaultJob } satisfies JobsState;
   },
 
   tick(ctx, dt) {
@@ -163,6 +176,7 @@ export const jobs: GameSystem = {
       s.assigned.major += back; s.bench -= back;
     }
     followDecree(ctx);
+    followRoutine(ctx);
 
     // upkeep. Whatever can't be paid builds up as hunger, and hunger slowly kills workers.
     // The queen never starves, so the colony can always rebuild from her.
@@ -223,7 +237,7 @@ export const jobs: GameSystem = {
   },
 
   panel: (() => {
-    const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement }>();
+    const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement; star: HTMLButtonElement }>();
     let idleEl: HTMLElement, reservedEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
@@ -259,10 +273,11 @@ export const jobs: GameSystem = {
         for (const j of JOB_DEFS) {
           const count = el('span.count'), out = el('span.muted');
           const btn = (label: string, d: number) => el('button.small', { type: 'button', title: 'Shift-click to move 10 workers. Ctrl-click to move all of them.', onclick: (e: MouseEvent) => change(ctx, j.id, e.ctrlKey || e.metaKey ? d * 9999 : e.shiftKey ? d * 10 : d) }, label);
+          const star = el('button.small.defjob', { type: 'button', title: 'Make this the default job: idle workers go here.', onclick: () => { const s = S(ctx); s.defaultJob = s.defaultJob === j.id ? undefined : j.id; } }, '☆') as HTMLButtonElement;
           const row = el('div.job', { title: j.desc, hidden: true },
-            el('span.jname', {}, icon(j.id), j.name), btn('−', -1), count, btn('+', 1), out);
+            el('span.jname', {}, icon(j.id), j.name), btn('−', -1), count, btn('+', 1), out, star);
           list.append(row);
-          rows.set(j.id, { row, count, out });
+          rows.set(j.id, { row, count, out, star });
         }
       },
       update(_root, ctx) {
@@ -285,6 +300,9 @@ export const jobs: GameSystem = {
         for (const j of JOB_DEFS) {
           const r = rows.get(j.id)!;
           r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);
+          r.star.hidden = !ctx.flags.has('tech:routine');
+          r.star.textContent = s.defaultJob === j.id ? '★' : '☆';
+          r.star.classList.toggle('on', s.defaultJob === j.id);
           r.count.textContent = isFinite(jobMax(ctx, j.id)) ? `${s.assigned[j.id]}/${jobMax(ctx, j.id)}` : String(s.assigned[j.id]);
           // The row shows only the rate; the tooltip shows the math once.
           const n = s.assigned[j.id];
