@@ -17,6 +17,8 @@ type ChamberDef = {
   foodRate?: number; defence?: number; upkeep?: number; scout?: number; knowCap?: number; elder?: number; fungusCap?: number; boats?: number; waxCap?: number;
   /** Any shared modifier, per chamber built (e.g. { 'job:forager': 0.04 }). */
   mods?: Record<string, number>;
+  /** From the `at`-th chamber of this kind on, it also costs these (growing from there at the same rate). */
+  later?: { at: number; cost: Costs };
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 /** How the chamber buttons are grouped on the Nest tab. Anything not listed goes in the last group. */
@@ -39,7 +41,12 @@ const S = (ctx: Context) => ctx.state.nest as NestState;
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
 const costOf = (ctx: Context, id: ChamberId): Costs => {
   const cheaper = Math.max(0.5, 1 + ctx.mods.get('chamberCost'));
-  return Object.fromEntries(Object.entries(DEFS[id].base).map(([r, v]) => [r, Math.ceil(v * Math.pow(DEFS[id].growth ?? NEST.costGrowth, count(ctx, id)) * cheaper)]));
+  const d = DEFS[id], g = d.growth ?? NEST.costGrowth, n = count(ctx, id);
+  const out: Costs = Object.fromEntries(Object.entries(d.base).map(([r, v]) => [r, Math.ceil(v * Math.pow(g, n) * cheaper)]));
+  if (d.later && n + 1 >= d.later.at) {
+    for (const [r, v] of Object.entries(d.later.cost)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * Math.pow(g, n + 1 - d.later.at) * cheaper);
+  }
+  return out;
 };
 const totalChambers = (ctx: Context) => Object.values(S(ctx).built).reduce((a, b) => a + b, 0);
 
