@@ -311,3 +311,10 @@ input[type=checkbox] { accent-color: var(--accent); }
 .queuedock:empty, .queuedock:not(:has(.queue:not([hidden]))) { display: none; }
 .queuedock .queue { margin: 0; max-width: none; }
 .action.tile .badge[hidden] { display: none; }
+
+/* collapsible explainer at the top of a tab */
+details.info { border: 1px dashed var(--line); padding: 4px 10px; max-width: 640px; }
+details.info > summary { cursor: pointer; font-size: 13px; color: var(--muted, inherit); user-select: none; }
+details.info[open] > summary { margin-bottom: 6px; }
+/* war milestones: name over its reward */
+.ledger.miles > div { flex-direction: column; gap: 0; }

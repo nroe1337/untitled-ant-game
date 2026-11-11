@@ -207,7 +207,7 @@ export const jobs: GameSystem = {
     const hunters = offDutyFighters(ctx);
     if (hunters) {
       ctx.res.source = 'Soldiers hunting';
-      ctx.res.add('food', JOBS.forager.food * WAR.battle.offDuty * hunters * mult * jobMult(ctx, 'forager') * dt);
+      ctx.res.add('food', JOBS.forager.food * WAR.battle.offDuty * (1 + ctx.mods.get('hunting')) * hunters * mult * jobMult(ctx, 'forager') * dt);
     }
   },
 
@@ -303,7 +303,7 @@ export const jobs: GameSystem = {
           }
           if (j.id === 'soldier' && s.assigned.soldier) {
             parts.push(`power ${fmt(s.assigned.soldier * (1 + ctx.mods.get('soldierPower')))}`);
-            if (offDutyFighters(ctx)) parts.push(`+${tot(JOBS.forager.food * WAR.battle.offDuty * s.assigned.soldier * jobMult(ctx, 'forager'))} food/s hunting`);
+            if (offDutyFighters(ctx)) parts.push(`+${tot(JOBS.forager.food * WAR.battle.offDuty * (1 + ctx.mods.get('hunting')) * s.assigned.soldier * jobMult(ctx, 'forager'))} food/s hunting`);
           }
           r.out.textContent = parts.join(', ');
           const slot = COLONY.jobSlots[j.id];

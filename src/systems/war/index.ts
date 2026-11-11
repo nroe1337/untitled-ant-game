@@ -49,10 +49,44 @@ interface WarState {
   /** Refill dead soldiers and majors from idle workers. */
   replenish?: boolean;
   refill?: { soldier: number; major: number };
+  /** War honours ever earned this colony (unlocks honour upgrades), honour upgrade levels, milestones reached. */
+  honoured?: number;
+  ups?: Record<string, number>;
+  milestones?: string[];
+  /** Lure the rival again as soon as it can be (after War drums). */
+  autoProvoke?: boolean;
 }
 const S = (ctx: Context) => ctx.state.war as WarState;
 const fl = (ctx: Context, id: keyof typeof F) => S(ctx).forts[id] ?? 0;
 const FORTS = fromBalance(F);
+const H = WAR.honourUps;
+const hl = (ctx: Context, id: keyof typeof H) => S(ctx).ups?.[id] ?? 0;
+const honoured = (ctx: Context) => S(ctx).honoured ?? 0;
+// honour upgrades unfold as honours come in ("honour:N" = after N honours earned)
+const HONOUR_UPS = fromBalance(H, (ctx, needs) => !needs || honoured(ctx) >= Number(needs.slice(7)));
+const hasMilestone = (ctx: Context, id: string) => (S(ctx).milestones ?? []).includes(id);
+/** The deepest wave cleared this colony. */
+const bestWave = (ctx: Context) => (S(ctx).wave ?? 1) - 1;
+function giveHonours(ctx: Context, n: number) {
+  const s = S(ctx);
+  s.honoured = (s.honoured ?? 0) + n;
+  ctx.res.add('honour', n);
+}
+/** Hand out every milestone the deepest wave has now reached. */
+function checkMilestones(ctx: Context) {
+  const s = S(ctx);
+  s.milestones ??= [];
+  for (const m of WAR.milestones) {
+    if (bestWave(ctx) < m.wave || s.milestones.includes(m.id)) continue;
+    s.milestones.push(m.id);
+    if (m.id === 'maps') revealRival(ctx);
+    ctx.log(`War milestone: ${m.name}. ${m.desc}`, 'story');
+    ctx.announce(m.name, m.desc, { small: true, kicker: `War milestone, wave ${m.wave}` });
+  }
+}
+function revealRival(ctx: Context) {
+  for (const t of tiles(ctx)) if (t.o === 'rival') t.seen = true;
+}
 const majors = (ctx: Context) => ctx.state.jobs?.assigned?.major ?? 0;
 /** Fighting strength in soldier-equivalents: a major counts as several soldiers. */
 const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + majors(ctx) * CASTES.major.atk;
@@ -236,7 +270,8 @@ function endBattle(ctx: Context) {
   // losses are capped so a raid hurts but never ruins you
   // soldiers being carried in when the fight ends make it home too
   const rescued = Math.min(b.soldiersLost, (b.rescued ?? 0) + b.units.filter((u) => u.carrying).length);
-  const soldierLoss = Math.min(b.soldiersLost - rescued, Math.ceil(b.soldiersAtStart * B.maxSoldierLoss));
+  const medics = Math.max(0.2, 1 + H.medics.per * hl(ctx, 'medics'));
+  const soldierLoss = Math.min(b.soldiersLost - rescued, Math.ceil(b.soldiersAtStart * B.maxSoldierLoss * medics));
   const workerLoss = Math.min(b.workersLost, 2);
   const lost = soldierLoss + workerLoss;
   if (lost) { ctx.res.add('ant', -lost); loseFighters(ctx, soldierLoss); }
@@ -244,17 +279,20 @@ function endBattle(ctx: Context) {
   const stolen = ctx.res.amt('food') * stealShare;
   ctx.res.add('food', -stolen);
   const clean = !b.breaches;
-  const chitin = (b.chitin ?? 0) + (clean ? waveOf(ctx) * B.wave.clearBonus : 0);
+  const chitin = Math.round(((b.chitin ?? 0) + (clean ? waveOf(ctx) * B.wave.clearBonus : 0)) * (1 + H.harvest.per * hl(ctx, 'harvest')));
+  const w = waveOf(ctx);
+  const honours = clean ? (WAR.honours.perWave + Math.floor(w / 5) * WAR.honours.perFive) * (hasMilestone(ctx, 'endless') ? 2 : 1) : 0;
   if (chitin) ctx.res.add('chitin', chitin);
   s.rivalArmy = Math.max(5, s.rivalArmy - b.kills);
   const parts = [`${b.kills} raiders killed (+${chitin} chitin)`];
   if (b.breaches) parts.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   if (lost) parts.push(`${lost} of ours fell`);
   if (rescued) parts.push(`${rescued} wounded carried home`);
-  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; parts.push(`Wave cleared. Next: wave ${s.wave}, ${describeWave(s.wave)}`); }
+  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Wave cleared. Next: wave ${s.wave}, ${describeWave(s.wave)}`); }
   else parts.push(`Some got through, so wave ${waveOf(ctx)} must be fought again`);
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];
+  if (honours) lines.push(`+${honours} war honour${honours > 1 ? 's' : ''}`);
   if (soldierLoss) lines.push(`${soldierLoss} soldier${soldierLoss > 1 ? 's' : ''} fell`);
   if (workerLoss) lines.push(`${workerLoss} worker${workerLoss > 1 ? 's' : ''} fell`);
   if (rescued) lines.push(`${rescued} wounded carried home`);
@@ -262,7 +300,8 @@ function endBattle(ctx: Context) {
   lines.push(clean ? `Next: wave ${s.wave}` : `Wave ${waveOf(ctx)} must be fought again`);
   showResult(ctx, 'The raid', { win: clean, title: clean ? 'Victory' : 'They got through', lines });
   ctx.log((b.breaches ? 'The raid is over. ' : 'The raid is broken at the entrance. ') + s.lastReport, b.breaches ? 'warn' : 'story');
-  s.nextRaid = WAR.provokeCooldown;
+  s.nextRaid = WAR.provokeCooldown * Math.max(0.2, 1 + H.regroup.per * hl(ctx, 'regroup'));
+  if (clean) checkMilestones(ctx);
 }
 
 // ---- campaigns ----
@@ -298,8 +337,11 @@ function finishCampaign(ctx: Context) {
   if (!win) { ctx.log(`The campaign fails. ${lost} soldiers do not return.`, 'warn'); showResult(ctx, 'The campaign', { win: false, title: 'Defeat', lines: ['The tile holds', `${lost} soldiers fell`] }); return; }
   const owner = t.o!;
   const loot = WAR.loot[owner] ?? {};
-  const got = Object.entries(loot).map(([r, [lo, hi]]) => { const n = Math.round(rand(lo, hi) * (t.core ? 4 : 1)); ctx.res.add(r, n); return `${n} ${r}`; });
+  const got = Object.entries(loot).map(([r, [lo, hi]]) => { const n = Math.round(rand(lo, hi) * (t.core ? 4 : 1) * (hasMilestone(ctx, 'spoils') ? 2 : 1)); ctx.res.add(r, n); return `${n} ${r}`; });
   if (owner === 'rival') s.rivalArmy = Math.max(5, s.rivalArmy - enemy * 0.5);
+  const hon = WAR.honours.campaign * (t.core ? 3 : 1);
+  giveHonours(ctx, hon);
+  got.push(`${hon} war honours`);
   ctx.bus.emit('map:capture', { x: c.target % MAP.cols, y: Math.floor(c.target / MAP.cols) });
   ctx.log(`Victory. The tile is ours, with ${got.join(', ')}. ${lost} soldiers fell.`);
   showResult(ctx, 'The campaign', { win: true, title: 'Victory', lines: ['The tile is ours', ...got.map((g) => '+' + g), ...(lost ? [`${lost} soldiers fell`] : [])] });
@@ -313,6 +355,7 @@ export const war: GameSystem = {
   init(ctx) {
     ctx.res.define({ id: 'chitin', name: 'Chitin', order: 40, integer: true, group: 'Spoils' });
     ctx.res.define({ id: 'venom', name: 'Venom', order: 41, integer: true, group: 'Spoils' });
+    ctx.res.define({ id: 'honour', name: 'War honours', order: 42, integer: true, group: 'Spoils' });
     ctx.state.war = {
       rivalArmy: WAR.rivalStartArmy, nextRaid: 0, warned: false, battle: null, rallyCd: 0,
       forts: {}, campaign: null, wave: 1, raids: 0, won: 0, rivalDefeated: false, spiderDefeated: false, lastReport: '',
@@ -325,6 +368,11 @@ export const war: GameSystem = {
     if (!ctx.flags.has('rival')) return;
     const s = S(ctx);
     ctx.mods.set('soldierPower', 'plating', F.plating.per * fl(ctx, 'plating'));
+    ctx.mods.set('soldierPower', 'standards', H.standards.per * hl(ctx, 'standards'));
+    ctx.mods.set('hunting', 'firstblood', hasMilestone(ctx, 'hunt') ? 1 : 0);
+    ctx.mods.set('expSafety', 'feared', hasMilestone(ctx, 'feared') ? -0.2 : 0);
+    ctx.mods.set('claimCost', 'scent', hasMilestone(ctx, 'scent') ? -0.15 : 0);
+    ctx.mods.set('lineageGain', 'legend', hasMilestone(ctx, 'legend') ? 0.1 : 0);
     s.rallyCd = Math.max(0, s.rallyCd - dt);
     refill(ctx);
     if (!s.rivalDefeated) {
@@ -332,13 +380,18 @@ export const war: GameSystem = {
       if (s.battle) stepBattle(ctx, dt);
       else {
         s.nextRaid = Math.max(0, s.nextRaid - dt); // now: cooldown before you can provoke again
+        if (s.autoProvoke && hasMilestone(ctx, 'drums') && s.nextRaid <= 0 && !s.campaign && ctx.res.canAfford(WAR.provokeCost)) {
+          ctx.res.spend(WAR.provokeCost);
+          startBattle(ctx);
+        }
       }
     }
     if (s.campaign) { s.campaign.elapsed += dt; if (s.campaign.elapsed >= s.campaign.duration) finishCampaign(ctx); }
   },
 
   panel: (() => {
-    let fortSection: HTMLElement, campSection: HTMLElement;
+    let fortSection: HTMLElement, campSection: HTMLElement, honourSection: HTMLElement, honourHead: HTMLElement, mileList: HTMLElement, autoWrap: HTMLElement, autoBox: HTMLInputElement;
+    let honourUps: ReturnType<typeof upgradeList>;
     let cv: HTMLCanvasElement, status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, refillBox: HTMLInputElement, campBtn: ActionButton, campInfo: HTMLElement, provokeBtn: ActionButton;
     let forts: ReturnType<typeof upgradeList>;
     const campBar = progressBar();
@@ -373,11 +426,19 @@ export const war: GameSystem = {
           },
         });
         forts = upgradeList(ctx, () => S(ctx).forts, FORTS);
+        honourUps = upgradeList(ctx, () => (S(ctx).ups ??= {}), HONOUR_UPS);
+        autoBox = el('input', { type: 'checkbox', id: 'war-auto' }) as HTMLInputElement;
+        autoBox.addEventListener('change', () => { S(ctx).autoProvoke = autoBox.checked; });
+        autoWrap = el('label', { for: 'war-auto', style: 'white-space: nowrap', title: 'Lure the rival again the moment it will take the bait.' }, autoBox, ' Auto-provoke');
+        honourHead = el('p.muted');
+        mileList = el('div.ledger.miles');
         root.append(
           el('p.flavor', {}, 'They know where we are now. Hold the entrance, then take the fight to them.'),
-          el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and a wave cleared without losses leaves more. Chitin builds fortifications, husk halls, training grounds and majors.'),
-          el('p.muted', {}, 'How it works: your soldiers hold the entrance in a line, majors in front. The fronts fight, and the next steps up when one falls. Nest defence (guard posts, stone tiles, husk halls) bites the front raider from the walls. Our soldiers behind the front spit acid over its shoulder, so a longer line hits harder. Rallied workers carry fallen soldiers home alive, and fight if the line reaches them.'),
-          cv, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap), ledger,
+          el('details.info', {}, el('summary', {}, 'Information'),
+          el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and every wave cleared without losses earns war honours. Deeper waves reach war milestones, each a lasting reward for this colony. Chitin builds fortifications, husk halls, training grounds and majors; honours buy honour upgrades.'),
+          el('p.muted', {}, 'How it works: your soldiers hold the entrance in a line, majors in front. The fronts fight, and the next steps up when one falls. Nest defence (guard posts, stone tiles, husk halls) bites the front raider from the walls. Our soldiers behind the front spit acid over its shoulder, so a longer line hits harder. Rallied workers carry fallen soldiers home alive, and fight if the line reaches them.')),
+          cv, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap, autoWrap), ledger,
+          honourSection = el('div.section', {}, el('h3', {}, 'War honours'), honourHead, mileList, honourUps.root),
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
           campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Select an enemy tile next to your territory on the Map, then launch.'),
             campInfo, el('div.row', {}, campBtn.root), campBar.root),
@@ -389,6 +450,21 @@ export const war: GameSystem = {
         fortSection.hidden = !ctx.flags.has('tech:fortify');
         campSection.hidden = !ctx.flags.has('tech:campaigns');
         refillBox.checked = !!s.replenish;
+        autoBox.checked = !!s.autoProvoke;
+        autoWrap.hidden = !hasMilestone(ctx, 'drums');
+        honourUps.update(ctx);
+        honourSection.hidden = !ctx.flags.has('rival');
+        honourHead.textContent = `Deepest wave cleared: ${bestWave(ctx)}. Honours earned: ${honoured(ctx)}. Each milestone is a lasting reward for this colony.`;
+        const next = WAR.milestones.find((m) => !hasMilestone(ctx, m.id));
+        const shown = WAR.milestones.filter((m) => hasMilestone(ctx, m.id)).map((m) => ({ m, done: true }));
+        if (next) shown.push({ m: next, done: false });
+        const key = shown.map((x) => x.m.id + x.done).join() + bestWave(ctx);
+        if (mileList.dataset.key !== key) {
+          mileList.dataset.key = key;
+          mileList.replaceChildren(...shown.map(({ m, done }) => el('div', { class: done ? '' : 'next' },
+            el('span', { class: done ? '' : 'muted' }, `${done ? '✓' : '○'} Wave ${m.wave}: ${m.name}`),
+            el('span', { class: done ? 'muted' : '' }, done ? m.desc : `${m.desc} (${bestWave(ctx)} of ${m.wave})`))));
+        }
         provokeBtn.update(ctx); rallyBtn.update(ctx); campBtn.update(ctx); forts.update(ctx);
         if (s.rivalDefeated) status.textContent = 'The rival is gone. The entrance is quiet.';
         else if (s.battle) {

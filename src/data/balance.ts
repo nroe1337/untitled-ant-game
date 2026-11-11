@@ -232,6 +232,29 @@ export const WAR = {
     plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder each level.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
     alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
+  // war honours: earned by clearing waves and winning campaigns, spent on the honour upgrades below
+  honours: {
+    perWave: 1,            // per clean wave, plus 1 more for every 5 waves of depth
+    perFive: 1,
+    campaign: 3,           // per enemy tile taken (x3 for a home tile)
+  },
+  /** One-off rewards for the deepest wave cleared this colony. Each is given the moment the wave falls. */
+  milestones: [
+    { wave: 3,  id: 'hunt',    name: 'First blood',     desc: 'Soldiers hunt twice as well between fights.' },
+    { wave: 5,  id: 'drums',   name: 'War drums',       desc: 'Unlocks Auto-provoke: the rival is lured again the moment it can be.' },
+    { wave: 8,  id: 'feared',  name: 'Feared',          desc: 'Rivals give your trails a wide berth. Expeditions lose 20% fewer workers.' },
+    { wave: 10, id: 'scent',   name: 'Conquered scent', desc: 'Claiming map tiles costs 15% less.' },
+    { wave: 13, id: 'spoils',  name: 'Spoils of war',   desc: 'Campaigns bring back twice the loot.' },
+    { wave: 16, id: 'maps',    name: 'Captured maps',   desc: 'Prisoners give up their trails. The whole rival territory is revealed on the Map.' },
+    { wave: 20, id: 'legend',  name: 'Legend of the line', desc: 'Lineage from flights +10%.' },
+    { wave: 25, id: 'endless', name: 'Endless war',     desc: 'Every wave cleared gives double honours.' },
+  ],
+  honourUps: {
+    standards: { name: 'Battle standards', desc: 'Soldiers fight {p} harder each level.', per: 0.04, base: { honour: 2 }, growth: 1.25, max: 25 },
+    harvest:   { name: 'Husk harvest',     desc: 'Raiders leave {p} more chitin each level.', per: 0.1, base: { honour: 3 }, growth: 1.25, max: 20, needs: 'honour:5' },
+    regroup:   { name: 'Quick regroup',    desc: 'The rival takes the bait again {p} sooner each level.', per: -0.08, base: { honour: 4 }, growth: 1.3, max: 8, needs: 'honour:10' },
+    medics:    { name: 'Field medics',     desc: '{p} fewer soldiers die in each raid, each level.', per: -0.06, base: { honour: 6 }, growth: 1.3, max: 10, needs: 'honour:20' },
+  },
   // campaigns on the map
   campaignTime: 120,
   campaignLoss: 0.15,       // share of the army lost on a win (double on a loss)
@@ -544,6 +567,7 @@ export const RES_DESC: Record<string, string> = {
   honeydew: 'Milked from herds. Pays for new herds.',
   wax: 'Made by scale insects. Builds wax stores and galleons.',
   chitin: 'Husks of fallen enemies. Builds fortifications and husk halls.',
+  honour: 'Earned by clearing raid waves and winning campaigns. Buys honour upgrades on the War tab.',
   venom: 'Taken from spiders. Arms your champion.',
   lineage: 'Earned by a nuptial flight. Spent on permanent perks.',
   heritage: 'Earned by migrating. Spent on migration perks.',
