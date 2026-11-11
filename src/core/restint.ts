@@ -5,7 +5,7 @@ export const RES_TINT: Record<string, string> = {
   ant: '#e2d6c2', food: '#a8b872', soil: '#b48e68', pheromone: '#a69be6', knowledge: '#93b6dc',
   egg: '#f0a6c8', larva: '#7fd6e8', mould: '#b98fa0', jelly: '#e6c76c', reserve: '#c2cf8a',
   leaf: '#86b062', fungus: '#cdb7a2', honeydew: '#d9c274', wax: '#e8cb8e',
-  twig: '#b8966a', seed: '#cfa848', resin: '#c48f42', amber: '#e39f45', silk: '#d6d2e8', trailmark: '#a69be6',
+  twig: '#b8966a', seed: '#cfa848', resin: '#c48f42', amber: '#e39f45', silk: '#d6d2e8', trailmark: '#a69be6', clay: '#b0705a',
   chitin: '#a98264', venom: '#a6c873',
   lineage: '#d8a85e', heritage: '#cf8461', memory: '#aea6cc', unity: '#93c4b4',
 };
@@ -15,7 +15,7 @@ const WORDS: Record<string, string[]> = {
   food: ['food'], soil: ['soil'], pheromone: ['pheromones?'], knowledge: ['knowledge'],
   egg: ['eggs?'], larva: ['larvae', 'larva'], mould: ['mould'], jelly: ['royal jelly', 'jelly'], reserve: ['reserve'],
   leaf: ['leaves', 'leaf'], fungus: ['fungus'], honeydew: ['honeydew'], wax: ['wax'],
-  twig: ['twigs?'], seed: ['seeds?'], resin: ['resin'], amber: ['amber'], silk: ['silk'], trailmark: ['trail marks?'],
+  twig: ['twigs?'], seed: ['seeds?'], resin: ['resin'], amber: ['amber'], silk: ['silk'], trailmark: ['trail marks?'], clay: ['clay'],
   chitin: ['chitin'], venom: ['venom'],
   lineage: ['lineage'], heritage: ['heritage'], memory: ['memory', 'memories'], unity: ['unity'],
   // Workers are left plain: "ants" is in nearly every sentence.
