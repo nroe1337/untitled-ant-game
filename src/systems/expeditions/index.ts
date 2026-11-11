@@ -30,6 +30,8 @@ interface ExpState {
   /** Where the last party came back from: the quiet trail shows that place. */
   lastDest?: string;
   reserved?: number;
+  /** Reserve places still empty after losses on the trail: new idle workers fill them before anything else. */
+  short?: number;
   rare: number;
   /** legacy single-party saves */
   active?: Party | null;
@@ -138,7 +140,11 @@ function befall(ctx: Context, p: Party) {
   s.perished = (s.perished ?? 0) + n;
   p.ants -= n;
   // with Reserve workers on, idle workers step in for the ones lost so the next party is still full
-  if (s.reserve) s.reserved = (s.reserved ?? 0) + Math.max(0, Math.min(n, idle(ctx)));
+  if (s.reserve) {
+    const k = Math.max(0, Math.min(n, idle(ctx)));
+    s.reserved = (s.reserved ?? 0) + k;
+    s.short = Math.min(s.party, (s.short ?? 0) + n - k);
+  }
   if (f.wipe) {
     const why = WIPEOUTS[Math.floor(Math.random() * WIPEOUTS.length)];
     ctx.log(`The party to ${place} is gone. ${why} ${n} workers lost.`, 'warn');
@@ -220,12 +226,18 @@ export const expeditions: GameSystem = {
         if (lvl(ctx, 'memory') && s.auto && canSend(ctx)) send(ctx);
       }
     }
+    if (s.reserve && s.short) {
+      // places lost on the trail are filled by the next idle workers, before the default job takes them
+      const k = Math.max(0, Math.min(s.short, idle(ctx)));
+      s.reserved = (s.reserved ?? 0) + k;
+      s.short -= k;
+    }
     if (s.reserve) {
       // starvation or raids can leave fewer workers than are held back
       const others = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions' && !k.startsWith('job:')).reduce((a, [, b]) => a + b, 0);
       const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
       s.reserved = Math.max(0, Math.min(s.reserved ?? 0, Math.floor(ctx.res.amt('ant')) - onTrail(ctx) - others - assigned));
-    } else s.reserved = 0;
+    } else { s.reserved = 0; s.short = 0; }
     ctx.busy.expeditions = away(ctx);
   },
 
@@ -275,8 +287,8 @@ export const expeditions: GameSystem = {
         markBox.addEventListener('change', () => { s.autoMark = markBox.checked; });
         markWrap = el('label', { for: 'exp-automark', title: 'Mark the trail before every trip, whenever you have the pheromone for it.' }, markBox, ' Mark every trip');
         reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
-        reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) s.reserved = 0; });
-        reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced from idle workers right away." },
+        reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) { s.reserved = 0; s.short = 0; } });
+        reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced by idle workers, and by new workers as they hatch, before the default job gets any." },
           reserveBox, ' reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
@@ -323,7 +335,7 @@ export const expeditions: GameSystem = {
         autoBox.checked = s.auto;
         reserveBox.checked = !!s.reserve;
         markBox.checked = !!s.autoMark;
-        reserveCount.textContent = s.reserve ? ` (${s.reserved ?? 0} waiting)` : '';
+        reserveCount.textContent = s.reserve ? ` (${s.reserved ?? 0} waiting${s.short ? `, ${s.short} to fill` : ''})` : '';
 
         // one caption + bar per party
         while (bars.length < s.parties.length) bars.push(progressBar());
