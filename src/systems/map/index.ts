@@ -9,8 +9,10 @@ import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP } from '../../data/balance';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
+import { gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, drawTownCell, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
 import { WORLD } from '../../data/balance';
+import { TOWN } from '../../data/town';
+const TOWN_SITE_IDS = Object.keys(TOWN.sites);
 import { cellTerrain } from './world';
 
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
@@ -273,16 +275,16 @@ export const map: GameSystem = {
         });
         toggle = el('div.tabs.maptoggle', {}, gBtn, wBtn);
         const N = WORLD.size;
-        wcv = el('canvas.map.world', { width: N * 80, height: N * 48, 'aria-label': 'Map of the world' }) as HTMLCanvasElement;
+        wcv = el('canvas.map.world', { width: WIDTH * 80, height: N * 48, 'aria-label': 'Map of the world' }) as HTMLCanvasElement;
         const wpick = (e: MouseEvent) => {
           const r = wcv.getBoundingClientRect();
-          const x = Math.floor(((e.clientX - r.left) / r.width) * N), y = Math.floor(((e.clientY - r.top) / r.height) * N);
-          return x >= 0 && y >= 0 && x < N && y < N ? y * N + x : null;
+          const x = Math.floor(((e.clientX - r.left) / r.width) * WIDTH), y = Math.floor(((e.clientY - r.top) / r.height) * N);
+          return gridCell(x, y);
         };
         wcv.addEventListener('mousemove', (e) => { wHoverC = wpick(e); });
         wcv.addEventListener('mouseleave', () => { wHoverC = null; });
         wcv.addEventListener('click', (e) => { wSel = wpick(e); });
-        wcv.addEventListener('dblclick', (e) => { const c = wpick(e); if (c === HOME) view = 'garden'; else if (c != null && isSeen(W(ctx), c)) { looking = c; view = 'cell'; } });
+        wcv.addEventListener('dblclick', (e) => { const c = wpick(e); if (c === HOME) view = 'garden'; else if (c != null && (isTown(c) ? shoreSeen(ctx) : isSeen(W(ctx), c))) { looking = c; cSel = null; view = 'cell'; } });
         wHover = el('p.muted.mono'); wSummary = el('p.muted'); wInfo = el('div.ledger');
         sortieText = el('span');
         sortieLine = el('div.caption', { hidden: true }, sortieText, sbar.root);
@@ -294,7 +296,7 @@ export const map: GameSystem = {
         });
         sortieWrap = el('div.row', {}, sortie.root);
         const look = el('button.action', { type: 'button' }, el('span.label', {}, 'Look closer'));
-        look.addEventListener('click', () => { if (wSel === HOME) view = 'garden'; else if (wSel != null) { looking = wSel; view = 'cell'; } });
+        look.addEventListener('click', () => { if (wSel === HOME) view = 'garden'; else if (wSel != null) { looking = wSel; cSel = null; view = 'cell'; } });
         lookWrap = el('div.row', {}, look);
         lmHead = el('h3', {}, 'Landmarks'); lmList = el('div.ledger');
         worldBox = el('div.mapview', {},
@@ -385,10 +387,10 @@ export const map: GameSystem = {
       world(ctx: Context) {
         const s = S(ctx), w = W(ctx), cells = layout(s.seed);
         const z = Math.min(1, (performance.now() - zoomAt) / zoomLen);
-        drawWorld(wcv, s.seed, w, s.tiles, z, z < 1 ? null : wHoverC, z < 1 ? null : wSel);
-        const name = (c: number) => isSeen(w, c) ? biomeName(cells[c]) : 'Unexplored';
-        const [hx, hy] = wHoverC == null ? [0, 0] : cxy(wHoverC);
-        wHover.textContent = wHoverC == null ? 'Hover a cell.' : `${hx},${hy}  ${name(wHoverC)}`;
+        const townHeld = TOWN_SITE_IDS.filter((id) => TOWN.sites[id].rival && !ctx.state.town?.cleared?.includes(id));
+        drawWorld(wcv, s.seed, w, s.tiles, z, z < 1 ? null : wHoverC, z < 1 ? null : wSel, shoreSeen(ctx), townHome(ctx), townHome(ctx) ? townHeld : []);
+        const name = (c: number) => isTown(c) ? (shoreSeen(ctx) ? TOWN.sites[townSite(c)].name : 'The far shore') : isSeen(w, c) ? biomeName(cells[c]) : 'Unexplored';
+        wHover.textContent = wHoverC == null ? 'Hover a cell.' : isTown(wHoverC) ? `Across the water  ${name(wHoverC)}` : `${cxy(wHoverC).join(',')}  ${name(wHoverC)}`;
         const winterNote = winter(ctx) ? ' Winter: the scouts\' wings stay folded until spring.' : '';
         wSummary.textContent = `${windName(w)}.${winterNote} ${w.seen.length - 1} cells seen from the air, ${w.found.length} of ${WORLD.landmarks.length} landmarks found` + (w.kin.length ? `, ${w.kin.length} kin colon${w.kin.length > 1 ? 'ies' : 'y'}` : '') + '. ' + (ctx.flags.has('tech:bordernests') ? 'Border nests let your scouts claim in the eight cells around the garden.' : 'Claiming land beyond the garden is beyond this colony. For now.');
         const so = w.sortie;
@@ -398,6 +400,15 @@ export const map: GameSystem = {
         lmHead.hidden = !w.found.length;
         lmList.replaceChildren(...w.found.map((id) => { const l = lmName(id); return el('div', {}, el('span.muted', {}, l.name), el('span', {}, l.desc.replace('{p}', Math.round(Math.abs(l.per) * 100) + '%'))); }));
         if (c == null) { wInfo.replaceChildren(el('span.muted', {}, 'No cell selected.')); sortieWrap.hidden = true; lookWrap.hidden = true; return; }
+        if (isTown(c)) {
+          const d = TOWN.sites[townSite(c)];
+          const trows: [string, string][] = shoreSeen(ctx)
+            ? [['Cell', `${d.name}, across the water${townHome(ctx) ? ' (home)' : ''}`], ['', d.desc], ['Yields', Object.entries(d.yields).map(([r, v]) => `${r} ${'+'.repeat(Math.max(1, Math.round(v * 2)))}`).join(', ')], ['Now', siteStatus(ctx, c)]]
+            : [['Cell', 'The far shore'], ['', 'Something lies across the water. Only a galleon can find out what.']];
+          wInfo.replaceChildren(...trows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+          sortieWrap.hidden = true; lookWrap.hidden = !shoreSeen(ctx);
+          return;
+        }
         const cell = cells[c], seen = isSeen(w, c);
         const rows: [string, string][] = [['Cell', `${cxy(c).join(',')}  ${name(c)}${c === HOME ? ' (home)' : ''}`]];
         if (c !== HOME) rows.push(['Distance', `${ring(c)} cell${ring(c) > 1 ? 's' : ''} from the garden`]);
@@ -421,6 +432,16 @@ export const map: GameSystem = {
         sortie.update(ctx);
       },
       cell(ctx: Context) {
+        if (isTown(looking)) {
+          const s = S(ctx), d = TOWN.sites[townSite(looking)];
+          drawTownCell(ccv, s.seed, looking);
+          cTitle.textContent = `${d.name}, across the water. ${d.desc}`;
+          cHoverLine.textContent = ''; aLine.hidden = true;
+          cInfo.replaceChildren(...([['Now', siteStatus(ctx, looking)], ['Work it', townHome(ctx) ? 'From the Town tab: town foragers, working hours, tasters.' : 'After a migration.']] as [string, string][]).map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+          cTile.replaceChildren(el('span.muted', {}, 'Town ground is worked from the Town tab, not claimed tile by tile.'));
+          fClaimWrap.hidden = true; fAssaultWrap.hidden = true;
+          return;
+        }
         const s = S(ctx), w = W(ctx), cell = layout(s.seed)[looking], terr = cellTerrain(s.seed, looking);
         const a = w.assault, cl = s.claiming;
         drawCell(ccv, s.seed, w, looking, cHover, cSel, a?.cell === looking ? a.i : cl?.cell === looking ? cl.i : null);

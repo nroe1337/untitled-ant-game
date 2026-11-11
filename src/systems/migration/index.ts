@@ -1,13 +1,13 @@
 // Migration: the second prestige. Once a galleon has found the far shore, and the line has flown
 // and settled enough, the whole line can move across the water into the human town.
-// Lineage and its perks start over (lineage reads state.migration.migrating in its keep()).
+// The colony ends as a flight does, but Lineage and its perks are kept: migration pays Heritage on top.
 // Heritage is earned and buys permanent perks. Sets the flag legacy:migrated.
 import type { GameSystem, Context } from '../../core/types';
 import { el } from '../../core/ui';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { MIGRATION as M } from '../../data/town';
 
-interface MigState { perks: Record<string, number>; migrations: number; total: number; flightsAt: number; migrating?: boolean; pending?: boolean }
+interface MigState { perks: Record<string, number>; migrations: number; total: number; flightsAt: number; lineageAt?: number; migrating?: boolean; pending?: boolean }
 const S = (ctx: Context) => ctx.state.migration as MigState;
 const PERKS = fromBalance(M.perks);
 const P = (ctx: Context, id: keyof typeof M.perks) => S(ctx).perks[id] ?? 0;
@@ -22,7 +22,8 @@ function checks(ctx: Context): [string, boolean][] {
   ];
 }
 function gain(ctx: Context) {
-  const lineage = ctx.state.lineage?.total ?? 0;
+  // lineage earned since the last migration: the line keeps its lineage, so only the new part counts
+  const lineage = Math.max(0, (ctx.state.lineage?.total ?? 0) - (S(ctx).lineageAt ?? 0));
   return Math.floor(Math.sqrt(lineage) + 2 * founded(ctx) + flightsSince(ctx));
 }
 function spent(ctx: Context) {
@@ -51,7 +52,7 @@ export const migration: GameSystem = {
 
   keep(ctx) {
     const s = S(ctx);
-    return { perks: s.perks, migrations: s.migrations, total: s.total, flightsAt: s.migrating ? (ctx.state.lineage?.flights ?? 0) : s.flightsAt, pending: true };
+    return { perks: s.perks, migrations: s.migrations, total: s.total, flightsAt: s.migrating ? (ctx.state.lineage?.flights ?? 0) : s.flightsAt, lineageAt: s.migrating ? (ctx.state.lineage?.total ?? 0) : s.lineageAt, pending: true };
   },
 
   tick(ctx) {
@@ -77,7 +78,7 @@ export const migration: GameSystem = {
         go.addEventListener('click', () => {
           if (go.disabled) return;
           if (!go.dataset.armed) {
-            go.dataset.armed = '1'; go.textContent = 'Really? Lineage and its perks start over';
+            go.dataset.armed = '1'; go.textContent = 'Really? This colony ends here';
             setTimeout(() => { delete go.dataset.armed; go.textContent = 'Migrate to the town'; }, 4000);
             return;
           }
@@ -89,7 +90,7 @@ export const migration: GameSystem = {
         perks = upgradeList(ctx, () => S(ctx).perks, PERKS);
         root.append(
           el('p.flavor', {}, 'Across the water the ground turns to stone, and the stone is warm, and it smells of bread.'),
-          el('p.muted', {}, 'A migration moves your whole line into the human town. Lineage and its perks start over; you earn Heritage instead, and its perks last forever. Your map, champion, archive and genome come with you. Every colony after this starts in the town.'),
+          el('p.muted', {}, 'A migration moves your whole line across the water into the human town. This colony ends, as a flight does, but your Lineage and its perks stay: the line can go on flying for more. Migration earns Heritage, a deeper currency whose perks last forever. Your map, champion, archive and genome come with you. Every colony after this starts in the town.'),
           el('h3', {}, 'Before the line can move'), list,
           ledger, el('div.row', {}, go), note,
           el('h3', {}, 'Heritage'), perks.root,
@@ -101,7 +102,7 @@ export const migration: GameSystem = {
         list.replaceChildren(...c.map(([k, ok]) => el('div', {}, el(ok ? 'span' : 'span.muted', {}, k), el('span', {}, ok ? 'done' : 'not yet'))));
         ledger.replaceChildren(...[
           ['Migrations so far', String(s.migrations)],
-          ['Heritage a migration would earn now', `${gain(ctx)} (square root of lineage, +2 per settlement, +1 per flight since the last)`],
+          ['Heritage a migration would earn now', `${gain(ctx)} (square root of lineage earned since the last migration, +2 per settlement, +1 per flight since the last)`],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         const ok = c.every(([, v]) => v);
         go.disabled = !ok;

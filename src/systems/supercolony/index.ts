@@ -1,5 +1,5 @@
 // Supercolony: the third prestige. The line stops being colonies and becomes one people across a
-// continent. Lineage and heritage start over; Unity is earned instead, from the regions you hold.
+// continent. Lineage and heritage are kept; Unity is earned on top, from the regions you hold.
 // Regions get a role (farm, forge, nursery, garrison). Each neighbouring nation is a front with a
 // standing order: hold, push or raid. Fronts move on their own; you only set the orders.
 // The continent is kept forever. Reads town, migration and jobs state. Publishes mods.
@@ -128,15 +128,14 @@ export const supercolony: GameSystem = {
         go = el('button.action', { type: 'button' }, 'Become a supercolony') as HTMLButtonElement;
         go.addEventListener('click', () => {
           if (go.disabled) return;
-          if (!go.dataset.armed) { go.dataset.armed = '1'; go.textContent = 'Really? Lineage and heritage start over'; setTimeout(() => { delete go.dataset.armed; go.textContent = 'Become a supercolony'; }, 4000); return; }
+          if (!go.dataset.armed) { go.dataset.armed = '1'; go.textContent = 'Really? This colony ends here'; setTimeout(() => { delete go.dataset.armed; go.textContent = 'Become a supercolony'; }, 4000); return; }
           const s = S(ctx);
           s.becoming = true; s.supers++;
           ctx.flags.add('legacy:super');
-          if (ctx.state.migration) { ctx.state.migration.migrating = true; ctx.state.migration.perks = {}; ctx.state.migration.total = 0; }
           ctx.rebirth();
         });
         pre = el('div', {},
-          el('p.muted', {}, 'When the town is yours, the line can stop being colonies and become one people: queens by the hundred, nests joined by highways across a continent. Lineage and heritage start over. Your continent, champion, archive and genome stay.'),
+          el('p.muted', {}, 'When the town is yours, the line can stop being colonies and become one people: queens by the hundred, nests joined by highways across a continent. This colony ends, but Lineage, Heritage and their perks stay: Unity is earned on top. Your continent, champion, archive and genome stay.'),
           list, el('div.row', {}, go));
         cv = el('canvas.viewer', { width: 320, height: 192, 'aria-label': 'The continent. Click a region.' }) as HTMLCanvasElement;
         cv.addEventListener('click', (e) => {
