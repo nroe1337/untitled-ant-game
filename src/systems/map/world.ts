@@ -30,7 +30,8 @@ export function newWorld(): WorldState {
   return { seen: [HOME], wind: Math.floor(Math.random() * 4), windT: 0, sortie: null, found: [], kin: [], sorties: 0, lost: 0 };
 }
 export const W = (ctx: Context) => (ctx.state.map.world ??= newWorld()) as WorldState;
-export const skyOpen = (ctx: Context) => ctx.flags.has('tech:sky');
+/** The World view: open with Sky scouts, and kept for good once the line has seen beyond the garden. */
+export const skyOpen = (ctx: Context) => ctx.flags.has('tech:sky') || (ctx.state.map?.world?.seen?.length ?? 0) > 1 || ctx.flags.has('legacy:migrated');
 
 // ---- layout: which biome each cell is, and where the landmarks and kin are ----
 function rng(seed: number) {
@@ -95,36 +96,44 @@ export type WOwner = 'you' | 'foe' | 'kin' | null;
 export const foeOf = (id: string) => WORLD.foes.find((f) => f.id === id)!;
 export const held = (w: WorldState, c: number) => w.held?.[c] ?? [];
 const near = (i: number, at: [number, number] | undefined, r: number) => !!at && Math.hypot((i % MAP.cols) - at[0], (Math.floor(i / MAP.cols) - at[1]) * 1.1) < r;
+/** Terrain of any cell beyond the garden: a world cell or a town cell. */
+export const terrainAt = (seed: number, c: number) => (isTown(c) ? townTerrain(seed, c) : cellTerrain(seed, c));
+/** Town sites pavement ants still hold (set each tick from the town state). */
+let townHeld: string[] = [];
 /** Who holds tile i of foreign cell c. */
 export function ownerAt(seed: number, w: WorldState, c: number, i: number): WOwner {
   if (held(w, c).includes(i)) return 'you';
+  if (isTown(c)) return townHeld.includes(townSite(c)) ? 'foe' : null;
   const cell = layout(seed)[c];
   if (cell.kin && near(i, cell.kinAt, 3)) return 'kin';
   if (cell.foe && !w.fallen?.includes(cell.foe) && near(i, cell.foeAt, WORLD.foeRadius) && cellTerrain(seed, c)[i] !== 'water') return 'foe';
   return null;
 }
-export const isFoeCore = (seed: number, c: number, i: number) => { const at = layout(seed)[c].foeAt; return !!at && i === at[1] * MAP.cols + at[0]; };
+export const isFoeCore = (seed: number, c: number, i: number) => { if (isTown(c)) return false; const at = layout(seed)[c].foeAt; return !!at && i === at[1] * MAP.cols + at[0]; };
 /** Do you hold the tile at global coordinates gx, gy (garden or beyond)? */
 function youAt(seed: number, w: WorldState, home: Tile[], gx: number, gy: number) {
-  if (gx < 0 || gy < 0 || gx >= N * MAP.cols || gy >= N * MAP.rows) return false;
-  const c = Math.floor(gy / MAP.rows) * N + Math.floor(gx / MAP.cols), i = (gy % MAP.rows) * MAP.cols + (gx % MAP.cols);
+  if (gx < 0 || gy < 0 || gx >= WIDTH * MAP.cols || gy >= N * MAP.rows) return false;
+  const c = gridCell(Math.floor(gx / MAP.cols), Math.floor(gy / MAP.rows)), i = (gy % MAP.rows) * MAP.cols + (gx % MAP.cols);
+  if (c == null) return false;
   return c === HOME ? home[i]?.o === 'you' : held(w, c).includes(i);
 }
 /** Next to land you hold, counting across cell borders. */
 export function besideYou(seed: number, w: WorldState, home: Tile[], c: number, i: number) {
-  const [cx, cy] = cxy(c), gx = cx * MAP.cols + (i % MAP.cols), gy = cy * MAP.rows + Math.floor(i / MAP.cols);
+  const [cx, cy] = gridXY(c), gx = cx * MAP.cols + (i % MAP.cols), gy = cy * MAP.rows + Math.floor(i / MAP.cols);
   return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => youAt(seed, w, home, gx + dx, gy + dy));
 }
-export const reachable = (ctx: Context, c: number) => ctx.flags.has('tech:bordernests') && c !== HOME && ring(c) <= WORLD.claim.ring && isSeen(W(ctx), c);
+export const reachable = (ctx: Context, c: number) => isTown(c)
+  ? townHome(ctx) && (!TOWN.sites[townSite(c)].needs || ctx.flags.has(TOWN.sites[townSite(c)].needs!))
+  : ctx.flags.has('tech:bordernests') && c !== HOME && ring(c) <= WORLD.claim.ring && isSeen(W(ctx), c);
 export function canClaimAt(ctx: Context, c: number, i: number) {
   const w = W(ctx), seed = ctx.state.map.seed;
   if (!reachable(ctx, c) || ownerAt(seed, w, c, i) !== null) return false;
-  if (cellTerrain(seed, c)[i] === 'water' && !ctx.flags.has('tech:rafts')) return false;
+  if (terrainAt(seed, c)[i] === 'water' && !ctx.flags.has('tech:rafts')) return false;
   return besideYou(seed, w, ctx.state.map.tiles, c, i);
 }
 export function canAssault(ctx: Context, c: number, i: number) {
   const w = W(ctx), seed = ctx.state.map.seed;
-  return reachable(ctx, c) && ctx.flags.has('tech:campaigns') && ownerAt(seed, w, c, i) === 'foe' && besideYou(seed, w, ctx.state.map.tiles, c, i);
+  return !isTown(c) && reachable(ctx, c) && ctx.flags.has('tech:campaigns') && ownerAt(seed, w, c, i) === 'foe' && besideYou(seed, w, ctx.state.map.tiles, c, i);
 }
 export const foeStrength = (seed: number, c: number, i: number) => foeOf(layout(seed)[c].foe!).power * (isFoeCore(seed, c, i) ? WORLD.coreMult : 1);
 export function takeTile(ctx: Context, c: number, i: number) {
@@ -134,7 +143,7 @@ export function takeTile(ctx: Context, c: number, i: number) {
 /** Every tile held beyond the garden, with its terrain. */
 export function heldTerrain(ctx: Context): Terrain[] {
   const w = W(ctx), seed = ctx.state.map.seed, out: Terrain[] = [];
-  for (const [c, list] of Object.entries(w.held ?? {})) { const T = cellTerrain(seed, +c); for (const i of list) out.push(T[i]); }
+  for (const [c, list] of Object.entries(w.held ?? {})) { const T = terrainAt(seed, +c); for (const i of list) out.push(T[i]); }
   return out;
 }
 const soldiers = (ctx: Context) => Math.floor(ctx.state.jobs?.assigned?.soldier ?? 0);
@@ -247,6 +256,13 @@ export function tickWorld(ctx: Context, dt: number) {
   if ((w.windT += dt) >= SW.windEvery) { w.windT = 0; w.wind = (w.wind + (Math.random() < 0.5 ? 1 : 3)) % 4; }
   if (w.sortie && (w.sortie.elapsed += dt) >= w.sortie.duration) finishSortie(ctx);
   if (w.assault && (w.assault.elapsed += dt) >= w.assault.duration) finishAssault(ctx);
+  townHeld = TOWN_SITES.filter((id) => TOWN.sites[id].rival && !ctx.state.town?.cleared?.includes(id));
+  // after a migration the new nest is dug into the warm walls: the first town tile is yours
+  if (townHome(ctx) && !TOWN_SITES.some((_, k) => held(w, TOWN0 + k).length)) {
+    const k = Math.max(0, TOWN_SITES.indexOf('walls'));
+    takeTile(ctx, TOWN0 + k, Math.floor(MAP.rows / 2) * MAP.cols + Math.floor(MAP.cols / 2));
+    ctx.log('The new nest is dug into the warm walls of the house. The garden is still ours, far across the water.', 'story');
+  }
   // landmarks help every colony of the line
   const sum: Record<string, number> = {};
   for (const id of w.found) { const l = lmName(id); sum[l.mod] = (sum[l.mod] ?? 0) + l.per; }
@@ -371,7 +387,7 @@ export function drawTownCell(cv: HTMLCanvasElement, seed: number, cc: number) {
 /** One foreign cell, close up, at the garden's 8px scale, with borders like the garden map. */
 export function drawCell(cv: HTMLCanvasElement, seed: number, w: WorldState, cc: number, hover: number | null, selected: number | null, busy: number | null) {
   const c = cv.getContext('2d')!;
-  const T = 8, cell = layout(seed)[cc], terr = cellTerrain(seed, cc);
+  const T = 8, town = isTown(cc), cell: Cell = town ? { biome: 'town', seed: 0 } : layout(seed)[cc], terr = terrainAt(seed, cc);
   const own = terr.map((_, i) => ownerAt(seed, w, cc, i));
   const OCOL: Record<string, string> = { you: PAL.you, foe: PAL.foe, kin: PAL.scent };
   terr.forEach((t, i) => {
