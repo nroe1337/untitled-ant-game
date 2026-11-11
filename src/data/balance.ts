@@ -16,9 +16,14 @@ export const BROOD = {
   nurseTends: 3,            // eggs or larvae each nurse looks after
   queenTends: 4,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
-  /** Brood mould: nurses keep the brood clean. Brood beyond what the queen and nurses can clean may
-   *  rot away, slowly. the queen alone covers an early nest, and 8 nurses clean 80 eggs and larvae, which covers a big nest. Starts with Brood care. */
-  mould: { queenCleans: 16, nurseCleans: 8, rate: 1 / 400 },
+  /** Mould, a bad resource (from Brood care on). Every egg and larva adds a little; the queen and nurses
+   *  scrub it away. Mould slows the brood: speed = 1 / (1 + mould / half). Worse past each threshold below.
+   *  The queen alone keeps up with 15 brood; each nurse with 6 more (8 nurses: about 60). */
+  mould: { perBrood: 0.02, queenClean: 0.3, nurseClean: 0.12, cap: 100, half: 25,
+    rot: 50, rotEvery: 30,            // 50+: an egg rots every 30 s
+    spoil: 50, spoilShare: 0.004,     // 50+: food stores spoil, up to 0.4%/s at 100
+    weak: 75, weakMax: 0.3,           // 75+: workers fall sick and work up to 30% slower at 100
+    sick: 90, sickEvery: 60 },        // 90+: a sick worker dies every 60 s
   healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
@@ -111,6 +116,7 @@ export const NEST = {
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, needs: 'tech:surface' },
     rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, needs: 'tech:surface' },
+    airshaft:  { name: 'Air shaft',        base: { soil: 30, food: 10 }, growth: 1.3,           desc: 'Fresh air scrubs 0.04 mould/s', mods: { mouldClean: 0.04 }, max: 15, needs: 'tech:brood' },
     warmth:    { name: 'Warming chamber',  base: { soil: 40, food: 20 }, growth: 1.32,          desc: 'Brood grows 3% faster', mods: { brood: 0.03 }, max: 15, needs: 'tech:surface' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'tech:surface' },
     twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'tech:surface' },

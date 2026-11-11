@@ -469,6 +469,12 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         }
         break;
       }
+      case 'airshaft': { // an air shaft: a narrow chimney up through the soil, with a draught of motes rising
+        blob(c, cx, y, 12, 5, PAL.hole);
+        rect(c, cx - 2, y - 10, 4, 12, PAL.hole);
+        for (let e = 0; e < 3; e++) { const r = ((t * 0.6 + e / 3 + k * 0.37) % 1); rect(c, cx - 1 + (e - 1), y + 2 - Math.floor(r * 12), 1, 1, mix(PAL.hole, PAL.bone, 0.6 * (1 - r))); }
+        break;
+      }
       case 'warmth': { // a warming chamber: warm stones that slowly glow and cool, with eggs set on top
         blob(c, cx, y, 15, 5, PAL.hole);
         for (let e = 0; e < 4; e++) {
