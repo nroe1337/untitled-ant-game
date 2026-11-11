@@ -193,6 +193,7 @@ export const brood: GameSystem = {
       res.source = 'Queen, nurses and shafts scrubbing'; res.add('mould', -mouldClean(ctx) * dt);
       res.source = 'Brood';
       const m = res.amt('mould');
+      if (m >= MO.rot && !ctx.flags.has('mould:scrub')) { ctx.flags.add('mould:scrub'); ctx.log('The mould is out of hand. Workers can scrub it by hand now (Queen tab).', 'warn'); }
       if (m >= MO.rot && res.amt('egg') >= 1) {
         s.rot = (s.rot ?? 0) + dt / MO.rotEvery;
         if (s.rot >= 1) { s.rot -= 1; res.add('egg', -1); ctx.log('An egg rots under the mould.', 'warn'); }
@@ -212,7 +213,7 @@ export const brood: GameSystem = {
       if (m >= MO.rot) hurts.push('eggs rot', 'food spoils');
       if (m >= MO.weak) hurts.push(`workers work at ${Math.round(mouldWork(ctx) * 100)}%`);
       if (m >= MO.sick) hurts.push('workers are dying');
-      ctx.alert('mould', m >= MO.half ? `Mould ${Math.floor(m)}: ${hurts.join(', ')}. Add nurses, or scrub it by hand on the Queen tab.` : null);
+      ctx.alert('mould', m >= MO.half ? `Mould ${Math.floor(m)}: ${hurts.join(', ')}. Add nurses${ctx.flags.has('mould:scrub') ? ', or scrub it by hand on the Queen tab' : ''}.` : null);
     }
 
     // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
@@ -272,7 +273,7 @@ export const brood: GameSystem = {
       update(_root, ctx) {
         const s = S(ctx);
         lay.update(ctx); forage.update(ctx); scrub.update(ctx);
-        scrubWrap.hidden = !ctx.flags.has('tech:brood') || !ctx.res.get('mould').seen;
+        scrubWrap.hidden = !ctx.flags.has('mould:scrub');
         // Lay opens after a few forages; it stays open after that
         if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
         layWrap.hidden = !ctx.flags.has('queen:lays');
