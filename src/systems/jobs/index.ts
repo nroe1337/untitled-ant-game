@@ -6,7 +6,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, CASTES, COLONY, JOBS, NEST, WAR } from '../../data/balance';
 import { drawReserve } from '../castes';
-import { roomCount, nurseClean, mouldClean, mouldMade, mouldSpeed, mouldWork, broodFoodOutlook, nurseEggsEach } from '../brood';
+import { roomCount, nurseClean, mouldClean, mouldMade, mouldSpeed, mouldWork, broodFoodOutlook, nurseEggsEach, nurseTends } from '../brood';
 
 interface JobDef {
   id: string;
@@ -329,7 +329,7 @@ export const jobs: GameSystem = {
           if (j.id === 'nurse') {
             const egg = nurseEggsEach(ctx);
             const brood = Math.floor(ctx.res.amt('egg') + ctx.res.amt('larva'));
-            const care = BROOD.queenTends + n * BROOD.nurseTends;
+            const care = BROOD.queenTends + n * nurseTends(ctx);
             parts.push(`+${tot(egg * n)} eggs/s`);
             r.row.dataset.tip = j.desc +
               `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +

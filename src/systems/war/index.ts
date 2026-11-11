@@ -337,7 +337,7 @@ export const war: GameSystem = {
   init(ctx) {
     ctx.res.define({ id: 'chitin', name: 'Chitin', order: 40, integer: true, group: 'Spoils' });
     ctx.res.define({ id: 'venom', name: 'Venom', order: 41, integer: true, group: 'Spoils' });
-    ctx.res.define({ id: 'honour', name: 'War honours', order: 42, integer: true, group: 'Spoils' });
+    ctx.res.define({ id: 'honour', name: 'War honours', order: 51, integer: true, group: 'Marks' });
     ctx.state.war = {
       rivalArmy: WAR.rivalStartArmy, nextRaid: 0, warned: false, battle: null, rallyCd: 0,
       forts: {}, campaign: null, wave: 1, raids: 0, won: 0, rivalDefeated: false, spiderDefeated: false, lastReport: '',

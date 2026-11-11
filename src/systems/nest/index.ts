@@ -26,7 +26,7 @@ const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 const ANT_TINT = '#d6b98c';
 const SECTIONS: [string, string[]][] = [
   ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall', 'clayhall']],
-  ['Brood', ['brood', 'nursery', 'warmth']],
+  ['Brood', ['warmth', 'nursery', 'brood']],
   ['Environment', ['airshaft']],
   ['Stores', ['store', 'storeroom', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'waxworks', 'pantry']],
   ['Food', ['granary', 'cistern', 'rest', 'midden', 'fungus', 'sporecellar', 'stable']],
@@ -36,7 +36,7 @@ const SECTIONS: [string, string[]][] = [
 ];
 const IDS = Object.keys(DEFS) as ChamberId[];
 
-interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[] }
+interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[]; swappedBrood?: boolean }
 const S = (ctx: Context) => ctx.state.nest as NestState;
 
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
@@ -73,7 +73,7 @@ function build(ctx: Context, id: ChamberId) {
   S(ctx).order.push(id);
   if (id === 'brood' && !ctx.flags.has('chamber:brood')) {
     ctx.flags.add('chamber:brood');
-    ctx.log('A warm brood chamber is finished. Some workers could become nurses.');
+    ctx.log('The first nurses\' den is dug. Some workers could become nurses.');
   }
   if (count(ctx, id) === 1 && id !== 'tunnel' && id !== 'brood') ctx.log(`The first ${def.name.toLowerCase()} is dug.`, 'info');
   applyEffects(ctx);
@@ -147,7 +147,17 @@ export const nest: GameSystem = {
   init(ctx) {
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
     ctx.state.nest = { built: Object.fromEntries(IDS.map((i) => [i, 0])), order: [], queue: [] } satisfies NestState;
-    ctx.bus.on('loaded', () => applyEffects(ctx));
+    ctx.bus.on('loaded', () => {
+      // Nov 2026: brood space moved from the Brood chamber (now the Nurses' den) to the Warming chamber.
+      // Older saves swap their counts once, so the colony keeps the brood space it had.
+      const n = S(ctx);
+      if (!n.swappedBrood) {
+        [n.built.brood, n.built.warmth] = [n.built.warmth ?? 0, n.built.brood ?? 0];
+        n.order = n.order.map((id) => (id === 'brood' ? 'warmth' : id === 'warmth' ? 'brood' : id));
+        n.swappedBrood = true;
+      }
+      applyEffects(ctx);
+    });
   },
 
   isUnlocked: (ctx) => ctx.flags.has('tech:digging'),
@@ -345,7 +355,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       }
       case 'brood': { // the brood chamber: eggs in a cluster, a curled larva or two, and a nurse leaning over them
         blob(c, cx, y, 16, 5, PAL.hole);
-        const n = Math.min(10, Math.max(3, Math.ceil(broodCount / Math.max(1, count(ctx, 'brood')))));
+        const n = Math.min(10, Math.max(3, Math.ceil(broodCount / Math.max(1, count(ctx, 'warmth')))));
         for (let e = 0; e < n; e++) rect(c, cx - 11 + (e % 5) * 4, y + 1 - Math.floor(e / 5) * 2, 2, 2, e % 3 === 2 ? LARVA : PAL.bone);
         rect(c, cx + 9, y - 1, 3, 2, ANT_TINT); rect(c, cx + 8, y, 1, 1, ANT_TINT); rect(c, cx + 10, y + 1, 1, 2, ANT_TINT); // the nurse
         break;

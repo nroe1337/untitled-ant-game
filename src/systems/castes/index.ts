@@ -103,7 +103,7 @@ export const castes: GameSystem = {
             ctx, label: `Breed ${t.name.toLowerCase()}`, effect: t.desc, costs: () => t.cost,
             count: () => (ctx.flags.has('caste:' + id) ? 'bred' : ''),
             enabled: (c) => !c.flags.has('caste:' + id),
-            onBuy: (c) => { c.flags.add('caste:' + id); c.log(`The first ${t.name.toLowerCase()} crawl out of the brood chamber. ${t.desc}`, 'info'); },
+            onBuy: (c) => { c.flags.add('caste:' + id); c.log(`The first ${t.name.toLowerCase()} crawl out of the warming chamber. ${t.desc}`, 'info'); },
           });
           list.append(btn.root);
           rows.set(id, btn);
