@@ -213,6 +213,11 @@ export const WAR = {
     guardRange: 120,
     rallyCooldown: 30,
     rallyMax: 8,                     // most workers that answer one rally
+    // the battle lines: the front of each side fights, the ranks behind add this share of their bite
+    spit: [1, 0.8, 0.6, 0.4, 0.2],   // our soldiers spit acid over the shoulders of the ones in front
+    raiderSupport: [1, 0.5],         // raiders only snap past the one in front
+    shoveEvery: 3, shove: 4,         // a brute at the front shoves our line back this far every few seconds
+    carrySpeed: 20,                  // rallied workers carry fallen soldiers home, wounded but alive
     chitinPerKill: 1,
     stealPerBreach: 0.04,            // fraction of food stolen per raider that gets in
     maxSteal: 0.2,                   // never more than this per raid
