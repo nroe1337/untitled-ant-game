@@ -22,6 +22,7 @@ import { supercolony } from './supercolony';
 import { stats } from './stats';
 import { happenings } from './happenings';
 import { seasons } from './seasons';
+import { kin } from './kin';
 
 export const SYSTEMS: GameSystem[] = [
   seasons,
@@ -33,6 +34,7 @@ export const SYSTEMS: GameSystem[] = [
   nest,
   expeditions,
   map,
+  kin,
   war,
   garden,
   castes,
