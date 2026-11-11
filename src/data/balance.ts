@@ -17,8 +17,8 @@ export const BROOD = {
   queenTends: 4,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
   /** Brood mould: nurses keep the brood clean. Brood beyond what the queen and nurses can clean may
-   *  rot away, slowly. 8 nurses clean 70 eggs and larvae, which covers a big nest. Starts with Brood care. */
-  mould: { queenCleans: 6, nurseCleans: 8, rate: 1 / 400 },
+   *  rot away, slowly. the queen alone covers an early nest, and 8 nurses clean 80 eggs and larvae, which covers a big nest. Starts with Brood care. */
+  mould: { queenCleans: 16, nurseCleans: 8, rate: 1 / 400 },
   healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
