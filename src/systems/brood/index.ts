@@ -17,9 +17,10 @@ interface BroodState {
   born: number;
   /** Larvae that finished growing and wait, as pupae, for living space. They no longer eat. */
   pupae?: number;
-  /** Progress toward the next egg or larva lost to mould, and how many were lost this outbreak. */
-  mould?: number;
-  mouldLost?: number;
+  /** Progress toward the next egg lost to heavy mould. */
+  rot?: number;
+  sick?: number;
+  mouldWarned?: boolean;
   royal: Record<string, number>;
 }
 
@@ -34,19 +35,25 @@ const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt(
 const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
-/** Eggs and larvae the queen and nurses look after. Brood beyond it grows slowly and may rot (from Brood care on). */
-export const broodCare = (ctx: Context) => BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends;
-export const broodUnclean = (ctx: Context) => (ctx.flags.has('tech:brood')
-  ? Math.max(0, Math.floor(ctx.res.amt('egg') + ctx.res.amt('larva') - (S(ctx).pupae ?? 0)) - broodCare(ctx)) : 0);
+/** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
+const MO = BROOD.mould;
+/** Mould scrubbed away per second by the queen and nurses. */
+export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * MO.nurseClean;
+/** Mould added per second by the eggs and larvae in the nest. */
+export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? (ctx.res.amt('egg') + ctx.res.amt('larva')) * MO.perBrood : 0);
+/** Share of full speed the brood grows at, given the mould. */
+export const mouldSpeed = (ctx: Context) => 1 / (1 + ctx.res.amt('mould') / MO.half);
+/** Share of full work speed: from `weak` up, sick workers slow every job. */
+export const mouldWork = (ctx: Context) => { const m = ctx.res.amt('mould'); return m < MO.weak ? 1 : 1 - MO.weakMax * Math.min(1, (m - MO.weak) / (MO.cap - MO.weak)); };
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity'));
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
   const brood = ctx.res.amt('egg') + ctx.res.amt('larva');
-  if (brood <= 0) return 1;
+  if (brood <= 0) return mouldSpeed(ctx);
   const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends);
-  return (tended + (brood - tended) * BROOD.untendedSpeed) / brood;
+  return (tended + (brood - tended) * BROOD.untendedSpeed) / brood * mouldSpeed(ctx);
 };
 const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
 
@@ -89,6 +96,7 @@ export const brood: GameSystem = {
     ctx.res.define({ id: 'food', name: 'Food', cap: NEST.baseFoodCap, order: 1 });
     ctx.res.define({ id: 'egg', name: 'Eggs', cap: BROOD.baseBroodCap, order: 10, integer: true, stepped: true, group: 'Brood' });
     ctx.res.define({ id: 'larva', name: 'Larvae', cap: BROOD.baseBroodCap, order: 11, integer: true, stepped: true, group: 'Brood' });
+    ctx.res.define({ id: 'mould', name: 'Mould', cap: BROOD.mould.cap, order: 12, group: 'Brood' });
     // used by royal upgrades; other systems fill them
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
@@ -167,23 +175,34 @@ export const brood: GameSystem = {
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
     }
-    // Mould: brood nobody keeps clean may rot. Eggs go first, then growing larvae (never pupae).
-    const dirty = broodUnclean(ctx);
-    if (dirty > 0) {
-      s.mould = (s.mould ?? 0) + dirty * BROOD.mould.rate * dt;
-      while (s.mould >= 1) {
-        s.mould -= 1;
-        if (res.amt('egg') >= 1) res.add('egg', -1);
-        else if (Math.floor(res.amt('larva')) - (s.pupae ?? 0) >= 1) res.add('larva', -1);
-        else break;
-        s.mouldLost = (s.mouldLost ?? 0) + 1;
-        if (s.mouldLost === 1) ctx.log('Mould creeps over the brood nobody is looking after. An egg is lost. More nurses would stop it.', 'warn');
+    // Mould: brood makes it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
+    if (ctx.flags.has('tech:brood')) {
+      const net = mouldMade(ctx) - mouldClean(ctx);
+      res.source = 'Brood'; if (net > 0) res.add('mould', net * dt);
+      res.source = 'Nurses scrubbing'; if (net < 0) res.add('mould', net * dt);
+      res.source = 'Brood';
+      const m = res.amt('mould');
+      if (m >= MO.rot && res.amt('egg') >= 1) {
+        s.rot = (s.rot ?? 0) + dt / MO.rotEvery;
+        if (s.rot >= 1) { s.rot -= 1; res.add('egg', -1); ctx.log('An egg rots under the mould.', 'warn'); }
+      } else s.rot = 0;
+      if (m >= MO.spoil && res.amt('food') > 0) {
+        res.source = 'Spoiled by mould';
+        res.add('food', -res.amt('food') * MO.spoilShare * Math.min(1, (m - MO.spoil) / (MO.cap - MO.spoil)) * dt);
+        res.source = 'Brood';
       }
-    } else if (s.mouldLost) {
-      ctx.log(`Every egg and larva is looked after again. Mould took ${s.mouldLost} before it was stopped.`, 'info');
-      s.mould = 0; s.mouldLost = 0;
+      if (m >= MO.sick && res.amt('ant') >= 2) {
+        s.sick = (s.sick ?? 0) + dt / MO.sickEvery;
+        if (s.sick >= 1) { s.sick -= 1; res.add('ant', -1); ctx.log('A worker sickens in the mould and dies.', 'warn'); }
+      } else s.sick = 0;
+      if (m >= MO.half && !s.mouldWarned) { s.mouldWarned = true; ctx.log('Mould is building up in the brood chamber. The brood grows slower. More nurses would scrub it away.', 'warn'); }
+      if (m < MO.half / 2) s.mouldWarned = false;
+      const hurts = [`brood grows at ${Math.round(mouldSpeed(ctx) * 100)}% speed`];
+      if (m >= MO.rot) hurts.push('eggs rot', 'food spoils');
+      if (m >= MO.weak) hurts.push(`workers work at ${Math.round(mouldWork(ctx) * 100)}%`);
+      if (m >= MO.sick) hurts.push('workers are dying');
+      ctx.alert('mould', m >= MO.half ? `Mould ${Math.floor(m)}: ${hurts.join(', ')}. Add nurses.` : null);
     }
-    ctx.alert('mould', dirty > 0 ? `${dirty} eggs and larvae have no nurse and can go mouldy. Each nurse looks after ${BROOD.nurseTends}.` : null);
 
     // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
     const full = s.pupae >= 1 && res.amt('ant') >= res.cap('ant');
@@ -252,7 +271,7 @@ export const brood: GameSystem = {
         ];
         const brood = Math.floor(broodUsed(ctx));
         const care = BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.nurseTends;
-        if (brood > BROOD.queenTends || care > BROOD.queenTends) lines.push(['Brood looked after', `${Math.min(brood, care)} of ${brood}` + (brood > care ? (ctx.flags.has('tech:brood') ? ' (the rest grow at half speed and can go mouldy)' : ' (the rest grow at half speed)') : '')]);
+        if (brood > BROOD.queenTends || care > BROOD.queenTends) lines.push(['Brood looked after', `${Math.min(brood, care)} of ${brood}` + (brood > care ? ' (the rest grow at half speed)' : '')]);
         const auto = nurseRate(ctx) + queenRate(ctx);
         if (auto) lines.push(['Eggs laid without you', `${auto.toFixed(3)}/s`]);
         ledger.replaceChildren(...lines.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));

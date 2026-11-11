@@ -6,7 +6,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, CASTES, COLONY, JOBS, NEST, WAR } from '../../data/balance';
 import { drawReserve } from '../castes';
-import { broodFoodOutlook, nurseEggsEach } from '../brood';
+import { mouldClean, mouldMade, mouldSpeed, mouldWork, broodFoodOutlook, nurseEggsEach } from '../brood';
 
 interface JobDef {
   id: string;
@@ -24,7 +24,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'forager', name: 'Forager', desc: 'Gathers food from the soil and roots.', produces: JOBS.forager },
   { id: 'elder', name: 'Elder', desc: 'Remembers and thinks. Makes knowledge for research.', produces: JOBS.elder, requires: 'research' },
   { id: 'digger', name: 'Digger', desc: 'Moves soil to make room for chambers.', produces: JOBS.digger, requires: 'tech:digging' },
-  { id: 'nurse', name: 'Nurse', desc: 'Lays eggs and looks after the brood.', produces: {}, requires: 'chamber:brood' },
+  { id: 'nurse', name: 'Nurse', desc: 'Lays eggs, looks after the brood and scrubs away mould.', produces: {}, requires: 'chamber:brood' },
   { id: 'scout', name: 'Scout', desc: 'Marks trails on the surface. Makes pheromone.', produces: JOBS.scout, requires: 'tech:scouting' },
   { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns. Between fights, hunts near the nest for half as much food as a forager.', produces: {}, requires: 'tech:martial' },
   { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
@@ -79,7 +79,7 @@ const offDutyFighters = (ctx: Context) => {
 };
 export const idleAnts = (ctx: Context) => totalAnts(ctx) - assignedSum(ctx) - busySum(ctx);
 const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
-const jobMult = (ctx: Context, id: string) => 1 + ctx.mods.get('job:' + id);
+const jobMult = (ctx: Context, id: string) => (1 + ctx.mods.get('job:' + id)) * mouldWork(ctx);
 const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requires);
 
 /** Daily routine: idle workers go to the default job (after any decree), leaving those held for expeditions. */
@@ -322,9 +322,12 @@ export const jobs: GameSystem = {
             const care = BROOD.queenTends + n * BROOD.nurseTends;
             parts.push(`+${tot(egg * n)} eggs/s`);
             r.row.dataset.tip = j.desc +
-              `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}.` +
-              `\nLooked after: ${Math.min(brood, care)} of ${brood}.` +
-              (brood > care ? `\nThe other ${brood - care} grow at half speed${ctx.flags.has('tech:brood') ? ' and can go mouldy' : ''}.` : '');
+              `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +
+              `\nLooked after now: ${Math.min(brood, care)} of ${brood}.` +
+              (ctx.flags.has('tech:brood')
+                ? `\nMould: the brood makes ${mouldMade(ctx).toFixed(2)}/s. The queen scrubs ${BROOD.mould.queenClean}/s and each nurse ${BROOD.mould.nurseClean}/s (${mouldClean(ctx).toFixed(2)}/s now).` +
+                  `\nBrood speed from mould: ${Math.round(mouldSpeed(ctx) * 100)}%.`
+                : '');
           }
           if (j.id === 'replete' && n && ctx.res.has('reserve')) {
             parts.push(`reserve ${fmt(ctx.res.amt('reserve'))}/${fmt(ctx.res.cap('reserve'))}`);

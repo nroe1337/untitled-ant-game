@@ -13,12 +13,17 @@ export const BROOD = {
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
   baseBroodCap: 4,          // max eggs + larvae before chambers
   nurseEggsPerSecond: 0.03, // each nurse lays this many eggs
-  nurseTends: 5,            // eggs or larvae each nurse looks after
-  queenTends: 8,            // the queen looks after this many herself
+  nurseTends: 3,            // eggs or larvae each nurse looks after
+  queenTends: 4,            // the queen looks after this many herself
   untendedSpeed: 0.5,       // brood nobody looks after grows this fast
-  /** Brood mould (from Brood care on): eggs and larvae nobody looks after grow slowly and may rot.
-   *  Each one not looked after rots about once per 1/rate seconds. Pupae never rot. */
-  mould: { rate: 1 / 400 },
+  /** Mould, a bad resource (from Brood care on). Every egg and larva adds a little; the queen and nurses
+   *  scrub it away. Mould slows the brood: speed = 1 / (1 + mould / half). Worse past each threshold below.
+   *  The queen alone keeps up with 15 brood; each nurse with 6 more (8 nurses: about 60). */
+  mould: { perBrood: 0.02, queenClean: 0.3, nurseClean: 0.12, cap: 100, half: 25,
+    rot: 50, rotEvery: 30,            // 50+: an egg rots every 30 s
+    spoil: 50, spoilShare: 0.004,     // 50+: food stores spoil, up to 0.4%/s at 100
+    weak: 75, weakMax: 0.3,           // 75+: workers fall sick and work up to 30% slower at 100
+    sick: 90, sickEvery: 60 },        // 90+: a sick worker dies every 60 s
   healCap: 0.5,             // most Wound care can cut expedition worker losses
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
