@@ -307,6 +307,7 @@ export const RESEARCH = {
     husks:      { name: 'Husk masonry',      age: 'conquest', cost: { knowledge: 480, chitin: 20 },        needs: ['fortify'],             desc: 'Unlocks the Hall of husks.' },
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 380, seed: 20 },           needs: ['seeds', 'sanitation'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
     sky:        { name: 'Sky scouts',        age: 'wings', cost: { knowledge: 380, pheromone: 150 },   pop: 0.3, needs: ['royal'],     desc: 'Winged scouts rise above the garden and see how far the world goes. Opens the World view of the Map.' },
+    bordernests: { name: 'Border nests',     age: 'wings', cost: { knowledge: 650, pheromone: 300, twig: 120 }, pop: 0.4, needs: ['sky'], flag: 'legacy:flown', desc: 'Small nests on the garden\'s edge. Scouts can claim land in the eight cells around the garden, and soldiers can march on the colonies there. Only a line that has flown knows how.' },
     castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
@@ -634,6 +635,19 @@ export const WORLD = {
     { id: 'mound',   name: 'An empty mound', desc: 'Someone lived here once. Flights earn {p} more Lineage.', mod: 'lineageGain', per: 0.05 },
     { id: 'barrel',  name: 'The rain barrel', desc: 'Its shadow keeps the ground soft. Claims cost {p} less.', mod: 'claimCost', per: -0.1 },
   ],
+  /** Land beyond the garden. ring: how far out claims reach (later layers push it further). */
+  claim: { ring: 1, scouts: 6, time: 40 },
+  /** Hostile colonies out in the world. power: the strength of each tile they hold (their core is coreMult x).
+   *  Your soldiers march on a tile next to your land; win and it is yours. Take the core and the colony falls. */
+  foes: [
+    { id: 'redhill',  name: 'Red Hill',          kind: 'fire ants',      power: 40,  loot: { chitin: [4, 8], food: [40, 90] },   note: 'Fire ants. Small, many, and they sting.' },
+    { id: 'carpent',  name: 'The Carpenters',    kind: 'carpenter ants', power: 70,  loot: { twig: [15, 30], resin: [3, 8] },   note: 'Huge ants that chew galleries into dead wood.' },
+    { id: 'harvest',  name: 'Harvester Mound',   kind: 'harvester ants', power: 90,  loot: { seed: [10, 25], food: [60, 120] },  note: 'They strip the ground bare of seed for a stone\'s throw around.' },
+    { id: 'legion',   name: 'The Pavement Legion', kind: 'pavement ants', power: 130, loot: { food: [100, 200], chitin: [6, 12] }, note: 'Endless lines between the slabs. They war with everything.' },
+  ] as { id: string; name: string; kind: string; power: number; loot: Record<string, [number, number]>; note: string }[],
+  foeRadius: 3.6,
+  coreMult: 4,
+  assault: { time: 60, loss: 0.15, honours: 2, fallHonours: 10 },
   /** Kin colonies: other nests of your own kind. Found by sorties; diplomacy opens later. */
   kin: [
     { id: 'reed',   name: 'The Reed Mound',   temper: 'wary' },

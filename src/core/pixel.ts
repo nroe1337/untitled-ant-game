@@ -21,6 +21,7 @@ export const PAL = {
   spider: '#c9a03a',
   humans: '#9aa0a6',
   waste: '#4a4238',
+  foe: '#b0405a',
 };
 
 export function setup(cv: HTMLCanvasElement) {

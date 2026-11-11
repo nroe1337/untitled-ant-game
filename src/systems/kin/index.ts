@@ -76,6 +76,7 @@ export const kin: GameSystem = {
     ctx.bus.on('war:won', bump('raids'));
     ctx.bus.on('expedition:return', bump('exp'));
     ctx.bus.on('map:capture', bump('capture'));
+    ctx.bus.on('world:capture', bump('capture'));
   },
 
   isUnlocked: (ctx) => !!ctx.state.map && found(ctx).length > 0,

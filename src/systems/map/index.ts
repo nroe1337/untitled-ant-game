@@ -9,13 +9,14 @@ import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP } from '../../data/balance';
 import { fromBalance, upgradeList } from '../../core/upgrades';
-import { W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
+import { ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
 import { WORLD } from '../../data/balance';
+import { cellTerrain } from './world';
 
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
-interface Claim { i: number; elapsed: number; duration: number; ants: number }
+interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
 interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
 const yieldMult = (ctx: Context) => 1 + MAP.upgrades.lines.per * (S(ctx).ups?.lines ?? 0);
@@ -84,7 +85,7 @@ const adjacentToYou = (ctx: Context, i: number) => {
 const outposts = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you' && t.outpost).length;
 /** Claims get dearer in a straight line with the land you hold, so the whole map is reachable in the end. */
 const claimCost = (ctx: Context): Costs => {
-  const extra = Math.max(0, owned(ctx).length - MAP.startTiles);
+  const extra = Math.max(0, owned(ctx).length + heldTerrain(ctx).length - MAP.startTiles);
   return Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.claimStep * extra) * Math.max(0.2, 1 + ctx.mods.get('claimCost')))]));
 };
 const outpostCost = (ctx: Context): Costs =>
@@ -112,6 +113,12 @@ function finishClaim(ctx: Context) {
   const s = S(ctx), c = s.claiming!;
   s.claiming = null;
   ctx.ping('map');
+  if (c.cell != null) {
+    if (!canClaimAt(ctx, c.cell, c.i)) { ctx.log('The claiming party comes home. That ground is held now, or out of reach.', 'warn'); return; }
+    takeTile(ctx, c.cell, c.i); s.claims += 1;
+    ctx.log(`Beyond the garden, the party marks a ${TERRAIN_NAME[cellTerrain(s.seed, c.cell)[c.i]].toLowerCase()} tile as ours.`, 'info');
+    return;
+  }
   const t = s.tiles[c.i];
   if (!canClaim(ctx, c.i)) { ctx.log('The claiming party comes home. Someone else holds that ground now.', 'warn'); return; }
   t.o = 'you'; s.claims += 1;
@@ -184,9 +191,12 @@ export const map: GameSystem = {
     // territory pays only once the colony has mapped it; an outpost triples its tile
     const O = MAP.outpost, n = outposts(ctx);
     if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * yieldMult(ctx) * (t.outpost ? 1 + O.yieldBoost : 1) * dt);
+    // land beyond the garden yields by terrain too
+    const far = heldTerrain(ctx);
+    for (const t of far) for (const [rid, per] of Object.entries(MAP.yield[t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * yieldMult(ctx) * dt);
     ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence);
     ctx.res.setCapBonus('ant', 'outposts', n * O.living);
-    ctx.mods.set('tiles', 'map', mine.length);
+    ctx.mods.set('tiles', 'map', mine.length + far.length);
   },
 
   panel: (() => {
@@ -203,6 +213,8 @@ export const map: GameSystem = {
     let wcv: HTMLCanvasElement, ccv: HTMLCanvasElement, wHover: HTMLElement, wSummary: HTMLElement, wInfo: HTMLElement, cInfo: HTMLElement, cTitle: HTMLElement, lmHead: HTMLElement, lmList: HTMLElement;
     let sortie: ActionButton, sortieWrap: HTMLElement, lookWrap: HTMLElement, sortieLine: HTMLElement, sortieText: HTMLElement;
     let wHoverC: number | null = null, wSel: number | null = null, looking = HOME;
+    let cHover: number | null = null, cSel: number | null = null, cHoverLine: HTMLElement, cTile: HTMLElement, fClaim: ActionButton, fAssault: ActionButton, fClaimWrap: HTMLElement, fAssaultWrap: HTMLElement, aLine: HTMLElement, aText: HTMLElement;
+    const abar = progressBar();
     const sbar = progressBar();
     const winter = (ctx: Context) => ctx.mods.get('winter') > 0;
     const canFly = (ctx: Context, c: number | null) => c != null && frontier(W(ctx), c) && !W(ctx).sortie && !winter(ctx) && scoutsFree(ctx) >= sortieAnts(c);
@@ -294,7 +306,29 @@ export const map: GameSystem = {
         const back = el('button.action', { type: 'button' }, el('span.label', {}, 'Back to the world'));
         back.addEventListener('click', () => { view = 'world'; });
         cTitle = el('p.flavor'); cInfo = el('div.ledger');
-        cellBox = el('div.mapview', {}, cTitle, ccv, cInfo, el('div.row', {}, back));
+        const cpick = (e: MouseEvent) => {
+          const r = ccv.getBoundingClientRect();
+          const x = Math.floor(((e.clientX - r.left) / r.width) * MAP.cols), y = Math.floor(((e.clientY - r.top) / r.height) * MAP.rows);
+          return inside(x, y) ? idx(x, y) : null;
+        };
+        ccv.addEventListener('mousemove', (e) => { cHover = cpick(e); });
+        ccv.addEventListener('mouseleave', () => { cHover = null; });
+        ccv.addEventListener('click', (e) => { cSel = cpick(e); });
+        cHoverLine = el('p.muted.mono'); cTile = el('div.ledger');
+        aText = el('span'); aLine = el('div.caption', { hidden: true }, aText, abar.root);
+        fClaim = actionButton({
+          ctx, label: 'Send scouts to claim', costs: () => claimCost(ctx),
+          desc: `${WORLD.claim.scouts} scouts go out from the border nests, mark the tile as ours, and come home.`,
+          enabled: (c) => cSel != null && canClaimAt(c, looking, cSel) && !S(c).claiming && scoutsFree(c) >= WORLD.claim.scouts,
+          onBuy: (c) => { S(c).claiming = { i: cSel!, cell: looking, elapsed: 0, duration: WORLD.claim.time, ants: WORLD.claim.scouts }; },
+        });
+        fAssault = actionButton({
+          ctx, label: 'March on this tile', desc: 'All soldiers march on the tile. Win and it is ours, with loot and war honours. Take their core and the colony falls.',
+          enabled: (c) => cSel != null && canAssault(c, looking, cSel) && !W(c).assault && assaultArmy(c) >= 3,
+          onBuy: (c) => sendAssault(c, looking, cSel!),
+        });
+        fClaimWrap = el('div.row', {}, fClaim.root); fAssaultWrap = el('div.row', {}, fAssault.root);
+        cellBox = el('div.mapview', {}, cTitle, ccv, cHoverLine, aLine, cInfo, el('h3', {}, 'Selected tile'), cTile, fClaimWrap, fAssaultWrap, el('div.row', {}, back));
         root.append(toggle, gardenBox, worldBox, cellBox);
       },
       update(_root: HTMLElement, ctx: Context) {
@@ -324,7 +358,7 @@ export const map: GameSystem = {
         summary.textContent = `You hold ${mine.length} tiles` + (outposts(ctx) ? `, with ${outposts(ctx)} outpost${outposts(ctx) > 1 ? 's' : ''}` : '') + '. ' +
           (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${fmt(v)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
         claimLine.hidden = !c;
-        if (c) { claimText.textContent = `${c.ants} scouts claiming ${xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
+        if (c) { claimText.textContent = `${c.ants} scouts claiming ${c.cell != null ? 'beyond the garden' : xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
         if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; return; }
         const t = s.tiles[i];
@@ -356,7 +390,7 @@ export const map: GameSystem = {
         const [hx, hy] = wHoverC == null ? [0, 0] : cxy(wHoverC);
         wHover.textContent = wHoverC == null ? 'Hover a cell.' : `${hx},${hy}  ${name(wHoverC)}`;
         const winterNote = winter(ctx) ? ' Winter: the scouts\' wings stay folded until spring.' : '';
-        wSummary.textContent = `${windName(w)}.${winterNote} ${w.seen.length - 1} cells seen from the air, ${w.found.length} of ${WORLD.landmarks.length} landmarks found` + (w.kin.length ? `, ${w.kin.length} kin colon${w.kin.length > 1 ? 'ies' : 'y'}` : '') + '. Claiming land beyond the garden is beyond this colony. For now.';
+        wSummary.textContent = `${windName(w)}.${winterNote} ${w.seen.length - 1} cells seen from the air, ${w.found.length} of ${WORLD.landmarks.length} landmarks found` + (w.kin.length ? `, ${w.kin.length} kin colon${w.kin.length > 1 ? 'ies' : 'y'}` : '') + '. ' + (ctx.flags.has('tech:bordernests') ? 'Border nests let your scouts claim in the eight cells around the garden.' : 'Claiming land beyond the garden is beyond this colony. For now.');
         const so = w.sortie;
         sortieLine.hidden = !so;
         if (so) { sortieText.textContent = `${so.ants} winged scouts over the ${name(so.cell) === 'Unexplored' ? 'unknown' : name(so.cell).toLowerCase()}, flying ${windText[so.wind]}. ${Math.ceil((so.duration - so.elapsed) / ctx.speed)}s left.`; sbar.set(so.elapsed / so.duration); }
@@ -370,6 +404,8 @@ export const map: GameSystem = {
         if (seen && c !== HOME) rows.push(['From the air', WORLD.biomes[cell.biome].note]);
         if (seen && cell.landmark) rows.push(['Landmark', lmName(cell.landmark).name]);
         if (seen && cell.kin) { const k = kinOf(cell.kin); rows.push(['Kin colony', `${k.name}. They are ${k.temper}.`]); }
+        if (seen && cell.foe) { const f = foeOf(cell.foe); rows.push([W(ctx).fallen?.includes(f.id) ? 'Fallen colony' : 'Hostile colony', `${f.name}, ${f.kind}`]); }
+        if (held(w, c).length) rows.push(['You hold', `${held(w, c).length} tiles`]);
         if (!seen) {
           if (frontier(w, c)) {
             const wd = windFor(w, c);
@@ -385,14 +421,36 @@ export const map: GameSystem = {
         sortie.update(ctx);
       },
       cell(ctx: Context) {
-        const s = S(ctx), cell = layout(s.seed)[looking];
-        drawCell(ccv, s.seed, looking);
+        const s = S(ctx), w = W(ctx), cell = layout(s.seed)[looking], terr = cellTerrain(s.seed, looking);
+        const a = w.assault, cl = s.claiming;
+        drawCell(ccv, s.seed, w, looking, cHover, cSel, a?.cell === looking ? a.i : cl?.cell === looking ? cl.i : null);
         cTitle.textContent = `${biomeName(cell)}, ${ring(looking)} cell${ring(looking) > 1 ? 's' : ''} from the garden. ${WORLD.biomes[cell.biome]?.note ?? ''}`;
+        const ON: Record<string, string> = { you: 'Your colony', foe: cell.foe ? foeOf(cell.foe).name : 'Enemy', kin: cell.kin ? kinOf(cell.kin).name : 'Kin', null: 'Unclaimed' };
+        const describe = (i: number | null) => (i == null ? '' : `${xy(i).join(',')}  ${TERRAIN_NAME[terr[i]]}, ${ON[String(ownerAt(s.seed, w, looking, i))]}${isFoeCore(s.seed, looking, i) && ownerAt(s.seed, w, looking, i) === 'foe' ? ' (their queen)' : ''}`);
+        cHoverLine.textContent = describe(cHover) || 'Hover a tile.';
+        aLine.hidden = !a;
+        if (a) { aText.textContent = `${a.army} soldiers marching. ${Math.ceil((a.duration - a.elapsed) / ctx.speed)}s left.`; abar.set(a.elapsed / a.duration); }
         const rows: [string, string][] = [];
+        if (held(w, looking).length) rows.push(['You hold', `${held(w, looking).length} tiles here`]);
         if (cell.landmark) rows.push(['Landmark', lmName(cell.landmark).name]);
-        if (cell.kin) { const k = kinOf(cell.kin); rows.push(['Kin colony', `${k.name}. They are ${k.temper}.`]); }
-        rows.push(['Claim', 'Not yet. This colony cannot hold land so far from home.']);
+        if (cell.kin) { const k = kinOf(cell.kin); rows.push(['Kin colony', `${k.name}. They are ${k.temper}. Their land is not for taking.`]); }
+        if (cell.foe) { const f = foeOf(cell.foe); rows.push([w.fallen?.includes(f.id) ? 'Fallen' : 'Hostile', `${f.name}, ${f.kind}. ${f.note}`]); }
+        if (!reachable(ctx, looking)) rows.push(['Claim', !ctx.flags.has('tech:bordernests') ? 'Not yet. This colony cannot hold land so far from home.' : 'Too far for now. Only the cells around the garden can be claimed.']);
         cInfo.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+        const i = cSel;
+        if (i == null) { cTile.replaceChildren(el('span.muted', {}, 'No tile selected.')); fClaimWrap.hidden = true; fAssaultWrap.hidden = true; return; }
+        const o = ownerAt(s.seed, w, looking, i), y = MAP.yield[terr[i]] ?? {};
+        const trows: [string, string][] = [['Tile', describe(i)], ['Yield if held', Object.keys(y).length ? Object.entries(y).map(([r, v]) => `+${fmt(v * yieldMult(ctx))} ${r}/s`).join(', ') : 'nothing']];
+        if (o === null && reachable(ctx, looking)) trows.push(['Can claim?', canClaimAt(ctx, looking, i) ? (s.claiming ? 'A party is already out claiming' : `Yes. ${WORLD.claim.scouts} scouts, about ${WORLD.claim.time}s.`) : terr[i] === 'water' && !ctx.flags.has('tech:rafts') ? 'Needs Leaf rafts' : 'Only tiles next to your land (across the garden\'s edge counts)']);
+        if (o === 'foe') {
+          trows.push(['Their strength', `about ${Math.round(foeStrength(s.seed, looking, i))}. Yours: ${Math.floor(assaultArmy(ctx) * (1 + ctx.mods.get('soldierPower')))} (${assaultArmy(ctx)} soldiers)`]);
+          if (!ctx.flags.has('tech:campaigns')) trows.push(['', 'Needs Campaigning']);
+          else if (!canAssault(ctx, looking, i)) trows.push(['', reachable(ctx, looking) ? 'Only tiles next to your land' : 'Out of reach for now']);
+        }
+        cTile.replaceChildren(...trows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+        fClaimWrap.hidden = !(o === null && reachable(ctx, looking));
+        fAssaultWrap.hidden = o !== 'foe' || !ctx.flags.has('tech:campaigns') || !reachable(ctx, looking);
+        fClaim.update(ctx); fAssault.update(ctx);
       },
     };
     return P;
@@ -425,7 +483,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, hoverI: number | null) {
     rect(c, x * T, y * T, T, 1, col); rect(c, x * T, y * T + T - 1, T, 1, col);
     rect(c, x * T, y * T, 1, T, col); rect(c, x * T + T - 1, y * T, 1, T, col);
   };
-  if (s.claiming && Math.floor(performance.now() / 400) % 2) mark(s.claiming.i, PAL.you);
+  if (s.claiming && s.claiming.cell == null && Math.floor(performance.now() / 400) % 2) mark(s.claiming.i, PAL.you);
   mark(hoverI, PAL.bone);
   mark(s.selected, PAL.bone);
 }
