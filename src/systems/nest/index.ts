@@ -469,10 +469,14 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         }
         break;
       }
-      case 'airshaft': { // an air shaft: a narrow chimney up through the soil, with a draught of motes rising
-        blob(c, cx, y, 12, 5, PAL.hole);
-        rect(c, cx - 2, y - 10, 4, 12, PAL.hole);
-        for (let e = 0; e < 3; e++) { const r = ((t * 0.6 + e / 3 + k * 0.37) % 1); rect(c, cx - 1 + (e - 1), y + 2 - Math.floor(r * 12), 1, 1, mix(PAL.hole, PAL.bone, 0.6 * (1 - r))); }
+      case 'airshaft': { // a purification chamber: a wide cone drawing fresh air up a vent, motes rising from the floor
+        dome(c, cx, y, 18, PAL.hole);
+        rect(c, cx - 2, y - 11, 4, 6, PAL.hole); // the vent through the roof
+        for (let e = 0; e < 5; e++) {
+          const r = ((t * 0.5 + e / 5 + k * 0.37) % 1);
+          const sx = cx + Math.round((e - 2) * 6 * (1 - r)); // motes start across the floor and gather toward the vent
+          rect(c, sx, y + 4 - Math.floor(r * 15), 1, 1, mix(PAL.hole, PAL.bone, 0.65 * (1 - r)));
+        }
         break;
       }
       case 'warmth': { // a warming chamber: warm stones that slowly glow and cool, with eggs set on top

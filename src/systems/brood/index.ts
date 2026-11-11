@@ -39,7 +39,7 @@ const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
 /** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
 const MO = BROOD.mould;
-/** Mould scrubbed away per second by the queen, nurses and Air shafts. */
+/** Mould scrubbed away per second by the queen, nurses and Purification chambers. */
 export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean);
 export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseClean(ctx) + ctx.mods.get('mouldClean');
 /** Mould added per second by the nest's chambers. */
@@ -49,7 +49,7 @@ export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCo
 RES_TIPS.mould = (ctx: Context) => {
   const m = ctx.res.amt('mould'), next = [[MO.half, 'the brood grows at half speed'], [MO.rot, 'eggs rot and food spoils'], [MO.weak, 'workers fall sick and slow down'], [MO.sick, 'sick workers die']] as [number, string][];
   const n = next.find(([at]) => m < at);
-  return `${roomCount(ctx)} chambers gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and shafts scrub ${fmt(mouldClean(ctx))}/s.\n` +
+  return `${roomCount(ctx)} chambers gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and purification scrub ${fmt(mouldClean(ctx))}/s.\n` +
     `Brood speed now: ${Math.round(mouldSpeed(ctx) * 100)}%.` + (n ? ` At ${n[0]}: ${n[1]}.` : '');
 };
 /** Share of full speed the brood grows at, given the mould. */
@@ -190,7 +190,7 @@ export const brood: GameSystem = {
     if (ctx.flags.has('tech:brood')) {
       if (!s.mouldIntro) { s.mouldIntro = true; ctx.log('Damp creeps into the chambers: mould. Every chamber gathers a little, and it slows the brood. The queen and nurses scrub it away (Environment, in the Stores).', 'story'); }
       res.source = 'Damp chambers'; res.add('mould', mouldMade(ctx) * dt);
-      res.source = 'Queen, nurses and shafts scrubbing'; res.add('mould', -mouldClean(ctx) * dt);
+      res.source = 'Queen, nurses and purification scrubbing'; res.add('mould', -mouldClean(ctx) * dt);
       res.source = 'Brood';
       const m = res.amt('mould');
       if (m >= MO.rot && !ctx.flags.has('mould:scrub')) { ctx.flags.add('mould:scrub'); ctx.log('The mould is out of hand. Workers can scrub it by hand now (Queen tab).', 'warn'); }
