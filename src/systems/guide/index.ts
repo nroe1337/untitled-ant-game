@@ -89,7 +89,8 @@ export const guide: GameSystem = {
         const hidden = cur.steps.filter((_, i) => !shown.includes(`${cur.age}:${i}`)).length;
         page.replaceChildren(
           el('h3', {}, ageName(cur.age)),
-          el('p.muted.g-hint', {}, hidden ? `Steps are hidden so you can work things out yourself. Click a step to reveal it. (${hidden} hidden)` : 'All steps revealed.'),
+          el('p.muted.g-hint', {}, hidden ? `Steps are hidden so you can work things out yourself. (${hidden} hidden)` : 'All steps revealed.'),
+          ...(hidden ? [el('p.controls', {}, 'Click a step to reveal it.')] : []),
           el('p.g-goal', {}, el('span.g-label', {}, 'Goal'), ...rich(cur.goal)),
           el('ol.g-steps', {}, ...cur.steps.map((st, i) => veil(`${cur.age}:${i}`, `Show step ${i + 1}`, el('li', {},
             el('div.g-head', {}, st.head),
