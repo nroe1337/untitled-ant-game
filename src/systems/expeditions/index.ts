@@ -426,6 +426,7 @@ const SCENES: Record<string, Scene> = {
   } },
 };
 
+const TRAILMARK = '#a69be6'; // the trail mark colour used in text
 const CARRY = [PAL.food, PAL.seed, '#b8966a']; // crumbs, seeds and twig bits carried home
 
 function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
@@ -464,7 +465,11 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
       const bob = Math.floor(t * 8 + i) % 2;
       rect(c, x, y - bob, 4, 2, PAL.bone);
       rect(c, x + (out ? 4 : -1), y - 1 - bob, 1, 1, PAL.bone);
-      if (!out) rect(c, x - 2, y - 1 - bob, 2, 2, CARRY[i % CARRY.length]);
+      if (i === 0) { // the lead ant holds the trail mark, both ways
+        const mx = out ? x + 5 : x - 3;
+        rect(c, mx, y - 2 - bob, 2, 3, TRAILMARK);
+        rect(c, mx, y - 2 - bob, 1, 1, '#d4ccff');
+      } else if (!out) rect(c, x - 2, y - 1 - bob, 2, 2, CARRY[i % CARRY.length]);
     }
   });
 }
