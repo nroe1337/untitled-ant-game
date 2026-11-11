@@ -18,8 +18,10 @@ export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
 interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
-interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
+interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
+const SKY_UPS = fromBalance(WORLD.skyUps);
+const skyL = (ctx: Context, id: keyof typeof WORLD.skyUps) => S(ctx).skyUps?.[id] ?? 0;
 const yieldMult = (ctx: Context) => 1 + MAP.upgrades.lines.per * (S(ctx).ups?.lines ?? 0);
 
 const S = (ctx: Context) => ctx.state.map as MapState;
@@ -144,6 +146,7 @@ export const map: GameSystem = {
   init(ctx) {
     const seed = Math.floor(Math.random() * 1e9);
     ctx.state.map = { seed, tiles: generate(seed), selected: null, claims: 0, v2: true } satisfies MapState;
+    ctx.res.define({ id: 'captmark', name: "Captain's marks", order: 53, integer: true, stepped: true, group: 'Marks' });
     ctx.bus.on('loaded', () => {
       const s = S(ctx);
       if (!s.tiles?.length) s.tiles = generate(s.seed);
@@ -183,6 +186,10 @@ export const map: GameSystem = {
     delete ctx.busy.outposts;
     delete ctx.busy.claiming;
     ctx.busy['job:scout'] = (s.claiming?.ants ?? 0) + (s.world?.sortie?.ants ?? 0); // scouts out claiming or flying don't make pheromone
+    const U = WORLD.skyUps;
+    ctx.mods.set('sortieSpeed', 'captmarks', U.tailwind.per * skyL(ctx, 'tailwind'));
+    ctx.mods.set('sortieLoot', 'captmarks', U.keen.per * skyL(ctx, 'keen'));
+    ctx.mods.set('sortieRisk', 'captmarks', U.flock.per * skyL(ctx, 'flock'));
     tickWorld(ctx, dt);
     if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
     if (s.auto && ctx.flags.has('tech:frontier')) {
@@ -203,7 +210,7 @@ export const map: GameSystem = {
   panel: (() => {
     let autoBox: HTMLInputElement, autoWrap: HTMLElement;
     let cv: HTMLCanvasElement, info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement;
-    let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement;
+    let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement, skyUps: ReturnType<typeof upgradeList>, skyHead: HTMLElement;
     let hoverI: number | null = null;
     const bar = progressBar();
     let claimLine: HTMLElement, claimText: HTMLElement;
@@ -257,6 +264,8 @@ export const map: GameSystem = {
         claimWrap = el('div.row', {}, claim.root);
         upsHead = el('h3', {}, 'Outposts');
         ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPS);
+        skyHead = el('h3', {}, "Captain's marks");
+        skyUps = upgradeList(ctx, () => (S(ctx).skyUps ??= {}), SKY_UPS);
         gardenBox = el('div.mapview', {},
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           el('p.controls', {}, 'Click a tile to inspect it.'),
@@ -303,7 +312,7 @@ export const map: GameSystem = {
           el('p.flavor', {}, 'From the air the garden is a single patch of a much larger world.'),
           el('p.controls', {}, 'Click a cell to inspect it. Double-click to look closer.'),
           wcv, wHover, wSummary, sortieLine,
-          el('h3', {}, 'Selected cell'), wInfo, sortieWrap, lookWrap, lmHead, lmList,
+          el('h3', {}, 'Selected cell'), wInfo, sortieWrap, lookWrap, skyHead, skyUps.root, lmHead, lmList,
         );
         ccv = el('canvas.map', { width: MAP.cols * 8, height: MAP.rows * 8, 'aria-label': 'A cell of the world, close up' }) as HTMLCanvasElement;
         const back = el('button.action', { type: 'button' }, el('span.label', {}, 'Back to the world'));
@@ -341,7 +350,7 @@ export const map: GameSystem = {
         toggle.hidden = !sky;
         gBtn.classList.toggle('on', view === 'garden'); wBtn.classList.toggle('on', view !== 'garden');
         gardenBox.hidden = view !== 'garden'; worldBox.hidden = view !== 'world'; cellBox.hidden = view !== 'cell';
-        if (view === 'world') P.world(ctx);
+        if (view === 'world') { P.world(ctx); skyHead.hidden = !skyUps.update(ctx) || !ctx.res.get('captmark').seen; skyUps.root.hidden = skyHead.hidden; }
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         drawMap(cv, s, hoverI);
