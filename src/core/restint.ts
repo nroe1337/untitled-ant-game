@@ -3,7 +3,7 @@ import type { Context } from './types';
 /** A muted colour for each resource name, used in Stores and wherever text names a resource. */
 export const RES_TINT: Record<string, string> = {
   ant: '#e2d6c2', food: '#a8b872', soil: '#b48e68', pheromone: '#a69be6', knowledge: '#93b6dc',
-  egg: '#efe6d2', larva: '#e3d2ad', jelly: '#e6c76c', reserve: '#c2cf8a',
+  egg: '#f0a6c8', larva: '#7fd6e8', jelly: '#e6c76c', reserve: '#c2cf8a',
   leaf: '#86b062', fungus: '#cdb7a2', honeydew: '#d9c274', wax: '#e8cb8e',
   twig: '#b8966a', seed: '#cfa848', resin: '#c48f42', amber: '#e39f45', silk: '#d6d2e8', trailmark: '#a69be6',
   chitin: '#a98264', venom: '#a6c873',
