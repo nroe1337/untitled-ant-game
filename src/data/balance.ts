@@ -599,7 +599,7 @@ export const HUSBANDRY = {
 
 /** What each resource is, for the hover text in the Stores pane. */
 export const RES_DESC: Record<string, string> = {
-  mould: 'A bad store. Every chamber gathers a little. It slows the brood, and past 500 it rots eggs, spoils food and sickens workers. The queen, nurses and Air shafts scrub it away.',
+  mould: 'Damp and rot that builds up in the nest. Every chamber gathers a little. It slows the brood, and past 500 it rots eggs, spoils food and sickens workers. The queen, nurses and Air shafts scrub it away.',
   ant: 'Adult ants. Each eats food and can take a job.',
   food: 'Feeds workers and larvae. Foragers bring it in.',
   reserve: 'Food banked by repletes, fed back when stores run dry.',
