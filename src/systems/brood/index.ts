@@ -17,6 +17,9 @@ interface BroodState {
   born: number;
   /** Larvae that finished growing and wait, as pupae, for living space. They no longer eat. */
   pupae?: number;
+  /** Progress toward the next egg or larva lost to mould, and how many were lost this outbreak. */
+  mould?: number;
+  mouldLost?: number;
   royal: Record<string, number>;
 }
 
@@ -31,6 +34,10 @@ const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt(
 const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
 const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
+/** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
+export const broodCleaned = (ctx: Context) => BROOD.mould.queenCleans + (ctx.state.jobs?.assigned?.nurse ?? 0) * BROOD.mould.nurseCleans;
+export const broodUnclean = (ctx: Context) => (ctx.flags.has('tech:brood')
+  ? Math.max(0, Math.floor(ctx.res.amt('egg') + ctx.res.amt('larva') - (S(ctx).pupae ?? 0)) - broodCleaned(ctx)) : 0);
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity'));
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
@@ -160,6 +167,24 @@ export const brood: GameSystem = {
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
     }
+    // Mould: brood nobody keeps clean may rot. Eggs go first, then growing larvae (never pupae).
+    const dirty = broodUnclean(ctx);
+    if (dirty > 0) {
+      s.mould = (s.mould ?? 0) + dirty * BROOD.mould.rate * dt;
+      while (s.mould >= 1) {
+        s.mould -= 1;
+        if (res.amt('egg') >= 1) res.add('egg', -1);
+        else if (Math.floor(res.amt('larva')) - (s.pupae ?? 0) >= 1) res.add('larva', -1);
+        else break;
+        s.mouldLost = (s.mouldLost ?? 0) + 1;
+        if (s.mouldLost === 1) ctx.log('Mould creeps over the brood pile. An egg is lost. More nurses would keep it clean.', 'warn');
+      }
+    } else if (s.mouldLost) {
+      ctx.log(`The nurses scrub the brood clean. Mould took ${s.mouldLost} before it was stopped.`, 'info');
+      s.mould = 0; s.mouldLost = 0;
+    }
+    ctx.alert('mould', dirty > 0 ? `Mould: ${dirty} eggs and larvae have nobody to clean them. Add nurses (each cleans ${BROOD.mould.nurseCleans}).` : null);
+
     // Shown for a short while when the nest first fills, then left to the Stores count until it fills again.
     const full = s.pupae >= 1 && res.amt('ant') >= res.cap('ant');
     noroomFor = full ? noroomFor + dt : 0;
