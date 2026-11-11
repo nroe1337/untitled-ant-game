@@ -89,6 +89,9 @@ export const JOBS = {
 export const NEST = {
   costGrowth: 1.3,          // default; each chamber can set its own growth
   /** Techs that make storage chambers hold more (Evolve-style shelving): tech id -> chambers it boosts by +50%. */
+  /** Each storage chamber holds this much more than the one before it, so late ones keep pace with their cost. */
+  storeGrowth: 1.08,
+  storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
   storageBoost: 0.5,
   /** Research that adds a share to all living space from chambers (a colony of thousands needs these). */
@@ -99,7 +102,7 @@ export const NEST = {
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Soil pits hold far more
   /** Surface materials have small stores until you dig Twig lofts, Seed vaults and Resin vats. */
-  baseMaterialCap: { twig: 40, seed: 25, resin: 15, silk: 20 } as Record<string, number>,
+  baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Resting chamber', base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3, later: { at: 13, cost: { knowledge: 15 } } },
     brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 8, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
@@ -244,6 +247,8 @@ export const WAR = {
     carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health each level.',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
     plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less food each level.', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },
     plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder each level.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
+    husktiles: { name: 'Husk tiles',    desc: 'Spare husks line new walls. Chambers cost {p} less each level.', per: -0.01, base: { chitin: 60 }, growth: 1.15, max: 20 },
+    sickles:   { name: 'Husk sickles',  desc: 'Foragers cut with old mandibles. They gather {p} more food each level.', per: 0.02, base: { chitin: 80 }, growth: 1.15, max: 25 },
     alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
   // war honours: earned by clearing waves and winning campaigns, spent on the honour upgrades below
