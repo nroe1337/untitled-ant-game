@@ -357,3 +357,4 @@ canvas.map.world { cursor: pointer; }
 .kin { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); }
 .kin h3 { margin: 0; }
 .kin .bar { flex: 1; max-width: 320px; }
+.kin .path { margin: 0; padding-left: 10px; border-left: 2px solid var(--line); }
