@@ -7,7 +7,8 @@ import { RESEARCH } from '../../data/balance';
 import { GUIDE } from '../../data/guide';
 import { currentAge } from '../research';
 
-interface GuideState { seen: string[]; page?: string }
+/** shown: steps the player chose to reveal, as 'age:index' ('age:next' for the next-age box). */
+interface GuideState { seen: string[]; page?: string; shown?: string[] }
 const S = (ctx: Context) => ctx.state.guide as GuideState;
 const ageIdx = (id: string) => RESEARCH.ages.findIndex((a) => a.id === id);
 const ageName = (id: string) => RESEARCH.ages[ageIdx(id)]?.name ?? id;
@@ -46,7 +47,7 @@ export const guide: GameSystem = {
     if (last !== 'dirt') ctx.log(`A new page in the Guide: ${ageName(last)}. (Legacy tab)`, 'story');
   },
   keep(ctx) {
-    return { seen: S(ctx).seen, page: S(ctx).page };
+    return { seen: S(ctx).seen, page: S(ctx).page, shown: S(ctx).shown };
   },
   panel: (() => {
     let bar: HTMLElement, page: HTMLElement, sig = '';
@@ -63,7 +64,8 @@ export const guide: GameSystem = {
         const s = S(ctx);
         const pages = GUIDE.filter((p) => s.seen.includes(p.age));
         const cur = pages.find((p) => p.age === s.page) ?? pages[pages.length - 1];
-        const key = `${pages.map((p) => p.age).join()}:${cur.age}`;
+        const shown = (s.shown ??= []);
+        const key = `${pages.map((p) => p.age).join()}:${cur.age}:${shown.length}`;
         if (key === sig) return;
         sig = key;
         bar.replaceChildren(...pages.map((p) => {
@@ -71,15 +73,30 @@ export const guide: GameSystem = {
           b.addEventListener('click', () => { s.page = p.age; });
           return b;
         }));
+        // Spoiler-free: each step stays blurred until the player clicks it.
+        const veil = (id: string, label: string, node: HTMLElement) => {
+          if (shown.includes(id)) return node;
+          node.classList.add('g-veil');
+          node.tabIndex = 0;
+          node.setAttribute('role', 'button');
+          node.setAttribute('aria-label', label);
+          node.dataset.label = label;
+          const open = () => { if (!shown.includes(id)) shown.push(id); };
+          node.addEventListener('click', open);
+          node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+          return node;
+        };
+        const hidden = cur.steps.filter((_, i) => !shown.includes(`${cur.age}:${i}`)).length;
         page.replaceChildren(
           el('h3', {}, ageName(cur.age)),
+          el('p.muted.g-hint', {}, hidden ? `Steps are hidden so you can work things out yourself. Click a step to reveal it. (${hidden} hidden)` : 'All steps revealed.'),
           el('p.g-goal', {}, el('span.g-label', {}, 'Goal'), ...rich(cur.goal)),
-          el('ol.g-steps', {}, ...cur.steps.map((st) => el('li', {},
+          el('ol.g-steps', {}, ...cur.steps.map((st, i) => veil(`${cur.age}:${i}`, `Show step ${i + 1}`, el('li', {},
             el('div.g-head', {}, st.head),
             el('ul', {}, ...st.do.map((d) => el('li', {}, ...rich(d)))),
             st.tip ? el('p.g-tip', {}, el('span.g-label', {}, 'Tip'), ...rich(st.tip)) : null,
-          ))),
-          el('p.g-next', {}, el('span.g-label', {}, 'Next age'), ...rich(cur.next)),
+          )))),
+          veil(`${cur.age}:next`, 'Show how to reach the next age', el('p.g-next', {}, el('span', {}, el('span.g-label', {}, 'Next age'), ...rich(cur.next)))),
           el('p.muted.g-key', {},
             el('span.g-tab', {}, 'Tabs'), ' · ', el('span.g-thing', {}, 'Research, chambers and buttons'), ' · ',
             el('span.g-res', {}, 'Resources'), ' · ', el('span.g-warn', {}, 'Watch out')),

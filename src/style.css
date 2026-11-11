@@ -382,3 +382,11 @@ canvas.map.world { cursor: pointer; }
 .g-thing { color: var(--warn); font-weight: 600; }
 .g-res { color: var(--good); font-weight: 600; }
 .g-warn { color: #e0705a; font-weight: 600; }
+.g-hint { font-size: 13px; margin: -4px 0 12px; }
+.g-veil { position: relative; cursor: pointer; }
+.g-veil > * { filter: blur(6px); opacity: .55; user-select: none; pointer-events: none; transition: filter .2s; }
+.g-veil::after { content: attr(data-label); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 600 13px var(--body); color: var(--fg); letter-spacing: .02em; }
+.g-veil:hover > * { filter: blur(5px); opacity: .7; }
+.g-steps > li.g-veil::marker { color: var(--muted); }
+.g-next > span { display: block; }

@@ -265,7 +265,6 @@ export const stats: GameSystem = {
     listen(ctx);
   },
 
-  isUnlocked: (ctx) => Object.keys(S(ctx)?.feats ?? {}).length > 0,
 
   keep(ctx) {
     const s = S(ctx);
