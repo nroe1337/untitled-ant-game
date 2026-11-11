@@ -353,9 +353,14 @@ export const RESEARCH = {
  * research after them costs more knowledge to keep the cap meaningful.
  */
 export const LATE_KNOWLEDGE = { from: 200, mult: 1.3 };
+/** Knowledge costs climb with each age, on top of the figures written above. */
+export const AGE_KNOWLEDGE: Record<string, number> = { dirt: 1, forage: 1.1, conquest: 1.25, wings: 1.45, settlement: 1.6, industry: 1.8, network: 2, orbital: 2.2 };
 for (const t of Object.values(RESEARCH.techs)) {
-  const k = t.cost.knowledge;
-  if (t.age !== 'dirt' && k !== undefined && k >= LATE_KNOWLEDGE.from) t.cost.knowledge = Math.round(k * LATE_KNOWLEDGE.mult / 10) * 10;
+  let k = t.cost.knowledge;
+  if (k === undefined) continue;
+  if (t.age !== 'dirt' && k >= LATE_KNOWLEDGE.from) k *= LATE_KNOWLEDGE.mult;
+  k *= AGE_KNOWLEDGE[t.age] ?? 1;
+  t.cost.knowledge = t.age === 'dirt' ? Math.round(k) : Math.round(k / 10) * 10;
 }
 
 /** Fungus farming. Beds come from the Fungus garden chamber. */
