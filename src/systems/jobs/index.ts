@@ -84,7 +84,7 @@ const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
 const jobMult = (ctx: Context, id: string) => (1 + ctx.mods.get('job:' + id)) * mouldWork(ctx);
 const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requires);
 
-/** Daily routine: idle workers go to the default job (after any decree), leaving those held for expeditions. */
+/** Daily routine: newly hatched workers go to the default job (after any decree). */
 function followRoutine(ctx: Context) {
   const s = S(ctx), id = s.defaultJob;
   // Only newly hatched workers follow the routine, so workers you move by hand stay where you put them.
@@ -278,7 +278,7 @@ export const jobs: GameSystem = {
         for (const j of JOB_DEFS) {
           const count = el('span.count'), out = el('span.muted');
           const btn = (label: string, d: number) => el('button.small', { type: 'button', title: 'Shift-click to move 10 workers. Ctrl-click to move all of them.', onclick: (e: MouseEvent) => change(ctx, j.id, e.ctrlKey || e.metaKey ? d * 9999 : e.shiftKey ? d * 10 : d) }, label);
-          const star = el('button.small.defjob', { type: 'button', title: 'Make this the default job: idle workers go here.', onclick: () => { const s = S(ctx); s.defaultJob = s.defaultJob === j.id ? undefined : j.id; } }, '☆') as HTMLButtonElement;
+          const star = el('button.small.defjob', { type: 'button', title: '', onclick: () => { const s = S(ctx); s.defaultJob = s.defaultJob === j.id ? undefined : j.id; } }, '☆') as HTMLButtonElement;
           const row = el('div.job', { title: j.desc, hidden: true },
             el('span.jname', {}, icon(j.id), j.name), btn('−', -1), count, btn('+', 1), out, star);
           list.append(row);
@@ -307,6 +307,8 @@ export const jobs: GameSystem = {
           r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);
           r.star.hidden = !ctx.flags.has('tech:routine');
           r.star.textContent = s.defaultJob === j.id ? '★' : '☆';
+          const tipText = s.defaultJob === j.id ? 'The default job: newly hatched workers go here.\nClick to clear.' : 'Newly hatched workers go to the default job.\nClick to make this the default.';
+          if (r.star.dataset.tip !== tipText) r.star.dataset.tip = tipText;
           r.star.classList.toggle('on', s.defaultJob === j.id);
           r.count.textContent = isFinite(jobMax(ctx, j.id)) ? `${s.assigned[j.id]}/${jobMax(ctx, j.id)}` : String(s.assigned[j.id]);
           // The row shows only the rate; the tooltip shows the math once.
