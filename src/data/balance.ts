@@ -643,3 +643,67 @@ export const WORLD = {
     { id: 'root',   name: 'Old Root',         temper: 'ancient' },
   ],
 };
+
+/**
+ * Kin diplomacy. Each kin colony found from the air has a temper, a chain of four quests, gifts it likes,
+ * and a feud with one other kin: helping one cools the other. Trust opens tiers; at full trust with every
+ * quest done, the two colonies can join as one for good.
+ * Quest kinds: give (pay the costs), raids (win raids), exp (expeditions home), capture (enemy tiles taken),
+ * cells (world cells seen from the air), winters (winters lived through) - all counted from when the quest
+ * is taken - and tiles, landmarks, flights (totals reached).
+ */
+export const KIN = {
+  questTrust: 20,                 // trust for each quest done
+  feudCost: 8,                    // trust the feuding kin loses when you finish a quest for its enemy
+  gift: { trust: 4, liked: 2.5, every: 90 }, // a plain gift; a liked one is worth x2.5; one gift per kin per 90s
+  tiers: [
+    { at: 0, name: 'Strangers', note: 'They let your scouts land, and nothing more.' },
+    { at: 20, name: 'Acquainted', note: 'Scent is traded at the border. They will hear your requests.' },
+    { at: 50, name: 'Allies', note: 'Half their gift is yours while the alliance holds.' },
+    { at: 80, name: 'Sworn kin', note: 'They send food along the trail: {t} a second.' },
+    { at: 100, name: 'One scent', note: 'Ready to join as one colony.' },
+  ],
+  tradeFood: 0.4,                 // food a second from each sworn kin
+  merge: { workers: 30, living: 30 }, // what a merged kin brings: workers now, living space for every colony of the line
+  tempers: {
+    wary:    { likes: 'pheromone', gift: { mod: 'expSafety',   per: -0.2,  text: 'Expeditions lose {p} fewer workers' } },
+    proud:   { likes: 'chitin',    gift: { mod: 'soldierPower', per: 0.15, text: 'Soldiers fight {p} harder' } },
+    timid:   { likes: 'food',      gift: { mod: 'brood',       per: 0.12,  text: 'The brood grows {p} faster' } },
+    greedy:  { likes: 'resin',     gift: { mod: 'expLoot',     per: 0.2,   text: 'Expeditions bring back {p} more' } },
+    ancient: { likes: 'knowledge', gift: { mod: 'lineageGain', per: 0.08,  text: 'Flights earn {p} more Lineage' } },
+  } as Record<string, { likes: string; gift: { mod: string; per: number; text: string } }>,
+  giftSize: { pheromone: 60, chitin: 15, food: 300, resin: 12, knowledge: 120 } as Record<string, number>,
+  feuds: [['ember', 'moss'], ['gilded', 'root'], ['reed', 'ember']] as [string, string][],
+  quests: {
+    reed: [
+      { kind: 'cells', n: 2, name: 'Eyes in the sky', text: 'They watch from the reeds. Show them you see as far as they do: reveal two more cells from the air.' },
+      { kind: 'give', costs: { pheromone: 150 }, name: 'Border scent', text: 'Trade scent marks, so neither colony mistakes the other in the dark.' },
+      { kind: 'exp', n: 6, name: 'Clear paths', text: 'Bring six expeditions home. Busy trails are safe trails.' },
+      { kind: 'winters', n: 1, name: 'A winter side by side', text: 'Live through a winter beside them. Only then will they believe you mean to stay.' },
+    ],
+    ember: [
+      { kind: 'raids', n: 3, name: 'Show your mandibles', text: 'They respect strength and nothing else. Win three raids.' },
+      { kind: 'give', costs: { chitin: 40 }, name: 'Husks as tribute', text: 'Send them husks of your enemies. A gift between equals.' },
+      { kind: 'capture', n: 2, name: 'Take the field', text: 'Take two tiles from the rival mound or the spider.' },
+      { kind: 'raids', n: 5, name: 'A war worth singing of', text: 'Win five more raids. Their soldiers are watching.' },
+    ],
+    moss: [
+      { kind: 'give', costs: { food: 400 }, name: 'A full stomach', text: 'They are hungry and afraid to forage. Send food.' },
+      { kind: 'exp', n: 3, name: 'Escort', text: 'Bring three expeditions home, and let their foragers walk behind yours.' },
+      { kind: 'tiles', n: 20, name: 'A safe border', text: 'Hold twenty tiles of the garden, so nothing reaches them through you.' },
+      { kind: 'winters', n: 1, name: 'Shared stores', text: 'Live through a winter. They will huddle in your shadow.' },
+    ],
+    gilded: [
+      { kind: 'give', costs: { resin: 25 }, name: 'A taste of amber', text: 'Resin, to start. They will tell you what they want next.' },
+      { kind: 'give', costs: { seed: 40 }, name: 'Seed money', text: 'Forty seeds, sound and dry.' },
+      { kind: 'landmarks', n: 2, name: 'Where the treasure is', text: 'Find two landmarks from the air. They want to know where the riches are.' },
+      { kind: 'give', costs: { food: 1500, resin: 60 }, name: 'The great bargain', text: 'A fortune in food and resin. Then they are yours.' },
+    ],
+    root: [
+      { kind: 'winters', n: 1, name: 'Patience', text: 'They have seen a hundred winters. Live through one, and come back.' },
+      { kind: 'give', costs: { knowledge: 300 }, name: 'What the elders know', text: 'Share what your elders have learned. They will judge it.' },
+      { kind: 'cells', n: 4, name: 'The old places', text: 'Reveal four more cells from the air. They remember the world before the garden.' },
+      { kind: 'flights', n: 2, name: 'A line that has flown', text: 'Your line must have flown twice. They do not join with colonies, only with lines.' },
+    ],
+  } as Record<string, { kind: string; n?: number; costs?: Record<string, number>; name: string; text: string }[]>,
+};

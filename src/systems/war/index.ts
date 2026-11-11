@@ -270,7 +270,7 @@ function endBattle(ctx: Context) {
   if (b.breaches) parts.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   if (lost) parts.push(`${lost} of ours fell`);
   if (rescued) parts.push(`${rescued} wounded carried home`);
-  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Wave cleared. Next: wave ${s.wave}, ${describeWave(s.wave)}`); }
+  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: s.wave - 1 }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Wave cleared. Next: wave ${s.wave}, ${describeWave(s.wave)}`); }
   else parts.push(`Some got through, so wave ${waveOf(ctx)} must be fought again`);
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];

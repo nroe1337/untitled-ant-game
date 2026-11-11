@@ -351,3 +351,9 @@ details.info[open] > summary { margin-bottom: 6px; }
 .mapview[hidden] { display: none; }
 .maptoggle { margin-bottom: 0; }
 canvas.map.world { cursor: pointer; }
+
+/* Kin diplomacy cards */
+.kins { display: grid; gap: 18px; }
+.kin { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); }
+.kin h3 { margin: 0; }
+.kin .bar { flex: 1; max-width: 320px; }
