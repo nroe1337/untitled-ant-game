@@ -6,7 +6,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, CASTES, COLONY, JOBS, NEST, WAR } from '../../data/balance';
 import { drawReserve } from '../castes';
-import { broodCleaned, broodFoodOutlook, nurseEggsEach } from '../brood';
+import { broodCleaned, broodUnclean, broodFoodOutlook, nurseEggsEach } from '../brood';
 
 interface JobDef {
   id: string;
@@ -324,7 +324,11 @@ export const jobs: GameSystem = {
             r.row.dataset.tip = j.desc +
               `\nEach nurse lays ${fmtEach(egg)} eggs/s and looks after ${BROOD.nurseTends} eggs or larvae. The queen looks after ${BROOD.queenTends}. The rest grow at half speed.` +
               `\nLooked after now: ${Math.min(brood, care)} of ${brood}.` +
-              (ctx.flags.has('tech:brood') ? `\nEach nurse also keeps ${BROOD.mould.nurseCleans} clean of mould (the queen ${BROOD.mould.queenCleans}). Clean now: ${Math.min(brood, broodCleaned(ctx))} of ${brood}. Unclean brood can rot.` : '');
+              (ctx.flags.has('tech:brood') ? (() => {
+                const guard = broodCleaned(ctx), risk = broodUnclean(ctx);
+                return `\nMould guard: ${guard} (queen ${BROOD.mould.queenCleans} + ${n} nurse${n === 1 ? '' : 's'} × ${BROOD.mould.nurseCleans}).` +
+                  `\nEggs and larvae now: ${brood}. ${risk ? `${risk} at risk of rotting.` : 'All safe.'}`;
+              })() : '');
           }
           if (j.id === 'replete' && n && ctx.res.has('reserve')) {
             parts.push(`reserve ${fmt(ctx.res.amt('reserve'))}/${fmt(ctx.res.cap('reserve'))}`);
