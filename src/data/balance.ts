@@ -200,24 +200,21 @@ export const WAR = {
   provokeCost: { pheromone: 6 },
   raidShare: 0.3,           // fraction of rival army that raids
   maxRaiders: 30,
-  // the entrance battle (an auto-battler)
+  // the entrance battle (an auto-battler): one stack per kind of ant on each side, every ant bites every second
   battle: {
-    laneLength: 300,
-    raider:   { hp: 3, atk: 0.8, speed: 10, chitin: 1 },
-    brute:    { hp: 12, atk: 2, speed: 6, chitin: 4 },  // a big rival soldier, from wave 3
+    pace: 0.35,                      // all bites are scaled by this, so a fight lasts long enough to watch
+    raider:   { hp: 3, atk: 0.8, chitin: 1 },
+    brute:    { hp: 12, atk: 2, chitin: 4 },  // a big rival soldier, from wave 3
     // wave n brings raiders = base + n * perWave, and one brute every bruteEvery waves
     wave: { base: 2.5, perWave: 1.5, bruteEvery: 3, clearBonus: 1, toughness: 1.08 }, // toughness: raider hp and bite x1.08 per wave past the first (compounding), so no defence keeps up forever // clearBonus: chitin per wave number on a clean win
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
-    guardRange: 120,
     rallyCooldown: 30,
     rallyMax: 8,                     // most workers that answer one rally
-    // the battle lines: the front of each side fights, the ranks behind add this share of their bite
-    spit: [1, 0.8, 0.6, 0.4, 0.2],   // our soldiers spit acid over the shoulders of the ones in front
-    raiderSupport: [1, 0.5],         // raiders only snap past the one in front
-    shoveEvery: 3, shove: 4,         // a brute at the front shoves our line back this far every few seconds
-    carrySpeed: 20,                  // rallied workers carry fallen soldiers home, wounded but alive
+    rescuePerWorker: 0.06,           // each rallied worker at the entrance: this chance that a fallen soldier is carried home alive
+    rescueMax: 0.5,
+    slipEvery: 1.5,                  // with nobody left at the entrance, a raider slips in this often (seconds)
     chitinPerKill: 1,
     stealPerBreach: 0.04,            // fraction of food stolen per raider that gets in
     maxSteal: 0.2,                   // never more than this per raid
@@ -225,7 +222,7 @@ export const WAR = {
     maxSoldierLoss: 0.25,            // never lose more than this share of soldiers per raid
   },
   fortifications: {
-    thorns:  { name: 'Thorn barricade', desc: 'Raiders move {p} slower each level.',          per: 0.04, base: { twig: 10 },             growth: 1.2,  max: 15 },
+    thorns:  { name: 'Thorn barricade', desc: 'Raiders bite {p} less each level, snagged on thorns.', per: 0.03, base: { twig: 10 },             growth: 1.2,  max: 15 },
     spitters:{ name: 'Acid spitters',   desc: 'Guard posts deal {p} more damage each level.', per: 0.05, base: { chitin: 3, resin: 1 },  growth: 1.2,  max: 30 },
     carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health each level.',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
     plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less food each level.', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },

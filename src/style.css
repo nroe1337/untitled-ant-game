@@ -318,3 +318,20 @@ details.info > summary { cursor: pointer; font-size: 13px; color: var(--muted, i
 details.info[open] > summary { margin-bottom: 6px; }
 /* war milestones: name over its reward */
 .ledger.miles > div { flex-direction: column; gap: 0; }
+
+/* the entrance battle: one ant per stack, health and count over its head */
+.field { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; max-width: 640px; padding: 12px 14px 8px; border: 1px solid var(--line); background: linear-gradient(to top, #4a3626 0 8px, var(--bg) 8px); min-height: 92px; }
+.field .side { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+.field .side.them { justify-content: flex-end; }
+.field .gate { color: var(--line); font: 400 18px var(--display); align-self: center; }
+.fighter { display: grid; justify-items: center; gap: 3px; min-width: 76px; transition: opacity .3s; }
+.fighter .fhead { display: grid; grid-template-columns: 40px auto; align-items: center; gap: 5px; }
+.fighter .bar { height: 5px; background: #b0473c; }
+.fighter .bar .fill { background: var(--good); transition: width .15s linear; }
+.fighter .fcount { font: 600 13px var(--body); font-variant-numeric: tabular-nums; min-width: 3ch; }
+.fighter.lost .fcount { color: var(--accent); }
+.fighter canvas { width: 72px; height: 40px; border: 0; image-rendering: pixelated; }
+.fighter .fname { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.fighter.down { opacity: .45; }
+.field.idle .side.them .fighter { opacity: .45; }
+@media (max-width: 520px) { .field { gap: 6px; padding: 10px 8px 8px; } .field .side { gap: 6px; } .fighter { min-width: 56px; } .fighter canvas { width: 54px; height: 30px; } .field .gate { display: none; } .field .side { flex: 1; } }
