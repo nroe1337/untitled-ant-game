@@ -29,7 +29,7 @@ export const TOWN = {
   night: 0.6,                // yield at night (dark and cold)
   both: 1.6,                 // yield working day and night (attention as day)
   perForager: 0.05,          // units per town forager per second, split over open sites
-  caps: { crumbs: 120, sugar: 60, grease: 40, paper: 60, filings: 40 },
+  caps: { crumbs: 120, sugar: 60, grease: 60, paper: 100, filings: 40 },  // grease and paper hold more than Iron dust (45) and Work ledgers (75) cost
   sites: {
     compost: { name: 'The compost heap', yields: { food: 2 },               weight: 0.3, rival: true,  desc: 'Rotting peel and coffee grounds. Pavement ants hold it.' },
     kitchen: { name: 'The kitchen floor', yields: { crumbs: 1.2, sugar: 0.4 }, weight: 1.5,            desc: 'Crumbs under the table, sugar by the kettle. Humans notice you here.' },
