@@ -28,7 +28,7 @@ const ANT_TINT = '#d6b98c';
 const SECTIONS: [string, string[]][] = [
   ['Living space', ['tunnel', 'hall', 'gallery', 'paperhall', 'clayhall']],
   ['Brood', ['warmth', 'nursery', 'brood']],
-  ['Environment', ['airshaft']],
+  ['Environment', ['airshaft', 'vent']],
   ['Stores', ['store', 'storeroom', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'waxworks', 'pantry']],
   ['Food', ['granary', 'cistern', 'rest', 'midden', 'fungus', 'sporecellar', 'stable']],
   ['Knowledge', ['library', 'memory']],
@@ -514,6 +514,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
         }
         break;
       }
+      case 'vent':
       case 'airshaft': { // a purification chamber: a wide cone drawing fresh air up a vent, motes rising from the floor
         dome(c, cx, y, 18, PAL.hole);
         rect(c, cx - 2, y - 11, 4, 6, PAL.hole); // the vent through the roof

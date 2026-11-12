@@ -1,6 +1,7 @@
 // All tuning numbers live here. Change these to rebalance; no logic in this file.
 // Pacing goal: a slow burn you check on every so often (Kittens Game / Evolve speed),
 // with many small upgrade levels (+2-3% each) instead of a few big jumps.
+import { MORE_TECHS, type TechDef } from './techs2';
 
 export const BROOD = {
   startFood: 0,             // the first colony starts with nothing: forage for the first eggs
@@ -107,7 +108,7 @@ export const NEST = {
   baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20 } as Record<string, number>,
   chambers: {
     tunnel:   { name: 'Resting chamber', base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3, later: { at: 13, cost: { knowledge: 15 } } },
-    brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 8, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
+    brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 16, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
     storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
@@ -125,7 +126,8 @@ export const NEST = {
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 6 } }, needs: 'tech:surface' },
     rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
-    airshaft:  { name: 'Purification chamber', base: { soil: 30, food: 10 }, growth: 1.36,           desc: 'Fresh air purifies 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 15, later: { at: 7, cost: { resin: 3 } }, needs: 'tech:ventilation' },
+    airshaft:  { name: 'Purification chamber', base: { soil: 30, food: 10 }, growth: 1.36,           desc: 'Fresh air purifies 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 25, later: { at: 7, cost: { resin: 3 } }, needs: 'tech:ventilation' },
+    vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'tech:surface' },
     twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'tech:surface' },
@@ -347,7 +349,7 @@ export const RESEARCH = {
     papercraft: { name: 'Paper nests',       age: 'settlement', cost: { knowledge: 450, paper: 45 },   needs: ['tasting'],            desc: 'Chewed paper makes walls. Opens the study and satellite nests.' },
     metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 700, grease: 35 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
     campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
-  } as Record<string, { name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; pop?: number; desc: string }>,
+  } as Record<string, TechDef>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
     { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },
@@ -365,6 +367,8 @@ export const RESEARCH = {
  * Memory vaults raise the knowledge cap quickly in the middle of the Age of Forage, so the
  * research after them costs more knowledge to keep the cap meaningful.
  */
+Object.assign(RESEARCH.techs, MORE_TECHS);
+
 export const LATE_KNOWLEDGE = { from: 200, mult: 1.3 };
 /** Knowledge costs climb with each age, on top of the figures written above. */
 /** Each age's cheapest research is lifted toward this. */

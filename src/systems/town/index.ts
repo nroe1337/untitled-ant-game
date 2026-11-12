@@ -40,7 +40,7 @@ function rates(ctx: Context) {
   const out: Record<string, number> = {};
   const open = openSites(ctx);
   if (!open.length) return out;
-  const each = (job(ctx, 'townforager') * T.perForager * work(ctx) * (1 + T.upgrades.tooth.per * lvl(ctx, 'tooth'))) / open.length;
+  const each = (job(ctx, 'townforager') * T.perForager * work(ctx) * (1 + T.upgrades.tooth.per * lvl(ctx, 'tooth') + ctx.mods.get('townYield'))) / open.length;
   for (const id of open) for (const [r, v] of Object.entries(SITES[id].yields)) out[r] = (out[r] ?? 0) + v * each;
   return out;
 }

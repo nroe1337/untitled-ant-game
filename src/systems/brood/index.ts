@@ -45,7 +45,7 @@ export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.ass
 /** Mould added per second by the nest's chambers. */
 /** Chambers in the nest: every one of them gathers a little mould. */
 export const roomCount = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCount(ctx) * MO.perRoom : 0);
+export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCount(ctx) * MO.perRoom * Math.max(0.3, 1 + ctx.mods.get('mouldMade')) : 0);
 RES_TIPS.mould = (ctx: Context) => {
   const m = ctx.res.amt('mould'), next = [[MO.half, 'the brood grows at half speed'], [MO.rot, 'eggs rot and food spoils'], [MO.weak, 'workers fall sick and slow down'], [MO.sick, 'sick workers die']] as [number, string][];
   const n = next.find(([at]) => m < at);
