@@ -73,7 +73,7 @@ const idle = (ctx: Context) => {
 };
 const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns');
 const durationOf = (ctx: Context, time: number, marked = false) =>
-  time * Math.max(0.4, 1 + U.feet.per * lvl(ctx, 'feet')) * (marked ? 1 - X.markTrailCut : 1);
+  time * Math.max(0.3, 1 + U.feet.per * lvl(ctx, 'feet') + ctx.mods.get('expSpeed')) * (marked ? 1 - X.markTrailCut : 1);
 /** Marking costs more for longer trails, but grows slower than the time it saves, so it always pays off. */
 const markCost = (ctx: Context) => {
   const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];

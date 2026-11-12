@@ -68,7 +68,7 @@ const jobMax = (ctx: Context, id: string) => {
   const slot = COLONY.jobSlots[id];
   if (!slot) return Infinity;
   const built = (ctx.state.nest as { built?: Record<string, number> } | undefined)?.built?.[slot[0]] ?? 0;
-  return slot[2] + slot[1] * built;
+  return slot[2] + ctx.mods.get('slots:' + id) + (slot[1] + ctx.mods.get('slotsPer:' + id)) * built;
 };
 const assignedSum = (ctx: Context) => Object.values(S(ctx).assigned).reduce((a, b) => a + b, 0);
 /** busy['job:<id>'] counts workers of that job who are away (they make nothing), not idle ones. */

@@ -28,6 +28,21 @@ function learn(ctx: Context, id: string) {
   ctx.log(`Researched ${TECHS[id].name}. ${TECHS[id].desc}`, 'info');
 }
 
+/** Learned techs publish their mods (source 'research') and storage bonuses. Keys are reset each tick so nothing lingers. */
+const MOD_KEYS = [...new Set(IDS.flatMap((id) => Object.keys(TECHS[id].mods ?? {})))];
+const CAP_KEYS = [...new Set(IDS.flatMap((id) => Object.keys(TECHS[id].caps ?? {})))];
+function applyTechEffects(ctx: Context) {
+  const mods: Record<string, number> = {}, caps: Record<string, number> = {};
+  for (const id of IDS) {
+    const t = TECHS[id];
+    if ((!t.mods && !t.caps) || !done(ctx, id)) continue;
+    for (const [k, v] of Object.entries(t.mods ?? {})) mods[k] = (mods[k] ?? 0) + v;
+    for (const [k, v] of Object.entries(t.caps ?? {})) caps[k] = (caps[k] ?? 0) + v;
+  }
+  for (const k of MOD_KEYS) ctx.mods.set(k, 'research', mods[k] ?? 0);
+  for (const k of CAP_KEYS) if (ctx.res.has(k)) ctx.res.setCapBonus(k, 'research', caps[k] ?? 0);
+}
+
 export const research: GameSystem = {
   id: 'research',
 
@@ -39,6 +54,7 @@ export const research: GameSystem = {
   isUnlocked: (ctx) => ctx.flags.has('research') || Math.floor(ctx.res.amt('ant')) >= RESEARCH.appearAtWorkers,
 
   tick(ctx) {
+    applyTechEffects(ctx);
     if (researchSlots(ctx)) runQueue(ctx, RQ(ctx), (id) => id.startsWith('u:') ? upgradeItem(ctx, id) : TECHS[id] && {
       name: TECHS[id].name, cost: () => TECHS[id].cost,
       ok: () => available(ctx, id), buy: () => learn(ctx, id),
@@ -157,8 +173,13 @@ export const researchDone: GameSystem = {
 
 /** The latest age the colony has reached: the newest age of any tech you know or can research. */
 export function currentAge(ctx: Context) {
+  // Ages are walked in order: an age is reached once one of its techs is learned or open AND a tech of the
+  // age before it is learned. So a town colony that can already see Settlement research still climbs
+  // through Conquest and Wings first (Nate, Nov 12: after a migration the ages start over).
+  const ages = RESEARCH.ages;
+  const seen = (i: number) => IDS.some((id) => TECHS[id].age === ages[i].id && (done(ctx, id) || available(ctx, id)));
+  const learned = (i: number) => IDS.some((id) => TECHS[id].age === ages[i].id && done(ctx, id));
   let best = 0;
-  for (const id of IDS) if (done(ctx, id) || available(ctx, id)) best = Math.max(best, RESEARCH.ages.findIndex((a) => a.id === TECHS[id].age));
-  if (ctx.flags.has('legacy:migrated')) best = Math.max(best, RESEARCH.ages.findIndex((a) => a.id === 'settlement'));
-  return RESEARCH.ages[best];
+  for (let i = 1; i < ages.length; i++) { if (seen(i) && learned(i - 1)) best = i; else break; }
+  return ages[best];
 }
