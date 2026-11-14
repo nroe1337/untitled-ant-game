@@ -24,6 +24,7 @@ import { happenings } from './happenings';
 import { seasons } from './seasons';
 import { kin } from './kin';
 import { guide } from './guide';
+import { wonders } from './wonders';
 
 export const SYSTEMS: GameSystem[] = [
   seasons,
@@ -34,6 +35,7 @@ export const SYSTEMS: GameSystem[] = [
   nest,
   expeditions,
   map,
+  wonders,
   kin,
   war,
   garden,

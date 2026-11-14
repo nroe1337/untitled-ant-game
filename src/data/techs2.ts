@@ -89,6 +89,7 @@ const AGE_ROWS: Record<string, Row[]> = {
   ],
   wings: [
     ['packmules', 'Pack mules', ['castes'], { knowledge: 600, food: 400 }, {}, {}, { lead: 'Majors walk with expeditions. Choose up to 3 on the Surface tab: each cuts the chance of losing workers by 10% and carries rare finds (25% more amber, royal sugar and beetle ivory), but slows the party 10%. They never fall on the trail, but they are away from the nest.' }],
+    ['wonderlore', 'Wonder lore', ['castes'], { knowledge: 620, soil: 600 }, {}, {}, { lead: 'Hold enough of one kind of ground and the colony can raise a wonder on it (Map, select a held tile). A finished wonder rises one level for good, through every flight. Builders carry to wonders too.' }],
     ['deepfinds', 'Deep finds', ['deepdig'], { knowledge: 560, clay: 60 }, {}, {}, { lead: 'Diggers strike buried things three times as often, and down in the clay they turn up clay and old beetle shells (chitin).' }],
     ['deepvents', 'Deep vents', ['deepdig'], { knowledge: 500, clay: 40 }, { mouldMade: -0.05 }, {}, { lead: 'Unlocks the Deep vent, which scrubs mould for a big nest.' }],
     ['tunnelwatch', 'Tunnel watch', ['royal', 'fortify'], { knowledge: 500, chitin: 30 }, { soldierPower: 0.08 }],

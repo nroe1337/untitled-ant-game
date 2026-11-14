@@ -474,7 +474,7 @@ export const RESEARCH = {
     campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
-    packmules: ['runs', 80, 'The expedition leaders'], talltales: ['rumours', 3, 'The expedition leaders'],
+    packmules: ['runs', 80, 'The expedition leaders'], wonderlore: ['tiles', 25, 'Your scouts'], talltales: ['rumours', 3, 'The expedition leaders'],
     nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
     meadowgranary: ['terrain:grass', 15, 'Your foragers'], soilmasons: ['terrain:soil', 12, 'Your diggers'],
     stoneposts: ['terrain:stone', 10, 'Your soldiers'], dewwells: ['terrain:water', 6, 'Your nurses'], warmslabs: ['terrain:paved', 6, 'Your nurses'],
@@ -624,6 +624,60 @@ export const LINEAGE = {
     plans:   { name: 'Master plans',   desc: 'Each level adds {p} slot to the building and research queues.', per: 1, base: { lineage: 4 }, growth: 1.35, max: 10, unit: 'flat' as const },
     swarm:   { name: 'Founding swarm', desc: 'Each new colony starts with {p} more workers per level.', per: 2, base: { lineage: 5 }, growth: 1.5, max: 10, unit: 'flat' as const },
   },
+};
+
+/**
+ * Tile wonders (Nov 14, Nate): one per terrain, raised on a tile you hold. Finishing one raises it a
+ * level for good (one level per colony, up to 10). The Great Mound grows living space; the other four
+ * rotate through three traits (tiers I/II/III at levels 1-3, 4-6, 7-9) and unlock an epic at 10.
+ * Numbers start small (CLAUDE.md): buff later if it feels weak.
+ */
+export const WONDERS = {
+  max: 10,
+  growth: 1.35,          // each level costs this much more than the last
+  loreAt: 25,            // tiles held in one colony before Wonder lore shows
+  settle: 1200,          // the Crown's settling time, seconds
+  haul: 10, haulCooldown: 3,
+  stages: [
+    { id: 'footings', name: 'Footings', cost: { soil: 1500, twig: 120 } },
+    { id: 'body',     name: 'Body',     cost: { resin: 40, seed: 60 }, rare: 0.6 },
+    { id: 'crown',    name: 'Crown',    cost: {}, rare: 0.4 },
+  ] as { id: string; name: string; cost: Record<string, number>; rare?: number }[],
+  list: {
+    mound:      { name: 'The Great Mound',   terrain: 'grass', tiles: 20, rare: { sugar: 7, ivory: 3 }, what: 'Living space from chambers +10% a level.',
+                  epic: { name: 'Daughter mounds', desc: 'When the colony is full, a swarm of 10 workers leaves every 3 minutes to raise a daughter mound on a grass tile you hold. It works as a free outpost. Up to 6 a colony.' } },
+    undercroft: { name: 'The Undercroft',    terrain: 'soil',  tiles: 16, rare: { sugar: 5, ivory: 5 }, what: 'Upgrades the nest.',
+                  traits: [
+                    { id: 'tunnels', name: 'Wide tunnels', tiers: [0.05, 0.1, 0.15], desc: 'Chambers cost {v} less soil.' },
+                    { id: 'props',   name: 'Root props',   tiers: [1, 2, 3], flat: true, desc: 'The first {v} of each chamber cost no soil.' },
+                    { id: 'stores',  name: 'Deep stores',  tiers: [0.1, 0.2, 0.3], desc: '{v} of the food that spills past the stores goes into a deep reserve, which feeds the colony when food runs out.' },
+                  ],
+                  epic: { name: 'Daughter queen', desc: 'A second queen lays eggs on her own, at half the queen\'s pace, while there is food and brood room.' } },
+    cairn:      { name: 'The War Cairn',     terrain: 'stone', tiles: 12, rare: { sugar: 2, ivory: 8 }, what: 'Upgrades your fighters.',
+                  traits: [
+                    { id: 'jaws',   name: 'Serrated mandibles', tiers: [0.05, 0.1, 0.15], desc: '{v} of bites strike twice.' },
+                    { id: 'plates', name: 'Chitin plates',      tiers: [0.06, 0.12, 0.18], desc: 'Fighters take {v} less damage.' },
+                    { id: 'acid',   name: 'Acid glands',        tiers: [0.1, 0.2, 0.3], desc: '{v} of damage splashes onto the enemy group behind.' },
+                  ],
+                  epic: { name: 'Last stand', desc: 'Once a fight, when your line would break, half of the fighters who fell in it get back up.' } },
+    ford:       { name: 'The Dew Ford',      terrain: 'water', tiles: 8,  rare: { sugar: 8, ivory: 2 }, what: 'Upgrades expeditions.',
+                  traits: [
+                    { id: 'rafts',  name: 'Leaf rafts',     tiers: [0.05, 0.1, 0.15], desc: 'Parties travel {v} faster.' },
+                    { id: 'scouts', name: 'Keen scouts',    tiers: [0.005, 0.01, 0.015], desc: 'Rumours are {v} more likely after each run.' },
+                    { id: 'safe',   name: 'Safe crossings', tiers: [0.1, 0.2, 0.3], desc: 'Parties are wiped {v} less often.' },
+                  ],
+                  epic: { name: 'Flotilla', desc: 'One more expedition column.' } },
+    stones:     { name: 'The Signal Stones', terrain: 'paved', tiles: 6,  rare: { sugar: 4, ivory: 6 }, what: 'Upgrades the map.',
+                  traits: [
+                    { id: 'fires', name: 'Beacon fires', tiers: [0.1, 0.2, 0.3], desc: 'Outposts cost {v} less (at III they also reach one tile further).' },
+                    { id: 'watch', name: 'Watch posts',  tiers: [1, 2, 3], flat: true, desc: 'Lookouts clear fog {v} tiles further.' },
+                    { id: 'roads', name: 'Paved roads',  tiers: [0.05, 0.1, 0.15], desc: 'Held tiles within 4 tiles of the nest yield {v} more.' },
+                  ],
+                  epic: { name: 'Beacon chain', desc: 'Every outpost counts as linked to the nest, as if by Linked trails, however far apart they stand.' } },
+  } as Record<string, { name: string; terrain: string; tiles: number; rare: Record<string, number>; what: string;
+    traits?: { id: string; name: string; tiers: number[]; flat?: boolean; desc: string }[]; epic: { name: string; desc: string } }>,
+  mound: { per: 0.1, swarm: 10, every: 180, maxDaughters: 6 },
+  roadsWithin: 4,
 };
 
 /** Boats and voyages. */

@@ -40,6 +40,10 @@ export class Resources {
   source = 'Other';
   private flow = new Map<string, Map<string, number>>();
   private lumping = false;
+  /** What gains ran past the cap since the last spill() call (e.g. food lost to full stores). */
+  private spills = new Map<string, number>();
+  /** Take what has spilled past the cap of a resource since the last call. */
+  spill(id: string) { const n = this.spills.get(id) ?? 0; this.spills.delete(id); return n; }
 
   define(def: ResourceDef) {
     if (this.map.has(def.id)) return this.map.get(def.id)!;
@@ -75,6 +79,7 @@ export class Resources {
   add(id: string, n: number) {
     const r = this.get(id);
     const before = r.amount;
+    if (n > 0 && r.amount + n > this.cap(id)) this.spills.set(id, (this.spills.get(id) ?? 0) + r.amount + n - Math.max(r.amount, this.cap(id)));
     r.amount = Math.max(0, Math.min(this.cap(id), r.amount + n));
     if (r.amount > 0) r.seen = true;
     if (!this.lumping && r.amount !== before) {

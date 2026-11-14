@@ -34,7 +34,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
   { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
-  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire.', produces: {}, requires: 'tech:flight' },
+  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire and the wonders.', produces: {}, requires: 'tech:flight|tech:wonderlore' },
   { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 
@@ -84,7 +84,9 @@ const offDutyFighters = (ctx: Context) => {
 export const idleAnts = (ctx: Context) => totalAnts(ctx) - assignedSum(ctx) - busySum(ctx);
 const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
 const jobMult = (ctx: Context, id: string) => (1 + ctx.mods.get('job:' + id)) * mouldWork(ctx);
-const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requires);
+/** requires may list several flags as "a|b": any one opens the job. */
+const reqOk = (ctx: Context, r?: string) => !r || r.split('|').some((f) => ctx.flags.has(f));
+const jobOpen = (ctx: Context, j: JobDef) => reqOk(ctx, j.requires);
 
 /** Buried finds: diggers now and then strike something (Deep finds: more often, and clay and chitin too). */
 function buriedFind(ctx: Context, diggerSeconds: number) {
@@ -334,7 +336,7 @@ export const jobs: GameSystem = {
         }
         for (const j of JOB_DEFS) {
           const r = rows.get(j.id)!;
-          r.row.hidden = !!j.requires && !ctx.flags.has(j.requires);
+          r.row.hidden = !reqOk(ctx, j.requires);
           r.star.hidden = !ctx.flags.has('tech:routine');
           r.star.textContent = s.defaultJob === j.id ? '★' : '☆';
           const tipText = s.defaultJob === j.id ? 'The default job: newly hatched workers go here.\nClick to clear.' : 'Newly hatched workers go to the default job.\nClick to make this the default.';

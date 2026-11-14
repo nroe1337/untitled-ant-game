@@ -163,6 +163,13 @@ export const GUIDE: GuidePage[] = [
         'Send sorties to uncover nearby cells, landmarks and other colonies.',
         'Help friendly colonies on the {Kin} tab. Finish their quests to earn trust.',
       ] },
+      { head: 'Raise wonders', do: [
+        'Hold 25 tiles and [Wonder lore] shows. Learn it.',
+        'Hold enough of one kind of ground and its wonder shows on the {Wonders} tab: grass for the Great Mound, bare soil for the Undercroft, stone for the War Cairn, stream for the Dew Ford, patio slabs for the Signal Stones.',
+        'On the {Map}, select a tile of that ground you hold and click [Raise]. Build the Footings, the Body and the Crown. The Body and Crown need |royal sugar| and |beetle ivory| from rumoured places.',
+        'Builders carry to wonders when the Spire doesn\'t need them. A bar above the tabs shows how far along each one is.',
+        'A finished wonder rises one level for good. Each can be raised once a colony, up to level 10, which unlocks its epic.',
+      ], tip: 'Every level adds something: the Mound gives living space, the others take turns adding one of three traits to battles, the nest, expeditions or the map.' },
       { head: 'Build the Swarm Spire', do: [
         'Learn [Winged queens]. The {Lineage} tab opens.',
         'Build the Spire\'s 5 stages. Stores are held back for it on their own.',

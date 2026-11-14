@@ -79,7 +79,7 @@ const openRumours = (ctx: Context) => S(ctx).rumours ?? [];
 function hearRumour(ctx: Context) {
   const s = S(ctx), open = (s.rumours ??= []);
   if (s.runs < RU.afterRuns || open.length >= RU.max) return;
-  const chance = (ctx.flags.has('tech:talltales') ? RU.tallTales : RU.chance) * (1 + U.eyes.per * lvl(ctx, 'eyes'));
+  const chance = (ctx.flags.has('tech:talltales') ? RU.tallTales : RU.chance) * (1 + U.eyes.per * lvl(ctx, 'eyes')) + ctx.mods.get('rumourChance');
   if (Math.random() >= chance) return;
   const pool = RU.places.filter((p) => !open.some((o) => o.id === p.id));
   if (!pool.length) return;
@@ -104,7 +104,7 @@ const idle = (ctx: Context) => {
   const busy = Object.entries(ctx.busy).filter(([k]) => k !== 'expeditions' && !k.startsWith('job:')).reduce((a, [, b]) => a + b, 0);
   return Math.floor(ctx.res.amt('ant')) - assigned - busy - away(ctx);
 };
-const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns');
+const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns') + ctx.mods.get('expColumns');
 const durationOf = (ctx: Context, time: number, marked = false, mules = 0) =>
   time * Math.max(0.3, 1 + U.feet.per * lvl(ctx, 'feet') + ctx.mods.get('expSpeed')) * (marked ? 1 - X.markTrailCut : 1) * (1 + X.packMules.slow * mules);
 /** Marking costs more for longer trails, but grows slower than the time it saves, so it always pays off. */
@@ -123,7 +123,7 @@ const riskText = (r: number, party: number) => {
   const n = maxLost(party);
   return `${fmt(Math.min(1, r) * 100)}% to lose ${n > 1 ? `1 to ${n} workers` : 'a worker'}`;
 };
-const wipeOf = (ctx: Context, d: { wipe: number }) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
+const wipeOf = (ctx: Context, d: { wipe: number }) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts')) * Math.max(0.1, 1 + ctx.mods.get('wipeChance'));
 
 /** Why a trip came home short. {n} is "one worker" or "3 workers". */
 const LOSSES = [
@@ -449,7 +449,7 @@ export const expeditions: GameSystem = {
           ['Rare finds', String(s.rare)],
         ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         upsHead.hidden = !ups.update(ctx);
-        drawTrail(viewer, s.parties, s.lastDest);
+        drawTrail(viewer, s.parties, s.lastDest, ctx.mods.get('fordTier'));
       },
     };
   })(),
@@ -515,7 +515,8 @@ const SCENES: Record<string, Scene> = {
 const TRAILMARK = '#a69be6'; // the trail mark colour used in text
 const CARRY = [PAL.food, PAL.seed, '#b8966a']; // crumbs, seeds and twig bits carried home
 
-function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
+/** raft: the Dew Ford's Leaf rafts tier (0-3): the party rides leaves, bigger ones at each tier. */
+function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string, raft = 0) {
   const LANE = 40;
   const H = LANE * Math.max(1, parties.length);
   if (cv.height !== H) cv.height = H;
@@ -550,6 +551,11 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
       const x = base - (out ? 1 : -1) * (col * 7 + row * 3);
       const y = y0 + LANE - 11 - (rows - 1 - row) * 3;
       const bob = Math.floor(t * 8 + i) % 2;
+      if (raft && row === rows - 1) { // a leaf under each ant of the bottom row; at III the lead leaf has a sail
+        rect(c, x - 1, y + 2, 6 + raft, 1, '#6f9a3a');
+        if (raft > 1) rect(c, x, y + 3, 4 + raft, 1, '#557a2c');
+        if (raft > 2 && i === 0) { rect(c, x + 1, y - 7, 1, 7, '#b8966a'); rect(c, x + 2, y - 7, 3, 4, PAL.bone); }
+      }
       rect(c, x, y - bob, 4, 2, PAL.bone);
       rect(c, x + (out ? 4 : -1), y - 1 - bob, 1, 1, PAL.bone);
       if (i === 0) { // the lead ant holds the trail mark, both ways
