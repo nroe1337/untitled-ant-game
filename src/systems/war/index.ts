@@ -31,6 +31,8 @@ interface Battle {
   /** seconds until the next raider slips in, once nobody holds the entrance */
   slip?: number;
   t?: number;
+  /** War Cairn: Last stand has been used this fight; the last trait effect to show, a counter, and seconds to the next one. */
+  stood?: boolean; cfx?: 'double' | 'acid' | 'stand'; cfxN?: number; cfxT?: number;
 }
 /** The rival queen's fight: she makes a move every few seconds, warned of first, and changes as she weakens. */
 interface Boss {
@@ -287,9 +289,20 @@ function stepBattle(ctx: Context, dt: number) {
   const towers = b.boss ? 0 : defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
   b.cry = Math.max(0, (b.cry ?? 0) - dt);
   const cry = b.cry > 0 ? 1 + B.warCry.boost : 1;
-  const outDmg = ours.reduce((t, x) => t + x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)) * (x.kind === 'wall' ? 1 : cry), 0) + towers;
+  // War Cairn: serrated mandibles strike twice now and then, acid splashes onto the group behind
+  const dbl = ctx.mods.get('cairnDouble'), acid = ctx.mods.get('cairnAcid');
+  const fighters = (x: Stack) => x.kind === 'major' || x.kind === 'soldier';
+  const fightDmg = ours.reduce((t, x) => t + (fighters(x) ? x.n * x.atk * power(ctx) * cry * (1 + dbl) : 0), 0);
+  const outDmg = ours.reduce((t, x) => t + (fighters(x) ? 0 : x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)) * (x.kind === 'wall' ? 1 : cry)), 0) + fightDmg + towers;
+  if ((dbl || acid) && fightDmg > 0) {
+    b.cfxT = (b.cfxT ?? 1) - dt;
+    if (b.cfxT <= 0) { b.cfxT = 1.2 + Math.random(); b.cfx = acid && (!dbl || Math.random() < 0.5) ? 'acid' : 'double'; b.cfxN = (b.cfxN ?? 0) + 1; }
+  }
   const fr = b.boss?.frenzy ? 2 : 1;
-  const inDmg = theirs.reduce((t, x) => t + x.n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1), 0) * blunt;
+  // War Cairn: chitin plates soften the bites on our fighters (not the barricade)
+  const front = alive(b.us)[0];
+  const plated = front && (front.kind === 'major' || front.kind === 'soldier') ? 1 - ctx.mods.get('cairnPlates') : 1;
+  const inDmg = theirs.reduce((t, x) => t + x.n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1), 0) * blunt * plated;
   // while she is burrowed our bites can't reach her, only her guard
   const targets = b.boss?.burrow ? b.them.filter((x) => x.kind !== 'rqueen') : b.them;
   biteSide(targets, outDmg * P, (x, n) => {
@@ -298,6 +311,14 @@ function stepBattle(ctx: Context, dt: number) {
     b.chitin = (b.chitin ?? 0) + n * (x.kind === 'brute' ? B.brute.chitin * (skullWorks(ctx, 'brute') ? 2 : 1) : B.raider.chitin);
     if (x.kind === 'raider' || x.kind === 'brute') addTrophy(ctx, x.kind);
   });
+  if (acid && fightDmg > 0) {
+    const behind = alive(targets)[1];
+    if (behind) biteSide([behind], fightDmg * acid * P, (x, n) => {
+      if (x.kind === 'thrall') { b.soldiersLost += n; return; }
+      b.kills += n;
+      b.chitin = (b.chitin ?? 0) + n * (x.kind === 'brute' ? B.brute.chitin * (skullWorks(ctx, 'brute') ? 2 : 1) : B.raider.chitin);
+    });
+  }
   if (ours.length) {
     // rallied workers carry the fallen home: each one at the entrance makes a rescue likelier
     const carriers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
@@ -311,6 +332,19 @@ function stepBattle(ctx: Context, dt: number) {
       b.rescued = (b.rescued ?? 0) + saved;
       if (x.kind === 'major') b.majorsLost = (b.majorsLost ?? 0) + n; else b.soldiersLost += n;
     });
+  } else if (ctx.mods.get('cairnStand') > 0 && !b.stood && b.us.some((x) => (x.kind === 'major' || x.kind === 'soldier') && x.start > 0)) {
+    // Last stand (War Cairn epic): once a fight, half of the fallen get back up
+    b.stood = true;
+    let up = 0;
+    for (const x of b.us) {
+      if (x.kind !== 'major' && x.kind !== 'soldier') continue;
+      const back = Math.ceil(x.start / 2);
+      x.n = back; x.hp = x.max; up += back;
+      if (x.kind === 'major') b.majorsLost = Math.max(0, (b.majorsLost ?? 0) - back); else b.soldiersLost = Math.max(0, b.soldiersLost - back);
+    }
+    b.cfx = 'stand'; b.cfxN = (b.cfxN ?? 0) + 1;
+    ctx.log(`Last stand. As the line breaks, ${up} of the fallen get back up and fight on.`, 'story');
+    if (b.boss) say(b.boss, 'LAST STAND', true, 3);
   } else if (b.boss) {
     endBoss(ctx, false); return;
   } else if (queenGuard(ctx) > 0 && !b.us.some((x) => x.kind === 'queen')) {
@@ -778,7 +812,8 @@ function mix(a: string, b: string, f: number) {
   return '#' + [0, 1, 2].map((i) => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * f).toString(16).padStart(2, '0')).join('');
 }
 const CW = 18, CH = 10;
-function drawAnt(cv: HTMLCanvasElement, x: Stack, theirs: boolean, fighting: boolean) {
+/** cairn: War Cairn trait tiers (jaws, plates, acid), drawn onto our fighters. */
+function drawAnt(cv: HTMLCanvasElement, x: Stack, theirs: boolean, fighting: boolean, cairn: [number, number, number] = [0, 0, 0]) {
   const c = setup(cv);
   c.clearRect(0, 0, CW, CH);
   const shape = SHAPES[x.kind === 'major' ? 'major' : x.kind === 'brute' || x.kind === 'queen' ? 'brute' : x.kind === 'rqueen' ? 'rqueen' : x.kind === 'wall' ? 'wall' : 'small'];
@@ -799,6 +834,17 @@ function drawAnt(cv: HTMLCanvasElement, x: Stack, theirs: boolean, fighting: boo
       c.fillRect(theirs ? CW - 1 - px : px, top + y, 1, 1);
     }
   });
+  if (!theirs && (x.kind === 'major' || x.kind === 'soldier') && x.n > 0 && (cairn[0] || cairn[1] || cairn[2])) {
+    // the body's midline is its widest row; the head is its right end, the gaster its left
+    let mid = 0, w = 0;
+    shape.forEach((r, y) => { const n = r.split('#').length - 1; if (n > w) { w = n; mid = y; } });
+    const row = shape[mid], L = row.indexOf('#'), Rt = row.lastIndexOf('#');
+    const px = (i: number, y: number, colr: string) => { c.fillStyle = colr; c.fillRect(1 + i + lunge, top + y, 1, 1); };
+    const [jaws, plates, acid] = cairn;
+    if (acid) for (let i = L; i < L + 1 + acid; i++) for (let y = Math.max(0, mid - 1); y <= mid + 1; y++) if (shape[y]?.[i] === '#') px(i, y, mix(PAL.you, '#9bd34a', 0.35 + acid * 0.15));
+    if (plates) for (let i = L + 3; i < Math.min(Rt - 2, L + 3 + plates * 2); i += 1) if (shape[mid - 1]?.[i] === '#' || mid === 0) px(i, Math.max(0, mid - 1), mix(PAL.you, PAL.bone, 0.5));
+    if (jaws) { const jc = mix(PAL.bone, PAL.you, 0.2); px(Rt + 1, mid, jc); if (jaws > 1) px(Rt + 2, mid, jc); if (jaws > 2) { px(Rt + 2, mid - 1, jc); px(Rt + 2, mid + 1, jc); } }
+  }
 }
 interface Card { root: HTMLElement; fill: HTMLElement; count: HTMLElement; cv: HTMLCanvasElement; stack?: Stack }
 function card(kind: Kind, info: (x: Stack) => (Node | string)[]): Card {
@@ -838,6 +884,11 @@ function fighterInfo(ctx: Context, x: Stack, theirs: boolean, boss: boolean): (N
     if (S(ctx).battle?.cry) why.push(`War cry: bite ${pct(B.warCry.boost)}`);
     if (fl(ctx, 'carapace')) why.push(`Hardened carapace: health ${pct(F.carapace.per * fl(ctx, 'carapace'))}`);
     if (x.kind === 'major') why.push('Majors stand in front and take the first bites.');
+    const cd = ctx.mods.get('cairnDouble'), cp = ctx.mods.get('cairnPlates'), ca = ctx.mods.get('cairnAcid');
+    if (cd) why.push(`Serrated mandibles: ${Math.round(cd * 100)}% of bites strike twice (War Cairn)`);
+    if (cp) why.push(`Chitin plates: ${Math.round(cp * 100)}% less damage taken (War Cairn)`);
+    if (ca) why.push(`Acid glands: ${Math.round(ca * 100)}% of damage splashes onto the group behind (War Cairn)`);
+    if (ctx.mods.get('cairnStand')) why.push(S(ctx).battle?.stood ? 'Last stand: used this fight' : 'Last stand: once a fight, half the fallen get back up');
   }
   for (const w of why) out.push(el('div.muted', {}, w));
   return out;
@@ -849,7 +900,7 @@ function battleField() {
   const bossBar = el('div.bossbar', { hidden: true }, bossName, el('span.bar', {}, bossFill));
   const fxLayer = el('div.fx', { 'aria-hidden': 'true' });
   const field = el('div.field', { role: 'img', 'aria-label': 'The nest entrance' }, us, el('div.gate', {}, 'vs'), them, fxLayer);
-  let fxSeen = 0;
+  let fxSeen = 0, cfxSeen = 0;
   /** A burst of little CSS particles for one of her moves. */
   const burst = (kind: string) => {
     const spec: Record<string, { n: number; cls: string; from: [number, number]; to: [number, number] }> = {
@@ -860,6 +911,10 @@ function battleField() {
       cry:     { n: 3,  cls: 'ring',  from: [85, 85], to: [0, 0] },
       berserk: { n: 5,  cls: 'ring',  from: [85, 85], to: [0, 0] },
       burrow:  { n: 18, cls: 'dirt',  from: [76, 94], to: [0, 0] },
+      // War Cairn traits
+      cairnacid: { n: 6, cls: 'drop', from: [55, 75], to: [0, 0] },
+      double:  { n: 2,  cls: 'ring small', from: [38, 48], to: [0, 0] },
+      stand:   { n: 5,  cls: 'ring gold', from: [10, 40], to: [0, 0] },
     };
     const sp = spec[kind];
     if (!sp) return;
@@ -917,6 +972,9 @@ function battleField() {
       call.classList.toggle('warn', !!bs?.next);
       if (bs && (bs.fxN ?? 0) !== fxSeen) { fxSeen = bs.fxN ?? 0; if (bs.fx) burst(bs.fx); }
       if (!bs) fxSeen = 0;
+      if (b && (b.cfxN ?? 0) !== cfxSeen) { cfxSeen = b.cfxN ?? 0; if (b.cfx) burst(b.cfx === 'acid' ? 'cairnacid' : b.cfx === 'stand' ? 'stand' : 'double'); }
+      if (!b) cfxSeen = 0;
+      field.classList.toggle('stood', !!b?.stood);
       const show = (x: Stack, side: string) => {
         const cd = cards.get(side + x.kind);
         if (!cd) return;
@@ -925,7 +983,7 @@ function battleField() {
         cd.count.textContent = x.kind === 'wall' ? `${Math.floor(x.n ? x.hp : 0)}` : `×${x.n}`;
         cd.root.classList.toggle('down', x.n <= 0);
         cd.root.classList.toggle('lost', (x.fell ?? 0) > 0);
-        drawAnt(cd.cv, x, side === 't', !!b);
+        drawAnt(cd.cv, x, side === 't', !!b, [ctx.mods.get('cairnJawsTier'), ctx.mods.get('cairnPlatesTier'), ctx.mods.get('cairnAcidTier')]);
       };
       ours.forEach((x) => show(x, 'u'));
       theirs.forEach((x) => show(x, 't'));

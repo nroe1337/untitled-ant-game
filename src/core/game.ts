@@ -4,7 +4,7 @@ import { EventBus } from './events';
 import { Mods } from './mods';
 import { el, costFocus } from './ui';
 import { queueOrder, setQueueOrder } from './options';
-import { queueDock, updateDock } from './queue';
+import { queueDock, updateDock, projectDock } from './queue';
 import { icon } from './sprites';
 import { RES_TINT, watchResourceNames } from './restint';
 import { RES_DESC } from '../data/balance';
@@ -210,7 +210,7 @@ export class Game {
         el('div.tools', {}, this.pauseBtn, speedBtn, menuWrap)),
       this.layoutEl = el('div.layout', {},
         el('aside.side', {}, el('h2.kicker', {}, 'Stores'), this.resList, this.envHead, this.envList),
-        el('main.main', {}, this.fanfareEl, this.groupBar, this.tabBar, this.panelHost),
+        el('main.main', {}, this.fanfareEl, projectDock, this.groupBar, this.tabBar, this.panelHost),
         el('aside.story', {}, queueDock, el('h2.kicker', {}, 'Chronicle'), this.logEl)),
     );
   }

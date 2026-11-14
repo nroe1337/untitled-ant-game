@@ -483,3 +483,16 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .rumourrow button { justify-self: start; margin-top: 4px; }
 .field.warcry { box-shadow: inset 0 -18px 30px -12px rgba(230, 150, 60, .45); }
 .field.warcry .side:not(.them) canvas { filter: drop-shadow(0 0 3px #e0963c); }
+
+/* ---- wonders (Nov 14) ---- */
+.projects:empty { display: none; }
+.projectbar { display: flex; flex-direction: column; gap: 3px; margin: 0 0 6px; }
+.projectbar .project { display: grid; grid-template-columns: minmax(0, auto) 1fr auto; gap: 8px; align-items: center; font-size: 12px; padding: 3px 8px; border: 1px solid var(--line, #3a332b); border-radius: 4px; background: rgba(208, 138, 46, .07); }
+.projectbar .pname { color: #d9a441; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projectbar .bar { position: relative; height: 5px; min-width: 60px; background: rgba(255, 255, 255, .08); border-radius: 3px; overflow: hidden; }
+.projectbar .bar .fill { position: absolute; inset: 0 auto 0 0; background: #d9a441; }
+.projectbar .ppct { font-variant-numeric: tabular-nums; opacity: .8; }
+.section.wonder h3 { color: #d9a441; }
+.fx .ring.small { width: 10px; height: 10px; margin-left: -5px; bottom: 26px; border-color: #e6dfd3; }
+.fx .ring.gold { width: 34px; height: 34px; margin-left: -17px; border-color: #f2c14e; box-shadow: 0 0 8px #f2c14e; }
+.field.stood { box-shadow: inset 0 0 18px rgba(242, 193, 78, .35); }

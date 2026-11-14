@@ -96,4 +96,10 @@ export function dockStrip(rank: number, root: HTMLElement, run: (ctx: Context) =
   docked.sort((a, b) => a.rank - b.rank);
   queueDock.replaceChildren(...docked.map((d) => d.root));
 }
-export function updateDock(ctx: Context) { for (const d of docked) d.run(ctx); }
+export function updateDock(ctx: Context) { for (const d of docked) d.run(ctx); for (const r of projects) r(ctx); }
+
+/** Big projects (wonders) show a bar above the tabs, so they can be followed from any screen. */
+export const projectDock = el('div.projects');
+const projects: ((ctx: Context) => void)[] = [];
+export function dockProject(root: HTMLElement, run: (ctx: Context) => void) { projectDock.append(root); projects.push(run); }
+export function updateProjects(ctx: Context) { for (const r of projects) r(ctx); }

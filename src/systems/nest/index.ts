@@ -48,6 +48,9 @@ const costOf = (ctx: Context, id: ChamberId): Costs => {
   if (d.later && n + 1 >= d.later.at) {
     for (const [r, v] of Object.entries(d.later.cost)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * Math.pow(g, n + 1 - d.later.at) * cheaper);
   }
+  // the Undercroft: Wide tunnels take less soil; Root props make the first few of each chamber free of soil
+  if (out.soil) out.soil = n < ctx.mods.get('rootProps') ? 0 : Math.ceil(out.soil * (1 + ctx.mods.get('wonderSoil')));
+  if (out.soil === 0) delete out.soil;
   return out;
 };
 const totalChambers = (ctx: Context) => Object.values(S(ctx).built).reduce((a, b) => a + b, 0);
@@ -369,6 +372,19 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   rect(c, shaftX - 3, surface ? 0 : 16, 6, bottom - (surface ? 0 : 16), PAL.hole);
   const qy = bottom + 2 + Math.ceil(qs.h / 2);
   blob(c, shaftX, qy, Math.max(18, Math.ceil(qs.w / 2) + 4), Math.max(6, Math.ceil(qs.h / 2) + 2), PAL.hole); // the queen's cell
+  // the Undercroft: the deep reserve under the nest fills and drains; a daughter queen keeps her own cell
+  const deepT = ctx.mods.get('storesTier');
+  if (deepT) {
+    const qx = shaftX + Math.max(18, Math.ceil(qs.w / 2) + 4) + 10, fill = Math.min(1, (ctx.state.wonders?.reserve ?? 0) / Math.max(1, ctx.res.cap('food')));
+    const dw = 10 + deepT * 4;
+    rect(c, qx, qy - 3, dw, 7, PAL.hole);
+    if (fill > 0) rect(c, qx + 1, qy + 3 - Math.max(1, Math.round(fill * 5)), dw - 2, Math.max(1, Math.round(fill * 5)), fill >= 1 ? '#f2c14e' : PAL.amber);
+  }
+  if (ctx.mods.get('daughterQueen') > 0) {
+    const dx = shaftX - Math.max(18, Math.ceil(qs.w / 2) + 4) - 16;
+    blob(c, dx, qy, 9, 4, PAL.hole);
+    rect(c, dx - 4, qy - 1, 7, 3, PAL.amber); rect(c, dx + 3, qy - 1, 2, 2, PAL.amber);
+  }
 
   const fillFood = ctx.res.amt('food') / Math.max(1, ctx.res.cap('food'));
   const broodCount = ctx.res.amt('egg') + ctx.res.amt('larva');
@@ -382,7 +398,18 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     cx: shaftX + Math.sign(LANES[i % LANES.length]) * LANE_X[Math.abs(LANES[i % LANES.length])],
   });
   // every connecting tunnel first, so a far chamber's tunnel never paints over a near chamber
-  placed.forEach((_, i) => { const { y, cx } = where(i); rect(c, Math.min(shaftX, cx), y - 1, Math.abs(cx - shaftX), 3, PAL.hole); });
+  // the Undercroft: Wide tunnels are drawn wider, Root props brace them with roots
+  const wideT = ctx.mods.get('tunnelsTier'), propT = ctx.mods.get('propsTier');
+  placed.forEach((_, i) => {
+    const { y, cx } = where(i), x0 = Math.min(shaftX, cx), len = Math.abs(cx - shaftX);
+    rect(c, x0, y - 1 - Math.ceil(wideT / 2), len, 3 + wideT, PAL.hole);
+    if (propT) for (let x = x0 + 4; x < x0 + len - 2; x += 7) {
+      const top = y - 2 - Math.ceil(wideT / 2), bot = y + 2 + Math.floor(wideT / 2);
+      rect(c, x, top - 1, 1, 2, '#6b4a2e');
+      if (propT > 1) rect(c, x + 3, bot, 1, 2, '#6b4a2e');
+      if (propT > 2) rect(c, x + 1, top - 2, 1, 1, '#8a6a3e');
+    }
+  });
   placed.forEach((id, i) => {
     const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
     const lane = LANES[i % LANES.length];

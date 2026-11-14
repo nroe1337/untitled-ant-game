@@ -7,17 +7,19 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
-import { MAP } from '../../data/balance';
+import { MAP, WONDERS } from '../../data/balance';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { terrainAt, gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
 import { WORLD } from '../../data/balance';
 import { makeCamera, type Camera } from './camera';
 import { TOWN } from '../../data/town';
+import { wonderTileBox } from '../wonders';
 const TOWN_SITE_IDS = Object.keys(TOWN.sites);
 
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
-export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
+/** w: a wonder stands (or is being built) here; dm: the outpost is a daughter mound (Great Mound epic). */
+export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean }
 interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
 interface MapState { lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
@@ -124,7 +126,8 @@ const bases = (ctx: Context) => {
 const basesChanged = () => { baseCache.at = -1; };
 /** Steps (diagonals count as one) from tile i to the nearest nest or outpost. */
 const homeDist = (ctx: Context, i: number) => { const [x, y] = xy(i); return Math.min(...bases(ctx).map((b) => { const [bx, by] = xy(b); return Math.max(Math.abs(x - bx), Math.abs(y - by)); })); };
-export const inReach = (ctx: Context, i: number) => homeDist(ctx, i) <= MAP.reach;
+const reachOf = (ctx: Context) => MAP.reach + ctx.mods.get('reach');
+export const inReach = (ctx: Context, i: number) => homeDist(ctx, i) <= reachOf(ctx);
 
 // ---- outpost research ----
 const cheb = (a: number, b: number) => { const [ax, ay] = xy(a), [bx, by] = xy(b); return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); };
@@ -132,7 +135,9 @@ const cheb = (a: number, b: number) => { const [ax, ay] = xy(a), [bx, by] = xy(b
 function linkedOutposts(ctx: Context) {
   const all = bases(ctx), nest = all.filter((i) => S(ctx).tiles[i].core);
   const linked = new Set<number>(nest), queue = [...nest];
-  while (queue.length) { const a = queue.pop()!; for (const b of all) if (!linked.has(b) && cheb(a, b) <= MAP.reach) { linked.add(b); queue.push(b); } }
+  // Beacon chain (Signal Stones epic): every outpost counts as linked, however far apart
+  if (ctx.mods.get('beaconChain') > 0) for (const b of all) linked.add(b);
+  while (queue.length) { const a = queue.pop()!; for (const b of all) if (!linked.has(b) && cheb(a, b) <= reachOf(ctx)) { linked.add(b); queue.push(b); } }
   for (const n of nest) linked.delete(n);
   return linked;
 }
@@ -147,8 +152,10 @@ const besideOutpost = (ctx: Context, i: number) => { const [x, y] = xy(i); for (
 /** Every held tile's yield multiplier, outposts and camps included. */
 function tileMult(ctx: Context, i: number, linked: Set<number> | null) {
   const t = S(ctx).tiles[i];
-  if (t.outpost) return outpostMult(ctx, i, linked);
-  return ctx.flags.has('tech:foragingcamps') && besideOutpost(ctx, i) ? 1 + MAP.camps : 1;
+  // Paved roads (Signal Stones): tiles near the nest yield a little more
+  const road = ctx.mods.get('roadYield') > 0 && cheb(i, idx(...MAP.nest)) <= WONDERS.roadsWithin ? 1 + ctx.mods.get('roadYield') : 1;
+  if (t.outpost) return outpostMult(ctx, i, linked) * road;
+  return (ctx.flags.has('tech:foragingcamps') && besideOutpost(ctx, i) ? 1 + MAP.camps : 1) * road;
 }
 /** Lookouts: every few seconds each outpost clears the nearest fog around it, paid for in the chosen resource. */
 function lookouts(ctx: Context, dt: number) {
@@ -157,7 +164,7 @@ function lookouts(ctx: Context, dt: number) {
   s.lookCd = (s.lookCd ?? MAP.lookout.every) - dt;
   if (s.lookCd > 0) return;
   s.lookCd = MAP.lookout.every;
-  const far = MAP.reach + MAP.lookout.sight;
+  const far = reachOf(ctx) + MAP.lookout.sight + ctx.mods.get('lookoutSight');
   for (const o of bases(ctx)) {
     if (!s.tiles[o].outpost) continue;
     let best = -1, bd = Infinity;
@@ -179,7 +186,7 @@ const claimCost = (ctx: Context): Costs => {
   return Object.fromEntries(Object.entries(MAP.claimCost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.claimStep * extra) * Math.max(0.2, 1 + ctx.mods.get('claimCost')))]));
 };
 const outpostCost = (ctx: Context): Costs =>
-  Object.fromEntries(Object.entries(MAP.outpost.cost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.outpost.step * outposts(ctx)))]));
+  Object.fromEntries(Object.entries(MAP.outpost.cost).map(([k, v]) => [k, Math.ceil(v * (1 + MAP.outpost.step * outposts(ctx)) * Math.max(0.3, 1 + ctx.mods.get('outpostCost')))]));
 const claimTime = (ctx: Context, i: number) => Math.round(MAP.claimTime + MAP.claimTimePerTile * homeDist(ctx, i));
 /** Stream tiles open with Leaf rafts; patio slabs once soldiers can clear the pavement ants (Street fighting). */
 const openGround = (ctx: Context, t: Tile) =>
@@ -264,7 +271,7 @@ export const map: GameSystem = {
   // but outposts are left behind and must be built again
   keep(ctx) {
     const s = S(ctx);
-    return { ...s, selected: null, ups: {}, claiming: null, world: s.world ? { ...s.world, sortie: null } : undefined, tiles: s.tiles.map((t) => ({ ...t, outpost: false })) };
+    return { ...s, selected: null, ups: {}, claiming: null, world: s.world ? { ...s.world, sortie: null } : undefined, tiles: s.tiles.map((t) => ({ ...t, outpost: false, w: undefined, dm: undefined })) };
   },
 
   tick(ctx, dt) {
@@ -286,9 +293,9 @@ export const map: GameSystem = {
     // territory pays only once the colony has mapped it; an outpost triples its tile
     const O = MAP.outpost, n = outposts(ctx);
     if (ctx.flags.has('tech:cartography')) {
-      const linked = ctx.flags.has('tech:linkedtrails') ? linkedOutposts(ctx) : null, works = ctx.flags.has('tech:terrainworks');
+      const linked = ctx.flags.has('tech:linkedtrails') || ctx.mods.get('beaconChain') > 0 ? linkedOutposts(ctx) : null, works = ctx.flags.has('tech:terrainworks');
       s.tiles.forEach((t, i) => {
-        if (t.o !== 'you') return;
+        if (t.o !== 'you' || t.w) return; // a wonder's tile gives no yield while it stands
         const m = yieldMult(ctx) * tileMult(ctx, i, linked);
         for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * m * dt);
         if (works && t.outpost) for (const [rid, per] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * m * dt);
@@ -308,6 +315,7 @@ export const map: GameSystem = {
     let abandonWrap: HTMLElement, lookBox: HTMLElement, lookText: HTMLElement;
     const lookBtns = new Map<string, HTMLButtonElement>();
     let cam: Camera, ccam: Camera, lastLooking = -1;
+    let wbox: ReturnType<typeof wonderTileBox>;
     let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement;
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement, skyUps: ReturnType<typeof upgradeList>, skyHead: HTMLElement;
     let hoverI: number | null = null;
@@ -382,7 +390,7 @@ export const map: GameSystem = {
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           el('div.row.camctl', {}, el('p.controls', {}, 'Drag the map or use the arrow keys to look around. Click a tile to inspect it. Click the small map to jump.'), homeBtn),
           cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap), lookBox,
-          el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap, abandonWrap,
+          el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap, abandonWrap, (wbox = wonderTileBox(ctx)).root,
           upsHead, ups.root,
         );
         // ---- the world ----
@@ -458,12 +466,12 @@ export const map: GameSystem = {
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         hoverI = cam.hover;
-        drawMap(cam.source, s, (i) => inReach(ctx, i));
+        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')]);
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
           for (const [r, b] of lookBtns) b.classList.toggle('on', String(s.lookout ?? null) === r);
-          lookText.textContent = s.lookout ? ` Each outpost clears a patch of fog every ${MAP.lookout.every}s, up to ${MAP.reach + MAP.lookout.sight} tiles out.` : ' Lookouts are idle.';
+          lookText.textContent = s.lookout ? ` Each outpost clears a patch of fog every ${MAP.lookout.every}s, up to ${reachOf(ctx) + MAP.lookout.sight + ctx.mods.get('lookoutSight')} tiles out.` : ' Lookouts are idle.';
         }
         autoBox.checked = !!s.auto;
         const describe = (i: number | null) => {
@@ -488,7 +496,7 @@ export const map: GameSystem = {
         claimLine.hidden = !c;
         if (c) { claimText.textContent = `${c.ants} scouts claiming ${c.cell != null ? 'beyond the garden' : xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
-        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; abandonWrap.hidden = true; return; }
+        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; abandonWrap.hidden = true; wbox.update(null); return; }
         const t = s.tiles[i];
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
@@ -500,14 +508,16 @@ export const map: GameSystem = {
           if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)
             ? (s.claiming ? 'A party is already out claiming' : scouts(ctx) >= claimScouts(ctx, i) ? `Yes. ${claimScouts(ctx, i)} scouts, about ${claimTime(ctx, i)}s.` : `Needs ${claimScouts(ctx, i)} scouts (you have ${scouts(ctx)})`)
             : !openGround(ctx, t) ? (t.t === 'water' ? 'Needs Leaf rafts' : t.o === 'humans' ? 'Needs Street fighting' : 'No')
-            : !inReach(ctx, i) ? `Too far from home. Build an outpost within ${MAP.reach} tiles of here to reach it.` : 'Only tiles next to your territory']);
-          if (t.o === 'you' && t.outpost) rows.push(['Outpost', `Built. Claims reach ${MAP.reach} tiles from here.`]);
+            : !inReach(ctx, i) ? `Too far from home. Build an outpost within ${reachOf(ctx)} tiles of here to reach it.` : 'Only tiles next to your territory']);
+          if (t.o === 'you' && t.outpost) rows.push([t.dm ? 'Daughter mound' : 'Outpost', `Built. Claims reach ${reachOf(ctx)} tiles from here.`]);
+          const wl = wbox.line(i); if (wl) rows.push(['Wonder', wl + '. The tile gives no yield while it stands.']);
           if (t.o === 'rival' || t.o === 'spider') rows.push(['Enemy ground', 'Take it with a campaign from the War tab']);
           if (t.o === 'humans' && !ctx.flags.has('tech:pavement')) rows.push(['Humans', 'Too big to fight. For now.']);
         }
         info.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         claimWrap.hidden = !(t.seen && (t.o === null || t.o === 'humans') && openGround(ctx, t));
-        buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && ctx.flags.has('tech:cartography'));
+        buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && ctx.flags.has('tech:cartography'));
+        wbox.update(i);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
         claim.update(ctx); build.update(ctx);
         void fmt;
@@ -605,7 +615,8 @@ export const map: GameSystem = {
 
 // ---- drawing: flat colours, 8px tiles, no shading ----
 /** Paint the whole garden into the camera's source canvas. Hover is drawn by the camera. */
-function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean) {
+/** stones: the Signal Stones' trait tiers (beacon fires, watch posts, paved roads), drawn on outposts and near tiles. */
+function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0]) {
   const c = setup(cv);
   const T = 8;
   const near = s.tiles.map((t, i) => t.seen && reach(i));
@@ -633,6 +644,22 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
       if (n(1, 0) !== tile.o) rect(c, X + T - 1, Y, 1, T, col);
       if (tile.core) rect(c, X + 2, Y + 2, 4, 4, col);
       else if (tile.outpost) rect(c, X + 3, Y + 3, 2, 2, col);
+      if (tile.o === 'you' && tile.outpost) {
+        const [fire, watch] = stones;
+        if (watch) rect(c, X + 1, Y + 7 - watch - 2, 1, watch + 2, PAL.bone); // a tower, taller each tier
+        if (watch > 2 && Math.floor(performance.now() / 600) % 2) rect(c, X + 1, Y + 7 - watch - 3, 1, 1, '#f2c14e');
+        if (fire) { const flick = Math.floor(performance.now() / 250 + i) % 2; rect(c, X + 5, Y + 2 + flick, 1, 2 - flick + (fire > 1 ? 1 : 0), fire > 1 ? '#f2c14e' : PAL.amber); if (fire > 2) rect(c, X + 5, Y, 1, 1, '#8a8a8a'); }
+      }
+      // Paved roads: road lines running out from the nest, along its row and column
+      const roads = stones[2];
+      if (roads && tile.o === 'you' && !tile.core && (x === MAP.nest[0] || y === MAP.nest[1]) && Math.max(Math.abs(x - MAP.nest[0]), Math.abs(y - MAP.nest[1])) <= WONDERS.roadsWithin) {
+        const rc = roads > 2 ? '#a8a29a' : roads > 1 ? '#8f8a82' : '#6f6a62';
+        if (Math.abs(x - MAP.nest[0]) >= Math.abs(y - MAP.nest[1])) rect(c, X + 1, Y + 4, T - 2, 1, rc); else rect(c, X + 4, Y + 1, 1, T - 2, rc);
+      }
+    }
+    if (tile.w) {
+      // a little stepped monument in gold
+      rect(c, X + 1, Y + 6, 6, 1, PAL.amber); rect(c, X + 2, Y + 4, 4, 2, PAL.amber); rect(c, X + 3, Y + 2, 2, 2, PAL.amber); rect(c, X + 3, Y + 1, 2, 1, PAL.bone);
     }
   });
   const mark = (i: number | null, col: string) => {

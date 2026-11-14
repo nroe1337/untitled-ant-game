@@ -29,6 +29,7 @@ interface BroodState {
   rhythmCd?: number;
   /** Night shift: seconds until the queen lays on her own again. */
   nightCd?: number;
+  daughterCd?: number;
 }
 
 const S = (ctx: Context) => ctx.state.brood as BroodState;
@@ -204,6 +205,16 @@ export const brood: GameSystem = {
         s.nightCd = BROOD.layEggCooldown;
         res.source = 'Night shift'; res.add('food', -cost); res.source = 'Brood';
         addEggs(ctx, clutch(ctx)); ctx.bus.emit('queen:lay');
+      }
+    }
+    // Daughter queen (the Undercroft's epic): a second queen lays on her own at half the pace, while there is food and room
+    if (ctx.mods.get('daughterQueen') > 0) {
+      s.daughterCd = Math.max(0, (s.daughterCd ?? 0) - dt);
+      const cost = BROOD.eggFoodCost * clutch(ctx);
+      if (s.daughterCd <= 0 && broodUsed(ctx) < broodCap(ctx) && res.amt('food') - cost >= res.cap('food') * 0.25) {
+        s.daughterCd = BROOD.layEggCooldown * 2;
+        res.source = 'Daughter queen'; res.add('food', -cost); res.source = 'Brood';
+        addEggs(ctx, clutch(ctx));
       }
     }
     // Mould: chambers gather it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
