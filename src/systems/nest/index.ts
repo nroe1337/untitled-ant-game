@@ -469,7 +469,13 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
           rect(c, x + 1, y - 5, 5, 1, PAL.rival); rect(c, x, y - 4, 7, 1, PAL.rival); rect(c, x + 1, y - 3, 5, 1, HUSK_DARK);
           rect(c, x + 1, y + 4, 5, 1, PAL.rival); rect(c, x, y + 3, 7, 1, HUSK_DARK);
         }
-        rect(c, cx - 2, y - 1, 4, 2, mix(PAL.rival, PAL.bone, 0.3)); // one whole head, kept as a trophy
+        // the trophy wall: one skull for each kind of foe killed (or one old head, before any)
+        const skulls = Math.max(1, Math.min(8, ctx.state.war?.skulls?.length ?? 0));
+        for (let e = 0; e < skulls; e++) {
+          const sx = cx - skulls * 2 + e * 4, sy = y - 1, bone = mix(PAL.rival, PAL.bone, 0.3 + 0.08 * (e % 3));
+          rect(c, sx, sy - 1, 3, 2, bone); rect(c, sx + 1, sy + 1, 1, 1, bone); // dome, then the jaw
+          rect(c, sx, sy, 1, 1, PAL.hole); rect(c, sx + 2, sy, 1, 1, PAL.hole); // eye holes
+        }
         break;
       }
       case 'harbour': { // a harbour: a still pool with a twig jetty, a leaf raft tied up, and ripples that come and go

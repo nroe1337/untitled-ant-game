@@ -286,6 +286,7 @@ export const WAR = {
     plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder each level.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
     husktiles: { name: 'Husk tiles',    desc: 'Spare husks line new walls. Chambers cost {p} less each level.', per: -0.01, base: { chitin: 60 }, growth: 1.15, max: 20 },
     sickles:   { name: 'Husk sickles',  desc: 'Foragers cut with old mandibles. They gather {p} more food each level.', per: 0.02, base: { chitin: 80 }, growth: 1.15, max: 25 },
+    barricade: { name: 'Husk barricade', desc: 'A wall of old husks at the entrance. It takes the first {p} damage of every raid, then regrows between raids.', per: 15, unit: 'flat' as const, base: { chitin: 25 }, growth: 1.35, max: 10, needs: 'tech:husks' },
     alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
   // war honours: earned by clearing waves and winning campaigns, spent on the honour upgrades below
@@ -311,6 +312,34 @@ export const WAR = {
     regroup:   { name: 'Quick regroup',    desc: 'The rival takes the bait again {p} sooner each level.', per: -0.08, base: { honour: 4 }, growth: 1.3, max: 8, needs: 'honour:10' },
     medics:    { name: 'Field medics',     desc: '{p} fewer soldiers die in each raid, each level.', per: -0.06, base: { honour: 6 }, growth: 1.3, max: 10, needs: 'honour:20' },
   },
+  barricadeRegrow: 60,      // seconds for a broken husk barricade to grow back whole
+  /** Spoils chests: every clean wave drops one. They pile up on the War tab and are opened all at once.
+   *  Each roll picks a line from the table; rare and royal chests roll more and may pick from the rare table.
+   *  Amounts grow by perWave for every wave cleared so far. */
+  chests: {
+    rareFrom: 10, royalFrom: 20, perWave: 0.1,
+    kinds: {
+      common: { name: 'Spoils chest', rolls: 2, rareOdds: 0 },
+      rare:   { name: 'Rare chest',   rolls: 3, rareOdds: 0.35 },
+      royal:  { name: 'Royal chest',  rolls: 5, rareOdds: 0.7 },
+    },
+    table: { chitin: [4, 10], food: [25, 60], resin: [1, 4], twig: [4, 10], seed: [3, 8] },
+    rare: { chitin: [15, 30], pheromone: [8, 20], venom: [1, 3], honour: [1, 2] },
+  } as { rareFrom: number; royalFrom: number; perWave: number; kinds: Record<'common' | 'rare' | 'royal', { name: string; rolls: number; rareOdds: number }>; table: Record<string, [number, number]>; rare: Record<string, [number, number]> },
+  /** Taking the rival's home tile is a fight with their queen and her guard, on the battle screen.
+   *  guard: guards per point of the tile's strength; queen health per point; her bite = base + per point. */
+  rivalQueen: { guard: 1.1, hp: 2, atk: 2, atkPer: 0.05 },
+  /** Skulls for the Hall of husks: the first kill of each kind of foe. Each works once a Hall of husks is dug. */
+  trophies: [
+    { id: 'raider',  name: 'Raider skull',       from: 'your first raider kill',     desc: 'Rallied workers bite twice as hard.' },
+    { id: 'brute',   name: 'Brute skull',        from: 'your first brute kill',      desc: 'Brutes leave twice the chitin.' },
+    { id: 'queen',   name: 'Rival queen\'s skull', from: 'killing the rival queen',  desc: 'Campaigns and assaults lose a third fewer soldiers.' },
+    { id: 'spider',  name: 'Spider skull',       from: 'killing the spider',         desc: 'Soldiers hunt 50% better between fights.' },
+    { id: 'redhill', name: 'Fire ant skull',     from: 'the fall of Red Hill',       desc: 'Assaults march 12% faster.' },
+    { id: 'carpent', name: 'Carpenter skull',    from: 'the fall of the Carpenters', desc: 'Assaults march 12% faster.' },
+    { id: 'harvest', name: 'Harvester skull',    from: 'the fall of Harvester Mound', desc: 'Assaults march 12% faster.' },
+    { id: 'legion',  name: 'Legion skull',       from: 'the fall of the Pavement Legion', desc: 'Assaults march 12% faster.' },
+  ],
   // campaigns on the map
   campaignTime: 120,
   campaignLoss: 0.15,       // share of the army lost on a win (double on a loss)

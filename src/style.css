@@ -438,3 +438,5 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .techpos .tile.done.technode { min-height: 52px; padding: 8px 10px; border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent); }
 .techpos .tile.unknown { display: flex; align-items: center; justify-content: center; min-height: 52px; border: 1px dashed var(--line); border-radius: 4px; color: #5a4c3e; font-weight: 700; background: #141210; }
 .techpos [hidden] { display: none !important; }
+.fighter { cursor: help; }
+.fighter:focus-visible { outline: 1px solid var(--line, #5a4c3e); outline-offset: 2px; }

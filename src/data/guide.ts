@@ -105,11 +105,16 @@ export const GUIDE: GuidePage[] = [
         '[Fortification] appears after the first raid. Spend |chitin| on fortifications on the {War} tab.',
         'With 15 |chitin| in store, learn [Husk masonry] and dig [Hall of husks] for room and defence.',
         'War research keeps appearing as you fight more raids.',
+        'After [Husk masonry], build the [Husk barricade]: a wall that takes the first bites of every raid and regrows.',
+        'Every wave cleared without losses leaves a chest. Open them all at once on the {War} tab.',
+        'Hover any group on the battle screen to see its health, bite and what changes them.',
       ] },
       { head: 'Take the fight to them', do: [
         'Learn [Campaigning]. It appears once you reach wave 3.',
         'Pick an enemy tile on the {Map}, then launch from the {War} tab.',
         'Every tile you take makes the rival army smaller.',
+        'Their home tile is a fight with the rival queen and her guard. Kill her and the raids stop for good.',
+        'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
       ] },
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',
