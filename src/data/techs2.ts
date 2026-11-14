@@ -77,6 +77,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['rivalscent', 'Rival scent', ['martial'], { knowledge: 340, pheromone: 25 }, { soldierPower: 0.05 }],
     ['widedoors', 'Wide doors', ['halls'], { knowledge: 420, soil: 300 }, { expSpeed: -0.1 }],
     // Conquest extras (Nov 14)
+    ['talltales', 'Tall tales', ['cartography'], { knowledge: 440, pheromone: 40 }, {}, {}, { lead: 'Returning parties trade stories. Rumours come twice as often (6% a trip), and every rumoured place holds one more trip.' }],
     ['nightshift', 'Night shift', ['brood'], { knowledge: 360, food: 300 }, {}, {}, { lead: 'The queen lays on her own, all day and night, whenever the food stores are over half full. She no longer needs you to press Lay.' }],
     ['compost', 'Midden compost', ['sanitation'], { knowledge: 400, soil: 250 }, {}, {}, { lead: 'Each Midden turns 3% of the mould scrubbed away into soil, two soil for each mould. Slow, but mould is worth something now.' }],
     // Terrain specialists: hold enough of one kind of ground and it teaches the nest something. Each one upgrades a chamber you already dig.
@@ -87,6 +88,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['warmslabs', 'Warm slabs', ['brood', 'cartography'], { knowledge: 500, food: 400 }, {}, {}, { lead: 'Paved country. Warming chambers sit under sun-warmed slabs: +2 brood space each.' }],
   ],
   wings: [
+    ['packmules', 'Pack mules', ['castes'], { knowledge: 600, food: 400 }, {}, {}, { lead: 'Majors walk with expeditions as carriers. Choose up to 3 on the Surface tab: each brings back 15% more loot and slows the party 5%. They never fall on the trail, but they are away from the nest.' }],
     ['deepfinds', 'Deep finds', ['deepdig'], { knowledge: 560, clay: 60 }, {}, {}, { lead: 'Diggers strike buried things three times as often, and down in the clay they turn up clay and old beetle shells (chitin).' }],
     ['deepvents', 'Deep vents', ['deepdig'], { knowledge: 500, clay: 40 }, { mouldMade: -0.05 }, {}, { lead: 'Unlocks the Deep vent, which scrubs mould for a big nest.' }],
     ['tunnelwatch', 'Tunnel watch', ['royal', 'fortify'], { knowledge: 500, chitin: 30 }, { soldierPower: 0.08 }],

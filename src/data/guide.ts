@@ -117,6 +117,11 @@ export const GUIDE: GuidePage[] = [
         'Their home tile is a boss fight with the rival queen: she hatches guards, spits acid, turns your soldiers and goes berserk when hurt. Bring more strength than hers. Kill her and the raids stop for good.',
         'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
       ] },
+      { head: 'Chase rumours', do: [
+        'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',
+        'Each rumour lasts a while and a few trips. Only these places give |sugar| and |ivory|.',
+        'Hear 3 rumours and [Tall tales] appears: rumours come twice as often and hold one more trip.',
+      ] },
       { head: 'Let the nest run itself', do: [
         'After 300 workers are born, [Night shift] appears: the queen lays on her own while food is over half full.',
         'With 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
@@ -141,6 +146,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers.',
         'Each caste has a long road of 5 stages. Push one caste first.',
+        'With majors and 80 expeditions behind you, [Pack mules] appears: up to 3 majors carry loot on each trip.',
       ] },
       { head: 'Dig into the clay', do: [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',

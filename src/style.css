@@ -476,3 +476,8 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .fx .dirt { bottom: 8px; width: 4px; height: 4px; background: #6b4a2e; animation: fxdirt .9s ease-out forwards; }
 @keyframes fxdirt { 0% { transform: translate(0, 0); } 50% { transform: translate(calc((var(--r, 1) - .5) * 30px), -26px); } 100% { transform: translate(0, 4px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fx { display: none; } }
+/* rumours: special places, their names in gold */
+.rumour, select.rumour, option.rumour { color: #e6b84a; }
+.rumours { display: grid; gap: 10px; }
+.rumourrow { display: grid; gap: 3px; padding: 8px 10px; border: 1px solid #6a5420; background: #1b170e; }
+.rumourrow button { justify-self: start; margin-top: 4px; }

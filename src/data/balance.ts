@@ -200,6 +200,26 @@ export const EXPEDITIONS = {
     columns:   { name: 'Second column',      desc: 'Each level lets {p} more party be out at the same time.',      per: 1,     base: { trailmark: 120 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'marks:115' },
   },
   rivalAfterRuns: 6,
+  /** Rumours: now and then a returning party has heard of a special place. It shows up as a destination
+   *  (its name in gold) for a while and a few trips. These places hold the only Royal sugar and Beetle ivory. */
+  rumours: {
+    afterRuns: 15,          // no rumours before this many expeditions
+    chance: 0.03,           // per party that comes home (Keen antennae raise it like rare finds)
+    tallTales: 0.06,        // the chance after Tall tales (which also adds one trip per place)
+    last: 1800,             // seconds a rumour stays before the trail goes cold
+    runs: 3,                // trips before the place is picked clean
+    max: 2,                 // most rumours open at once
+    places: [
+      { id: 'beetlegrave', name: "A beetle's grave under the birch", note: 'A great beetle died here. Its shell is still whole.', time: 480, tile: [8, 6], loss: 0.4, wipe: 0.15, scene: 'leaf', loot: { chitin: [4, 8], ivory: [1, 2] } },
+      { id: 'sugarspill', name: 'A sugar spill by the shed', note: 'Someone dropped a bag. The grains glitter in the sun.', time: 420, tile: [-9, -4], loss: 0.35, wipe: 0.12, scene: 'patio', loot: { food: [40, 80], sugar: [1, 3] } },
+      { id: 'acorn', name: 'The hollow acorn', note: 'Something lived in it once and left its stores behind.', time: 360, tile: [5, -8], loss: 0.3, wipe: 0.1, scene: 'stump', loot: { seed: [6, 12], resin: [2, 4], ivory: [0, 1] } },
+      { id: 'picnic', name: 'A lost picnic', note: 'Crumbs as big as stones, and a smear of jam.', time: 600, tile: [14, 4], loss: 0.45, wipe: 0.18, scene: 'grass', loot: { food: [80, 150], sugar: [2, 4] } },
+      { id: 'moth', name: 'Where the moth fell', note: 'Its wings lie in the grass like fallen leaves.', time: 540, tile: [-6, 9], loss: 0.4, wipe: 0.15, scene: 'hedge', loot: { chitin: [3, 6], pheromone: [5, 10], ivory: [1, 2] } },
+      { id: 'honeycomb', name: 'A cracked honeycomb', note: 'Bees are about. The prize is worth it.', time: 900, tile: [18, -10], loss: 0.6, wipe: 0.3, scene: 'stream', loot: { sugar: [3, 6], resin: [4, 8] } },
+    ] as { id: string; name: string; note: string; time: number; tile: [number, number]; loss: number; wipe: number; scene: string; loot: Record<string, [number, number]> }[],
+  },
+  /** Pack mules: majors walk with the party as carriers. Each adds loot and slows the column a little. They never die on the trail. */
+  packMules: { max: 3, loot: 0.15, slow: 0.05 },
 };
 
 export const MAP = {
@@ -452,6 +472,7 @@ export const RESEARCH = {
     campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
+    packmules: ['runs', 80, 'The expedition leaders'], talltales: ['rumours', 3, 'The expedition leaders'],
     nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
     meadowgranary: ['terrain:grass', 15, 'Your foragers'], soilmasons: ['terrain:soil', 12, 'Your diggers'],
     stoneposts: ['terrain:stone', 10, 'Your soldiers'], dewwells: ['terrain:water', 6, 'Your nurses'], warmslabs: ['terrain:paved', 6, 'Your nurses'],

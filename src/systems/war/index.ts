@@ -158,7 +158,8 @@ function openChests(ctx: Context) {
 // ---- the husk barricade ----
 const wallMax = (ctx: Context) => F.barricade.per * fl(ctx, 'barricade');
 const wallHp = (ctx: Context) => Math.min(wallMax(ctx), S(ctx).wall ?? wallMax(ctx));
-const majors = (ctx: Context) => ctx.state.jobs?.assigned?.major ?? 0;
+/** Majors at home: the ones away carrying for expeditions (Pack mules) don't fight. */
+const majors = (ctx: Context) => Math.max(0, (ctx.state.jobs?.assigned?.major ?? 0) - (ctx.busy['job:major'] ?? 0));
 /** Fighting strength in soldier-equivalents: a major counts as several soldiers. */
 const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + majors(ctx) * CASTES.major.atk * (1 + ctx.mods.get('majorAtk'));
 const power = (ctx: Context) => 1 + ctx.mods.get('soldierPower');

@@ -9,7 +9,7 @@ import { EXPEDITIONS as X, NEST } from '../../data/balance';
 
 /** What happens to a party on the trail, rolled when it leaves and played out partway (at = share of the trip). */
 interface Fate { at: number; lost: number; wipe: boolean; done?: boolean }
-interface Party { dest: string; ants: number; elapsed: number; duration: number; told: number; event?: string; sent?: number; fate?: Fate }
+interface Party { dest: string; mules?: number; ants: number; elapsed: number; duration: number; told: number; event?: string; sent?: number; fate?: Fate }
 interface ExpState {
   runs: number;
   /** Trail marks ever earned this colony. Unlocks new places and trail upgrades. */
@@ -33,6 +33,14 @@ interface ExpState {
   /** Reserve places still empty after losses on the trail: new idle workers fill them before anything else. */
   short?: number;
   rare: number;
+  /** Rumoured places open now: seconds until the trail goes cold, and trips left. */
+  rumours?: { id: string; left: number; runs: number }[];
+  /** Rumours heard this colony. */
+  heard?: number;
+  /** The last ordinary destination, to go back to when a rumoured place is used up. */
+  homeDest?: string;
+  /** Pack mules: majors to send with each party. */
+  mules?: number;
   /** legacy single-party saves */
   active?: Party | null;
 }
@@ -62,6 +70,31 @@ const EVENTS = [
   'Two workers argue over the way and both are right.',
 ];
 
+// ---- rumours: rare special places, open for a while and a few trips ----
+const RU = X.rumours;
+type Dest = { id: string; name: string; time: number; tile: number[]; loss: number; wipe: number; loot: Record<string, number[]>; note?: string; scene?: string };
+const destOf = (id: string): Dest => (X.destinations.find((x) => x.id === id) ?? RU.places.find((x) => x.id === id) ?? X.destinations[0]) as unknown as Dest;
+const isRumour = (id: string) => RU.places.some((x) => x.id === id);
+const openRumours = (ctx: Context) => S(ctx).rumours ?? [];
+function hearRumour(ctx: Context) {
+  const s = S(ctx), open = (s.rumours ??= []);
+  if (s.runs < RU.afterRuns || open.length >= RU.max) return;
+  const chance = (ctx.flags.has('tech:talltales') ? RU.tallTales : RU.chance) * (1 + U.eyes.per * lvl(ctx, 'eyes'));
+  if (Math.random() >= chance) return;
+  const pool = RU.places.filter((p) => !open.some((o) => o.id === p.id));
+  if (!pool.length) return;
+  const p = pool[Math.floor(Math.random() * pool.length)];
+  const runs = RU.runs + (ctx.flags.has('tech:talltales') ? 1 : 0);
+  open.push({ id: p.id, left: RU.last, runs });
+  s.heard = (s.heard ?? 0) + 1;
+  ctx.log(`A rumour: ${p.name}. ${p.note} Open for ${runs} trips before the trail goes cold.`, 'story');
+  ctx.announce(p.name, `${p.note} It is on the Surface tab for ${Math.round(RU.last / 60)} minutes and ${runs} trips.`, { small: true, kicker: 'A rumour' });
+  ctx.ping('expeditions');
+}
+// ---- pack mules: majors carry for the party ----
+const freeMajors = (ctx: Context) => Math.max(0, (ctx.state.jobs?.assigned?.major ?? 0) - (ctx.busy['job:major'] ?? 0));
+const mulesOut = (ctx: Context) => S(ctx).parties.reduce((a, p) => a + (p.mules ?? 0), 0);
+
 const onTrail = (ctx: Context) => S(ctx).parties.reduce((a, p) => a + p.ants, 0);
 /** Workers away on trails plus any kept in reserve between trips. */
 const away = (ctx: Context) => onTrail(ctx) + (S(ctx).reserve ? S(ctx).reserved ?? 0 : 0);
@@ -72,26 +105,25 @@ const idle = (ctx: Context) => {
   return Math.floor(ctx.res.amt('ant')) - assigned - busy - away(ctx);
 };
 const maxParties = (ctx: Context) => 1 + U.columns.per * lvl(ctx, 'columns');
-const durationOf = (ctx: Context, time: number, marked = false) =>
-  time * Math.max(0.3, 1 + U.feet.per * lvl(ctx, 'feet') + ctx.mods.get('expSpeed')) * (marked ? 1 - X.markTrailCut : 1);
+const durationOf = (ctx: Context, time: number, marked = false, mules = 0) =>
+  time * Math.max(0.3, 1 + U.feet.per * lvl(ctx, 'feet') + ctx.mods.get('expSpeed')) * (marked ? 1 - X.markTrailCut : 1) * (1 + X.packMules.slow * mules);
 /** Marking costs more for longer trails, but grows slower than the time it saves, so it always pays off. */
 const markCost = (ctx: Context) => {
-  const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
+  const d = destOf(S(ctx).dest);
   return Object.fromEntries(Object.entries(X.markTrailCost).map(([r, n]) => [r, Math.ceil(n * Math.sqrt(d.time / X.destinations[0].time))]));
 };
 const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
 const canSend = (ctx: Context) => ctx.mods.get('winter') <= 0 && S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
-type Dest = (typeof X.destinations)[number];
-const lossOf = (ctx: Context, d: Dest) => d.loss * safetyOf(ctx) * (1 - ctx.mods.get('nurseHeal')) * Math.max(0.1, 1 + ctx.mods.get('expSafety'));
+const lossOf = (ctx: Context, d: { loss: number }) => d.loss * safetyOf(ctx) * (1 - ctx.mods.get('nurseHeal')) * Math.max(0.1, 1 + ctx.mods.get('expSafety'));
 /** Most a bad trip can cost: up to this share of the party (always at least one). */
 const maxLost = (party: number) => Math.max(1, Math.round(party * X.lossShare));
 const riskText = (r: number, party: number) => {
   const n = maxLost(party);
   return `${fmt(Math.min(1, r) * 100)}% to lose ${n > 1 ? `1 to ${n} workers` : 'a worker'}`;
 };
-const wipeOf = (ctx: Context, d: Dest) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
+const wipeOf = (ctx: Context, d: { wipe: number }) => d.wipe * safetyOf(ctx) * Math.max(0.1, 1 + U.scouts.per * lvl(ctx, 'scouts'));
 
 /** Why a trip came home short. {n} is "one worker" or "3 workers". */
 const LOSSES = [
@@ -114,7 +146,14 @@ const WIPEOUTS = [
 
 function send(ctx: Context) {
   const st = S(ctx);
-  const d = X.destinations.find((x) => x.id === st.dest) ?? X.destinations[0];
+  const d = destOf(st.dest);
+  const rumour = openRumours(ctx).find((r) => r.id === d.id);
+  if (isRumour(d.id) && !rumour) { st.dest = st.homeDest ?? 'grass'; return send(ctx); }
+  if (rumour && --rumour.runs <= 0) {
+    st.rumours = openRumours(ctx).filter((r) => r !== rumour);
+    st.dest = st.homeDest ?? 'grass';
+  }
+  const mules = ctx.flags.has('tech:packmules') ? Math.min(st.mules ?? 0, X.packMules.max, freeMajors(ctx)) : 0;
   if (st.autoMark && st.marked !== true && st.marked !== d.id && ctx.res.spend(markCost(ctx))) st.marked = d.id;
   const marked = st.marked === true || st.marked === d.id;
   if (st.reserve) st.reserved = Math.max(0, (st.reserved ?? 0) - st.party); // reserve goes first, idle workers top it up
@@ -122,7 +161,8 @@ function send(ctx: Context) {
   const wipe = Math.random() < wipeOf(ctx, d);
   const lost = !wipe && Math.random() < lossOf(ctx, d) ? Math.min(st.party, 1 + Math.floor(Math.random() * maxLost(st.party))) : 0;
   const fate: Fate = { at: 0.25 + Math.random() * 0.5, lost, wipe };
-  st.parties.push({ dest: d.id, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked), told: 0, fate });
+  st.parties.push({ dest: d.id, mules, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked, mules), told: 0, fate });
+  ctx.busy['job:major'] = mulesOut(ctx);
   ctx.bus.emit('expedition:send', { dest: d.id, marked, ants: st.party });
   if (marked) { if (!st.autoMark) ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
   ctx.busy.expeditions = away(ctx);
@@ -132,7 +172,7 @@ function send(ctx: Context) {
 function befall(ctx: Context, p: Party) {
   const s = S(ctx), f = p.fate!;
   f.done = true;
-  const d = X.destinations.find((x) => x.id === p.dest)!;
+  const d = destOf(p.dest);
   const place = d.name.toLowerCase();
   const n = f.wipe ? p.ants : Math.min(f.lost, p.ants);
   if (!n) return;
@@ -159,12 +199,13 @@ function befall(ctx: Context, p: Party) {
 
 function finish(ctx: Context, p: Party) {
   const s = S(ctx);
-  const d = X.destinations.find((x) => x.id === p.dest)!;
+  const d = destOf(p.dest);
   s.lastDest = p.dest;
+  ctx.busy['job:major'] = mulesOut(ctx); // the mules are home (the party has left the list already)
   // a party lost on the trail still holds its column until its time is up
   ctx.ping('expeditions');
   if (p.ants <= 0) { s.runs += 1; return; } // a wiped party earns no marks
-  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * (1 + X.packMules.loot * (p.mules ?? 0));
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
     const n = Math.round((lo + Math.random() * (hi - lo)) * mult);
@@ -180,7 +221,9 @@ function finish(ctx: Context, p: Party) {
     ctx.log('Among the haul: a bead of amber with something tiny trapped inside.');
   }
   s.runs += 1;
-  ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.`);
+  ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.` + (p.mules ? ` ${p.mules} major${p.mules > 1 ? 's' : ''} carried the heavy loads.` : ''));
+  if (isRumour(d.id) && !openRumours(ctx).some((r) => r.id === d.id) && !s.parties.some((q) => q.dest === d.id)) ctx.log(`${d.name} is picked clean.`, 'info');
+  if (!isRumour(d.id)) hearRumour(ctx);
   const sent = p.sent ?? p.ants;
   ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: sent, lost: sent - p.ants });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
@@ -199,6 +242,8 @@ export const expeditions: GameSystem = {
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'amber', name: 'Amber', order: 24, integer: true, stepped: true, group: 'Surface' });
+    ctx.res.define({ id: 'sugar', name: 'Royal sugar', order: 25, integer: true, stepped: true, group: 'Surface' });
+    ctx.res.define({ id: 'ivory', name: 'Beetle ivory', order: 26, integer: true, stepped: true, group: 'Surface' });
     ctx.res.define({ id: 'trailmark', name: 'Trail marks', order: 50, integer: true, stepped: true, group: 'Marks' });
     ctx.state.expeditions = { runs: 0, party: X.minParty, dest: 'grass', parties: [], ups: {}, marked: false, auto: true, rare: 0, earned: 0 } satisfies ExpState;
     ctx.bus.on('loaded', () => {
@@ -213,6 +258,13 @@ export const expeditions: GameSystem = {
 
   tick(ctx, dt) {
     const s = S(ctx);
+    if (s.rumours?.length) {
+      for (const r of s.rumours) r.left -= dt;
+      for (const r of s.rumours.filter((x) => x.left <= 0)) ctx.log(`The trail to ${destOf(r.id).name.toLowerCase()} goes cold.`, 'info');
+      s.rumours = s.rumours.filter((x) => x.left > 0);
+      if (isRumour(s.dest) && !s.rumours.some((r) => r.id === s.dest)) s.dest = s.homeDest ?? 'grass';
+    }
+    ctx.busy['job:major'] = mulesOut(ctx);
     for (const p of [...s.parties]) {
       p.elapsed += dt;
       const quarter = Math.floor((p.elapsed / p.duration) * 4);
@@ -246,6 +298,7 @@ export const expeditions: GameSystem = {
     let viewer: HTMLCanvasElement, captions: HTMLElement, autoBox: HTMLInputElement, autoWrap: HTMLElement, ledger: HTMLElement;
     let markBox: HTMLInputElement, markWrap: HTMLElement;
     let reserveBox: HTMLInputElement, reserveWrap: HTMLElement, reserveCount: HTMLElement;
+    let rumourList: HTMLElement, rumourBox: HTMLElement, mulesEl: HTMLElement, mulesRow: HTMLElement;
     let lootEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
     const bars: ReturnType<typeof progressBar>[] = [];
@@ -256,7 +309,13 @@ export const expeditions: GameSystem = {
         const s = S(ctx);
         partyEl = el('span.count');
         destSel = el('select', { id: 'exp-dest' }) as HTMLSelectElement;
-        destSel.addEventListener('change', () => { s.dest = destSel.value; });
+        destSel.addEventListener('change', () => { s.dest = destSel.value; if (!isRumour(s.dest)) s.homeDest = s.dest; });
+        rumourList = el('div.rumours');
+        rumourBox = el('div.section', { hidden: true }, el('h3', {}, 'Rumours'), rumourList);
+        mulesEl = el('span.count');
+        const mule = (d: number) => el('button.small', { type: 'button', onclick: () => { s.mules = Math.max(0, Math.min(X.packMules.max, (s.mules ?? 0) + d)); } }, d > 0 ? '+' : '−');
+        mulesRow = el('div.row', { hidden: true, title: `Each major brings back ${X.packMules.loot * 100}% more loot and slows the party ${X.packMules.slow * 100}%. They never fall on the trail.` },
+          el('span', {}, 'Pack mules (majors)'), mule(-1), mulesEl, mule(1));
         const party = (d: number) => el('button.small', { type: 'button', onclick: (e: MouseEvent) => {
           const step = e.shiftKey ? d * 5 : d;
           s.party = Math.max(X.minParty, Math.min(s.party + step, Math.max(X.minParty, ready(ctx))));
@@ -264,14 +323,14 @@ export const expeditions: GameSystem = {
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
           desc: () => 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.\n' +
-            (() => { const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
+            (() => { const d = destOf(S(ctx).dest);
               return `Risk each trip to ${d.name.toLowerCase()}: ${riskText(lossOf(ctx, d), S(ctx).party)}, ${fmt(wipeOf(ctx, d) * 100)}% to lose the whole party. Farther places are more dangerous.`; })(),
           enabled: canSend, onBuy: (c) => send(c),
         });
         markBtn = actionButton({
           ctx, label: () => (S(ctx).marked ? 'Trail marked' : 'Mark the trail'), costs: () => markCost(ctx),
           desc: () => {
-            const d = X.destinations.find((x) => x.id === S(ctx).dest) ?? X.destinations[0];
+            const d = destOf(S(ctx).dest);
             return `Lay pheromone along the way. The next expedition to ${d.name.toLowerCase()} is ${Math.round(X.markTrailCut * 100)}% shorter. ` +
               'Longer trails take more pheromone to mark.';
           },
@@ -298,9 +357,11 @@ export const expeditions: GameSystem = {
         upsHead = el('h3', {}, 'Trail upgrades');
         root.append(
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
+          rumourBox,
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           lootEl,
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
+          mulesRow,
           el('div.row', {}, sendBtn.root, markBtn.root, markWrap),
           partyHint,
           el('p.controls', {}, 'Shift-click moves 5.'),
@@ -314,19 +375,40 @@ export const expeditions: GameSystem = {
       },
       update(_root, ctx) {
         const s = S(ctx);
-        const opts = available(ctx);
-        const label = (d: (typeof X.destinations)[number]) => `${d.name} (${fmtTime(durationOf(ctx, d.time))})`;
-        if (destSel.options.length !== opts.length || destSel.options[0]?.text !== label(opts[0])) {
-          destSel.replaceChildren(...opts.map((d) => el('option', { value: d.id }, label(d))));
-          destSel.value = s.dest;
+        const opts: Dest[] = [...(available(ctx) as unknown as Dest[]), ...openRumours(ctx).map((r) => destOf(r.id))];
+        const label = (d: Dest) => `${isRumour(d.id) ? '★ ' : ''}${d.name} (${fmtTime(durationOf(ctx, d.time))})`;
+        const okey = opts.map((d) => d.id).join() + label(opts[0]);
+        if (destSel.dataset.key !== okey) {
+          destSel.dataset.key = okey;
+          destSel.replaceChildren(...opts.map((d) => el('option', isRumour(d.id) ? { value: d.id, class: 'rumour' } : { value: d.id }, label(d))));
         }
+        if (destSel.value !== s.dest) destSel.value = s.dest;
+        destSel.classList.toggle('rumour', isRumour(s.dest));
+        // the rumour board
+        const rs = openRumours(ctx);
+        rumourBox.hidden = !rs.length && !(s.heard ?? 0);
+        const rkey = rs.map((r) => r.id + r.runs + Math.ceil(r.left / ctx.speed / 60)).join() + s.dest;
+        if (rumourList.dataset.key !== rkey) {
+          rumourList.dataset.key = rkey;
+          rumourList.replaceChildren(...(rs.length ? rs.map((r) => {
+            const d = destOf(r.id);
+            const go = el('button.ghost', { type: 'button', disabled: s.dest === r.id, onclick: () => { s.dest = r.id; } }, s.dest === r.id ? 'Chosen' : 'Go there');
+            return el('div.rumourrow', {},
+              el('div', {}, el('strong.rumour', {}, d.name), el('span.muted', {}, ` ${d.note ?? ''}`)),
+              el('div.muted', {}, `${r.runs} trip${r.runs > 1 ? 's' : ''} left, the trail goes cold in ${fmtTime(r.left / ctx.speed)}. Finds: ` +
+                Object.keys(d.loot).map((k) => ctx.res.get(k).name.toLowerCase()).join(', ') + '.'), go);
+          }) : [el('p.muted', {}, 'No rumours right now. Parties hear of special places now and then.')]));
+        }
+        // pack mules
+        mulesRow.hidden = !ctx.flags.has('tech:packmules');
+        mulesEl.textContent = String(s.mules ?? 0);
         partyEl.textContent = String(s.party);
         idleEl.textContent = String(Math.max(0, idle(ctx)));
-        const dest = X.destinations.find((x) => x.id === s.dest) ?? X.destinations[0];
+        const dest = destOf(s.dest);
         const m = partyMult(s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
         lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
-          `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}. Trips can be repeated as often as you like.`;
+          `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}.` + (isRumour(dest.id) ? ' A rumoured place: only a few trips before it is picked clean.' : ' Trips can be repeated as often as you like.');
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
           `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
           (s.party < 30 && 'twig' in dest.loot ? ' Short on twigs? Big parties of 30 to 50 bring home far more.' : '');
@@ -340,7 +422,7 @@ export const expeditions: GameSystem = {
         // one caption + bar per party
         while (bars.length < s.parties.length) bars.push(progressBar());
         captions.replaceChildren(...(s.parties.length ? s.parties.map((p, i) => {
-          const d = X.destinations.find((x) => x.id === p.dest)!;
+          const d = destOf(p.dest);
           bars[i].set(p.elapsed / p.duration);
           return el('div.caption', {},
             el('span', {}, p.ants <= 0
@@ -448,7 +530,8 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string) {
     const wrapX = (x: number) => ((x % (W + 40)) + W + 40) % (W + 40) - 20;
     const near = (i: number, gap: number) => wrapX(i * gap + li * 17 - scroll);
     const far = (i: number, gap: number) => wrapX(i * gap + li * 11 - Math.floor(scroll / 2)); // background drifts slower
-    const scene = SCENES[p?.dest ?? lastDest ?? 'grass'] ?? SCENES.grass;
+    const id = p?.dest ?? lastDest ?? 'grass';
+    const scene = SCENES[id] ?? SCENES[destOf(id).scene ?? 'grass'] ?? SCENES.grass;
     rect(c, 0, y0, W, LANE, scene.sky);
     rect(c, 0, y0 + GROUND, W, LANE - GROUND, scene.ground);
     scene.draw(c, y0, W, near, far);
