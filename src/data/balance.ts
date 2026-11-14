@@ -220,7 +220,7 @@ export const EXPEDITIONS = {
   },
   /** Pack mules: majors walk with the party. Each guards it (guard: less chance of losses), carries rare finds (rare: more amber,
    *  sugar and ivory), and slows it a little. They never die on the trail. */
-  packMules: { max: 3, guard: 0.2, rare: 0.5, rareIds: ['sugar', 'ivory'], slow: 0.05 },
+  packMules: { max: 3, guard: 0.1, rare: 0.5, rareIds: ['sugar', 'ivory'], slow: 0.1 },
 };
 
 export const MAP = {
