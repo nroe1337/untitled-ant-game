@@ -9,6 +9,8 @@ export const BROOD = {
   eggFoodCost: 2,           // food per egg the queen lays by hand
   layOpensAtFood: 4,        // Lay an egg appears once the stores first reach this (a few forages)
   layEggCooldown: 3,        // seconds between manual lays
+  nightShiftAt: 0.5,        // Night shift: the queen lays on her own while food is over this share of the cap
+  compost: { share: 0.03, soil: 2 }, // Midden compost: each Midden turns this share of scrubbed mould into soil, this much soil per mould
   eggHatchTime: 30,         // seconds for an egg to become a larva
   larvaGrowTime: 40,        // seconds for a larva to become a worker
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
@@ -119,6 +121,8 @@ export const NEST = {
   wideTunnels: 1,           // extra living space per tunnel once Wider tunnels is researched
   housingTechs: { deepgalleries: 0.25, vaults: 0.25, partitions: 0.5 } as Record<string, number>,
   surfaceAtChambers: 10,
+  /** Terrain specialist research: what each adds per chamber. */
+  terrain: { meadowgranary: 0.01, soilmasons: 2, dewwells: 0.3, warmslabs: 2 },
   baseFoodCap: 40,
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Soil pits hold far more
@@ -196,6 +200,27 @@ export const EXPEDITIONS = {
     columns:   { name: 'Second column',      desc: 'Each level lets {p} more party be out at the same time.',      per: 1,     base: { trailmark: 120 }, growth: 3,    max: 2, unit: 'flat' as const, needs: 'marks:115' },
   },
   rivalAfterRuns: 6,
+  /** Rumours: now and then a returning party has heard of a special place. It shows up as a destination
+   *  (its name in gold) for a while and a few trips. These places hold the only Royal sugar and Beetle ivory. */
+  rumours: {
+    afterRuns: 15,          // no rumours before this many expeditions
+    chance: 0.03,           // per party that comes home (Keen antennae raise it like rare finds)
+    tallTales: 0.06,        // the chance after Tall tales (which also adds one trip per place)
+    last: 1800,             // seconds a rumour stays before the trail goes cold
+    runs: 3,                // trips before the place is picked clean
+    max: 2,                 // most rumours open at once
+    places: [
+      { id: 'beetlegrave', name: "A beetle's grave under the birch", note: 'A great beetle died here. Its shell is still whole.', time: 480, tile: [8, 6], loss: 0.4, wipe: 0.15, scene: 'leaf', loot: { chitin: [4, 8], ivory: [1, 2] } },
+      { id: 'sugarspill', name: 'A sugar spill by the shed', note: 'Someone dropped a bag. The grains glitter in the sun.', time: 420, tile: [-9, -4], loss: 0.35, wipe: 0.12, scene: 'patio', loot: { food: [40, 80], sugar: [1, 3] } },
+      { id: 'acorn', name: 'The hollow acorn', note: 'Something lived in it once and left its stores behind.', time: 360, tile: [5, -8], loss: 0.3, wipe: 0.1, scene: 'stump', loot: { seed: [6, 12], resin: [2, 4], ivory: [0, 1] } },
+      { id: 'picnic', name: 'A lost picnic', note: 'Crumbs as big as stones, and a smear of jam.', time: 600, tile: [14, 4], loss: 0.45, wipe: 0.18, scene: 'grass', loot: { food: [80, 150], sugar: [2, 4] } },
+      { id: 'moth', name: 'Where the moth fell', note: 'Its wings lie in the grass like fallen leaves.', time: 540, tile: [-6, 9], loss: 0.4, wipe: 0.15, scene: 'hedge', loot: { chitin: [3, 6], pheromone: [5, 10], ivory: [1, 2] } },
+      { id: 'honeycomb', name: 'A cracked honeycomb', note: 'Bees are about. The prize is worth it.', time: 900, tile: [18, -10], loss: 0.6, wipe: 0.3, scene: 'stream', loot: { sugar: [3, 6], resin: [4, 8] } },
+    ] as { id: string; name: string; note: string; time: number; tile: [number, number]; loss: number; wipe: number; scene: string; loot: Record<string, [number, number]> }[],
+  },
+  /** Pack mules: majors walk with the party. Each guards it (guard: less chance of losses), carries rare finds (rare: more amber,
+   *  sugar and ivory), and slows it a little. They never die on the trail. */
+  packMules: { max: 3, guard: 0.1, rare: 0.25, rareIds: ['sugar', 'ivory'], slow: 0.1 },
 };
 
 export const MAP = {
@@ -266,6 +291,7 @@ export const WAR = {
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
+    warCry: { cooldown: 60, time: 10, boost: 0.5 }, // the War cry button: every fighter bites harder for a while
     rallyCooldown: 30,
     rallyMax: 8,                     // most workers that answer one rally
     rescuePerWorker: 0.06,           // each rallied worker at the entrance: this chance that a fallen soldier is carried home alive
@@ -286,7 +312,8 @@ export const WAR = {
     plating: { name: 'Chitin plating',  desc: 'Soldiers fight {p} harder each level.', per: 0.02, base: { chitin: 6 }, growth: 1.12, max: 100 },
     husktiles: { name: 'Husk tiles',    desc: 'Spare husks line new walls. Chambers cost {p} less each level.', per: -0.01, base: { chitin: 60 }, growth: 1.15, max: 20 },
     sickles:   { name: 'Husk sickles',  desc: 'Foragers cut with old mandibles. They gather {p} more food each level.', per: 0.02, base: { chitin: 80 }, growth: 1.15, max: 25 },
-    alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
+    barricade: { name: 'Husk barricade', desc: 'A wall of old husks at the entrance. It takes the first {p} damage of every raid, then regrows between raids.', per: 15, unit: 'flat' as const, base: { chitin: 25 }, growth: 1.35, max: 10, needs: 'tech:husks' },
+    alarm:   { name: 'Standing alarm',  desc: 'The war cry sounds by itself whenever it is ready', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
   // war honours: earned by clearing waves and winning campaigns, spent on the honour upgrades below
   honours: {
@@ -311,6 +338,44 @@ export const WAR = {
     regroup:   { name: 'Quick regroup',    desc: 'The rival takes the bait again {p} sooner each level.', per: -0.08, base: { honour: 4 }, growth: 1.3, max: 8, needs: 'honour:10' },
     medics:    { name: 'Field medics',     desc: '{p} fewer soldiers die in each raid, each level.', per: -0.06, base: { honour: 6 }, growth: 1.3, max: 10, needs: 'honour:20' },
   },
+  barricadeRegrow: 60,      // seconds for a broken husk barricade to grow back whole
+  /** Spoils chests: every clean wave drops one. They pile up on the War tab and are opened all at once.
+   *  Each roll picks a line from the table; rare and royal chests roll more and may pick from the rare table.
+   *  Amounts grow by perWave for every wave cleared so far. */
+  chests: {
+    rareFrom: 10, royalFrom: 20, perWave: 0.1,
+    kinds: {
+      common: { name: 'Spoils chest', rolls: 2, rareOdds: 0 },
+      rare:   { name: 'Rare chest',   rolls: 3, rareOdds: 0.35 },
+      royal:  { name: 'Royal chest',  rolls: 5, rareOdds: 0.7 },
+    },
+    table: { chitin: [4, 10], food: [25, 60], resin: [1, 4], twig: [4, 10], seed: [3, 8] },
+    rare: { chitin: [15, 30], pheromone: [8, 20], venom: [1, 3], honour: [1, 2] },
+  } as { rareFrom: number; royalFrom: number; perWave: number; kinds: Record<'common' | 'rare' | 'royal', { name: string; rolls: number; rareOdds: number }>; table: Record<string, [number, number]>; rare: Record<string, [number, number]> },
+  /** Taking the rival's home tile is a fight with their queen and her guard, on the battle screen.
+   *  guard: guards per point of the tile's strength; queen health per point; her bite = base + per point. */
+  rivalQueen: {
+    guard: 0.8, hp: 5, atk: 2, atkPer: 0.03,
+    slow: 0.5,                    // the whole fight runs at this speed (moves, bites, timers alike)
+    every: 7, warn: 2,            // seconds between her moves, and the warning before each lands
+    phases: [0.66, 0.33],         // health shares where she changes: a brood hatches at the first, she goes berserk at the second
+    summon: 0.2,                  // Royal brood: guards per point of strength
+    acid: 0.12,                   // Acid rain: damage to every group of ours, per point of strength
+    charm: 0.08,                  // Queen's scent: share of our fighters turned against us
+    frenzy: 5,                    // War cry: seconds her guard bites double
+    burrow: 4, heal: 0.06,        // Burrow: seconds she can't be bitten, and the share of health she heals
+  },
+  /** Skulls for the Hall of husks: the first kill of each kind of foe. Each works once a Hall of husks is dug. */
+  trophies: [
+    { id: 'raider',  name: 'Raider skull',       from: 'your first raider kill',     desc: 'The war cry lasts twice as long.' },
+    { id: 'brute',   name: 'Brute skull',        from: 'your first brute kill',      desc: 'Brutes leave twice the chitin.' },
+    { id: 'queen',   name: 'Rival queen\'s skull', from: 'killing the rival queen',  desc: 'Campaigns and assaults lose a third fewer soldiers.' },
+    { id: 'spider',  name: 'Spider skull',       from: 'killing the spider',         desc: 'Soldiers hunt 50% better between fights.' },
+    { id: 'redhill', name: 'Fire ant skull',     from: 'the fall of Red Hill',       desc: 'Assaults march 12% faster.' },
+    { id: 'carpent', name: 'Carpenter skull',    from: 'the fall of the Carpenters', desc: 'Assaults march 12% faster.' },
+    { id: 'harvest', name: 'Harvester skull',    from: 'the fall of Harvester Mound', desc: 'Assaults march 12% faster.' },
+    { id: 'legion',  name: 'Legion skull',       from: 'the fall of the Pavement Legion', desc: 'Assaults march 12% faster.' },
+  ],
   // campaigns on the map
   campaignTime: 120,
   campaignLoss: 0.15,       // share of the army lost on a win (double on a loss)
@@ -409,6 +474,10 @@ export const RESEARCH = {
     campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
+    packmules: ['runs', 80, 'The expedition leaders'], talltales: ['rumours', 3, 'The expedition leaders'],
+    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
+    meadowgranary: ['terrain:grass', 15, 'Your foragers'], soilmasons: ['terrain:soil', 12, 'Your diggers'],
+    stoneposts: ['terrain:stone', 10, 'Your soldiers'], dewwells: ['terrain:water', 6, 'Your nurses'], warmslabs: ['terrain:paved', 6, 'Your nurses'],
   } as Record<string, [string, number, string]>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
@@ -618,7 +687,7 @@ export const ARCHIVE = {
   accords: [
     { id: 'habit',    track: 'wings',  n: 1,    cost: 2,  name: 'The queen\'s habit',  desc: 'The queen lays an egg on her own every 20 seconds.' },
     { id: 'basics',   track: 'earth',  n: 120,  cost: 3, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Storage chambers and Brood care.' },
-    { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
+    { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'The war cry sounds by itself during fights.' },
     { id: 'surface',  track: 'trails', n: 80,   cost: 4, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
     { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Jobs tab, and new workers take jobs to match it.' },
     { id: 'plans',    track: 'wings',  n: 3,    cost: 4, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },

@@ -95,6 +95,7 @@ export const GUIDE: GuidePage[] = [
         'Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
+        'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
       ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },
       { head: 'Prepare for raids', do: [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
@@ -105,11 +106,25 @@ export const GUIDE: GuidePage[] = [
         '[Fortification] appears after the first raid. Spend |chitin| on fortifications on the {War} tab.',
         'With 15 |chitin| in store, learn [Husk masonry] and dig [Hall of husks] for room and defence.',
         'War research keeps appearing as you fight more raids.',
+        'After [Husk masonry], build the [Husk barricade]: a wall that takes the first bites of every raid and regrows.',
+        'Every wave cleared without losses leaves a chest. Open them all at once on the {War} tab.',
+        'Hover any group on the battle screen to see its health, bite and what changes them.',
       ] },
       { head: 'Take the fight to them', do: [
         'Learn [Campaigning]. It appears once you reach wave 3.',
         'Pick an enemy tile on the {Map}, then launch from the {War} tab.',
         'Every tile you take makes the rival army smaller.',
+        'Their home tile is a boss fight with the rival queen: she hatches guards, spits acid, turns your soldiers and goes berserk when hurt. Bring more strength than hers. Kill her and the raids stop for good.',
+        'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
+      ] },
+      { head: 'Chase rumours', do: [
+        'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',
+        'Each rumour lasts a while and a few trips. Only these places give |sugar| and |ivory|.',
+        'Hear 3 rumours and [Tall tales] appears: rumours come twice as often and hold one more trip.',
+      ] },
+      { head: 'Let the nest run itself', do: [
+        'After 300 workers are born, [Night shift] appears: the queen lays on her own while food is over half full.',
+        'With 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
       ] },
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',
@@ -131,6 +146,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers.',
         'Each caste has a long road of 5 stages. Push one caste first.',
+        'With majors and 80 expeditions behind you, [Pack mules] appears: up to 3 majors guard each trip and carry its rare finds.',
       ] },
       { head: 'Dig into the clay', do: [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',

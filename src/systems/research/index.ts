@@ -21,6 +21,7 @@ function counter(ctx: Context, what: string) {
   const st = ctx.state as Record<string, any>;
   switch (what) {
     case 'runs': return st.expeditions?.runs ?? 0;
+    case 'rumours': return st.expeditions?.heard ?? 0;
     case 'tiles': return (st.map?.tiles as { o: string | null }[] | undefined)?.filter((t) => t.o === 'you').length ?? 0;
     case 'raids': return st.war?.raids ?? 0;
     case 'wave': return st.war?.wave ?? 0;
@@ -31,6 +32,7 @@ function counter(ctx: Context, what: string) {
     case 'starved': return st.jobs?.starved ?? 0;
     case 'techs': return IDS.filter((t) => done(ctx, t)).length;
     default:
+      if (what.startsWith('terrain:')) { const k = what.slice(8); return (st.map?.tiles as { o: string | null; t: string }[] | undefined)?.filter((t) => t.o === 'you' && t.t === k).length ?? 0; }
       if (what.startsWith('full:')) { const r = what.slice(5); return ctx.res.has(r) && ctx.res.cap(r) > 0 ? ctx.res.amt(r) / ctx.res.cap(r) * 100 : 0; } return ctx.res.has(what) ? ctx.res.amt(what) : 0;
   }
 }

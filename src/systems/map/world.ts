@@ -7,6 +7,7 @@ import { PAL, rect } from '../../core/pixel';
 import { MAP, WORLD } from '../../data/balance';
 import { TOWN } from '../../data/town';
 import type { Terrain, Tile } from './index';
+import { addTrophy, lossMult, skullWorks } from '../war';
 
 export interface Sortie { cell: number; elapsed: number; duration: number; ants: number; risk: number; wind: Wind }
 export interface Assault { cell: number; i: number; army: number; elapsed: number; duration: number }
@@ -153,7 +154,9 @@ export function heldTerrain(ctx: Context): Terrain[] {
 const soldiers = (ctx: Context) => Math.floor(ctx.state.jobs?.assigned?.soldier ?? 0);
 export const assaultArmy = soldiers;
 export function sendAssault(ctx: Context, c: number, i: number) {
-  W(ctx).assault = { cell: c, i, army: soldiers(ctx), elapsed: 0, duration: WORLD.assault.time };
+  // each fallen foe's skull in the Hall of husks makes the march quicker
+  const fast = ['redhill', 'carpent', 'harvest', 'legion'].filter((id) => skullWorks(ctx, id)).length * 0.12;
+  W(ctx).assault = { cell: c, i, army: soldiers(ctx), elapsed: 0, duration: WORLD.assault.time * (1 - fast) };
 }
 function finishAssault(ctx: Context) {
   const w = W(ctx), a = w.assault!, seed = ctx.state.map.seed;
@@ -164,7 +167,7 @@ function finishAssault(ctx: Context) {
   const enemy = foeStrength(seed, a.cell, a.i);
   const ours = a.army * (1 + ctx.mods.get('soldierPower')) * (0.85 + Math.random() * 0.3);
   const win = ours >= enemy;
-  const lost = Math.min(a.army, Math.ceil(a.army * WORLD.assault.loss * (win ? 1 : 2)));
+  const lost = Math.min(a.army, Math.ceil(a.army * WORLD.assault.loss * lossMult(ctx) * (win ? 1 : 2)));
   ctx.res.add('ant', -lost);
   const jobs = ctx.state.jobs?.assigned; if (jobs) jobs.soldier = Math.max(0, (jobs.soldier ?? 0) - lost);
   if (!win) {
@@ -179,6 +182,7 @@ function finishAssault(ctx: Context) {
   ctx.bus.emit('world:capture', { cell: a.cell, i: a.i });
   if (core) {
     (w.fallen ??= []).push(foe.id);
+    addTrophy(ctx, foe.id);
     ctx.announce(`${foe.name} falls`, `Their queen is dead and the ${foe.kind} scatter. Their land lies open to claim.`, { kicker: 'Conquest', lines: [...got, ...(lost ? [`${lost} soldiers fell`] : [])] });
     ctx.log(`${foe.name} falls. Their land lies open.`, 'story');
   } else {

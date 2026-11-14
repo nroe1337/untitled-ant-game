@@ -27,6 +27,8 @@ interface BroodState {
   /** Brood rhythm research: the larvae's pace, and seconds until it can change again. */
   rhythm?: string;
   rhythmCd?: number;
+  /** Night shift: seconds until the queen lays on her own again. */
+  nightCd?: number;
 }
 
 const S = (ctx: Context) => ctx.state.brood as BroodState;
@@ -194,11 +196,25 @@ export const brood: GameSystem = {
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
     }
+    // Night shift: the queen lays on her own while the stores are over half full
+    if (ctx.flags.has('tech:nightshift')) {
+      s.nightCd = Math.max(0, (s.nightCd ?? 0) - dt);
+      const cost = BROOD.eggFoodCost * clutch(ctx);
+      if (s.nightCd <= 0 && broodUsed(ctx) < broodCap(ctx) && res.amt('food') - cost >= res.cap('food') * BROOD.nightShiftAt) {
+        s.nightCd = BROOD.layEggCooldown;
+        res.source = 'Night shift'; res.add('food', -cost); res.source = 'Brood';
+        addEggs(ctx, clutch(ctx)); ctx.bus.emit('queen:lay');
+      }
+    }
     // Mould: chambers gather it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
     if (ctx.flags.has('tech:brood')) {
       if (!s.mouldIntro) { s.mouldIntro = true; ctx.log('Damp creeps into the chambers: mould. Every chamber gathers a little, and it slows the brood. The queen and nurses scrub it away (Environment, in the Stores).', 'story'); }
       res.source = 'Damp chambers'; res.add('mould', mouldMade(ctx) * dt);
+      const before = res.amt('mould');
       res.source = 'Queen, nurses and purification scrubbing'; res.add('mould', -mouldClean(ctx) * dt);
+      // Midden compost: a share of what was scrubbed away comes back as soil
+      const middens = ctx.state.nest?.built?.midden ?? 0;
+      if (ctx.flags.has('tech:compost') && middens) { res.source = 'Midden compost'; res.add('soil', (before - res.amt('mould')) * BROOD.compost.share * middens * BROOD.compost.soil); }
       res.source = 'Brood';
       const m = res.amt('mould');
       if (m >= MO.rot && !ctx.flags.has('mould:scrub')) { ctx.flags.add('mould:scrub'); ctx.log('The mould is out of hand. Workers can scrub it by hand now (Queen tab).', 'warn'); }
@@ -233,7 +249,7 @@ export const brood: GameSystem = {
   panel: (() => {
     let lay: ActionButton, forage: ActionButton;
     const eggBar = progressBar(), larvaBar = progressBar();
-    let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, layWrap: HTMLElement, hint: HTMLElement;
+    let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, layWrap: HTMLElement, nightNote: HTMLElement, hint: HTMLElement;
     let scrub: ActionButton, scrubWrap: HTMLElement;
     let ledger: HTMLElement, royalHead: HTMLElement;
     let paceBox: HTMLElement, paceNote: HTMLElement;
@@ -280,9 +296,10 @@ export const brood: GameSystem = {
         royal = upgradeList(ctx, () => S(ctx).royal, ROYAL);
         forageWrap = el('div', {}, forage.root);
         layWrap = el('div', {}, lay.root);
+        nightNote = el('p.muted', { hidden: true }, 'Night shift: the queen lays on her own while the food stores are over half full.');
         root.append(
           el('div.queen', {}, icon('queen', 64), el('p.flavor', {}, 'The queen rests in a small earthen cell. Everything begins with her.')),
-          el('div.row', {}, forageWrap, layWrap, scrubWrap),
+          el('div.row', {}, forageWrap, layWrap, scrubWrap), nightNote,
           el('div.stat', {}, el('span.statlabel', {}, icon('egg', 24), eggTxt), eggBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('larva', 24), larvaTxt), larvaBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('pupa', 24), pupaTxt)),
@@ -298,7 +315,8 @@ export const brood: GameSystem = {
         scrubWrap.hidden = !ctx.flags.has('mould:scrub');
         // Lay opens after a few forages; it stays open after that
         if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
-        layWrap.hidden = !ctx.flags.has('queen:lays');
+        layWrap.hidden = !ctx.flags.has('queen:lays') || ctx.flags.has('tech:nightshift');
+        nightNote.hidden = !ctx.flags.has('tech:nightshift');
         eggTxt.textContent = ctx.res.amt('egg') >= 1 && larvaRoom(ctx) < 1 ? `Eggs waiting for room: ${Math.floor(ctx.res.amt('egg'))}` : `Eggs hatching: ${Math.floor(ctx.res.amt('egg'))}`;
         const pupae = s.pupae ?? 0, growingNow = Math.max(0, Math.floor(ctx.res.amt('larva')) - pupae);
         larvaTxt.textContent = `Larvae growing: ${growingNow}`;
