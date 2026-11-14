@@ -90,7 +90,8 @@ export const GUIDE: GuidePage[] = [
     steps: [
       { head: 'Claim land', do: [
         'Learn [Mapping] first. It opens the {Map} tab.',
-        'On the {Map} tab, click a tile next to your land, then claim it.',
+        'On the {Map} tab, drag to look around. Click a tile next to your land, then claim it.',
+        'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
       ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },

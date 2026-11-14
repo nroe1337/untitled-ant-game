@@ -21,6 +21,8 @@ export interface WorldState {
 type Wind = 'down' | 'up' | 'cross';
 
 const N = WORLD.size;
+/** Positions below were laid out on the old 40x24 cell; these stretch them to the cell's real size. */
+const SX = MAP.cols / 40, SY = MAP.rows / 24;
 export const HOME = WORLD.home[1] * N + WORLD.home[0];
 export const cxy = (c: number) => [c % N, Math.floor(c / N)] as const;
 export const ring = (c: number) => { const [x, y] = cxy(c); return Math.max(Math.abs(x - WORLD.home[0]), Math.abs(y - WORLD.home[1])); };
@@ -58,13 +60,13 @@ export function layout(seed: number): Cell[] {
   const used = new Set<number>();
   WORLD.landmarks.forEach((l, i) => { const c = (i === 0 ? near : far).find((c) => !used.has(c) && cells[c].biome !== 'pond')!; used.add(c); cells[c].landmark = l.id; });
   const kinCells = shuffled(all.filter((c) => ring(c) >= 2 && !used.has(c) && cells[c].biome !== 'pond'));
-  WORLD.kin.forEach((k, i) => { const c = kinCells[i]; cells[c].kin = k.id; cells[c].kinAt = [8 + Math.floor(R() * 24), 5 + Math.floor(R() * 14)]; });
+  WORLD.kin.forEach((k, i) => { const c = kinCells[i]; cells[c].kin = k.id; cells[c].kinAt = [Math.floor((8 + R() * 24) * SX), Math.floor((5 + R() * 14) * SY)]; });
   // hostile colonies, from their own stream so older layouts keep their landmarks and kin where they were
   const F = rng(seed ^ 0xf0e5);
   const free = (c: number) => c !== HOME && !cells[c].landmark && !cells[c].kin && cells[c].biome !== 'pond';
   const mix = (list: number[]) => list.map((c) => [F(), c] as const).sort((a, b) => a[0] - b[0]).map(([, c]) => c);
   const foeCells = [...mix(all.filter((c) => ring(c) === 1 && free(c))).slice(0, 1), ...mix(all.filter((c) => ring(c) >= 2 && free(c)))];
-  WORLD.foes.forEach((f, i) => { const c = foeCells[i]; if (c == null) return; cells[c].foe = f.id; cells[c].foeAt = [8 + Math.floor(F() * 24), 5 + Math.floor(F() * 14)]; });
+  WORLD.foes.forEach((f, i) => { const c = foeCells[i]; if (c == null) return; cells[c].foe = f.id; cells[c].foeAt = [Math.floor((8 + F() * 24) * SX), Math.floor((5 + F() * 14) * SY)]; });
   layouts.set(seed, cells);
   return cells;
 }
@@ -80,13 +82,13 @@ export function cellTerrain(seed: number, c: number): Terrain[] {
   const sm = (t: number) => t * t * (3 - 2 * t);
   const noise = (x: number, y: number) => { const xi = Math.floor(x), yi = Math.floor(y), xf = sm(x - xi), yf = sm(y - yi); const a = g(xi, yi), bb = g(xi + 1, yi), cc = g(xi, yi + 1), d = g(xi + 1, yi + 1); return a + (bb - a) * xf + (cc - a) * yf + (a - bb - cc + d) * xf * yf; };
   const fbm = (x: number, y: number) => noise(x / 7, y / 7) * 0.6 + noise(x / 3, y / 3) * 0.3 + noise(x, y) * 0.1;
-  const px = 6 + R() * 22, py = 4 + R() * 12, pw = 6 + R() * 8, ph = 4 + R() * 6;
+  const px = (6 + R() * 22) * SX, py = (4 + R() * 12) * SY, pw = (6 + R() * 8) * SX, ph = (4 + R() * 6) * SY;
   const out: Terrain[] = [];
   for (let y = 0; y < MAP.rows; y++) for (let x = 0; x < MAP.cols; x++) {
-    const h = fbm(x, y), wet = fbm(x + 31, y + 17);
+    const h = fbm(x / SX, y / SY), wet = fbm(x / SX + 31, y / SY + 17);
     let t: Terrain = wet < b.water * 1.2 ? 'water' : h > b.stone ? 'stone' : h < b.soil ? 'soil' : 'grass';
     if (b.paved && x >= px && x < px + pw && y >= py && y < py + ph) t = 'paved';
-    if (cell.biome === 'field' && t === 'grass' && y % 3 === 0) t = 'soil'; // furrows
+    if (cell.biome === 'field' && t === 'grass' && y % 4 === 0) t = 'soil'; // furrows
     out.push(t);
   }
   terrains.set(key, out);
@@ -306,7 +308,7 @@ export function townTerrain(seed: number, c: number): Terrain[] {
   const key = seed + ':' + c; const hit = townTerrains.get(key); if (hit) return hit;
   const R = rng(seed ^ (c * 7919)), f = TOWN_GROUND[townSite(c)] ?? (() => 'paved' as Terrain);
   const out: Terrain[] = [];
-  for (let y = 0; y < MAP.rows; y++) for (let x = 0; x < MAP.cols; x++) out.push(f(x, y, R()));
+  for (let y = 0; y < MAP.rows; y++) for (let x = 0; x < MAP.cols; x++) out.push(f(Math.floor(x / SX), Math.floor(y / SY), R()));
   townTerrains.set(key, out);
   return out;
 }
@@ -351,7 +353,7 @@ function paintWorld(seed: number, w: WorldState, home: Tile[], shore: boolean) {
     cellTerrain(seed, cc).forEach((t, i) => { const o = ownerAt(seed, w, cc, i); rect(c, X0 + (i % MAP.cols), Y0 + Math.floor(i / MAP.cols), 1, 1, o === 'you' ? PAL.you : o === 'foe' ? PAL.foe : TC[t]); });
     const cell = cells[cc];
     if (cell.kin && cell.kinAt) { const [kx, ky] = cell.kinAt; rect(c, X0 + kx - 2, Y0 + ky - 2, 5, 5, PAL.scent); rect(c, X0 + kx, Y0 + ky, 1, 1, PAL.hole); }
-    if (cell.landmark) rect(c, X0 + 18, Y0 + 10, 4, 4, PAL.amber);
+    if (cell.landmark) rect(c, X0 + Math.floor(MAP.cols / 2) - 2, Y0 + Math.floor(MAP.rows / 2) - 2, 4, 4, PAL.amber);
     if (cell.foe && cell.foeAt && !w.fallen?.includes(cell.foe)) { const [fx, fy] = cell.foeAt; rect(c, X0 + fx - 1, Y0 + fy - 1, 3, 3, PAL.hole); }
   }
 }
@@ -408,7 +410,7 @@ export function drawCell(cv: HTMLCanvasElement, seed: number, w: WorldState, cc:
   });
   if (cell.kin && cell.kinAt) { const [kx, ky] = cell.kinAt; rect(c, kx * T + 2, ky * T + 2, 4, 4, PAL.scent); }
   if (cell.foe && cell.foeAt && !w.fallen?.includes(cell.foe)) { const [fx, fy] = cell.foeAt; rect(c, fx * T + 2, fy * T + 2, 4, 4, PAL.foe); }
-  if (cell.landmark) rect(c, 18 * T + 1, 10 * T + 1, 2 * T - 2, 2 * T - 2, PAL.amber);
+  if (cell.landmark) rect(c, (Math.floor(MAP.cols / 2) - 2) * T + 1, (Math.floor(MAP.rows / 2) - 2) * T + 1, 2 * T - 2, 2 * T - 2, PAL.amber);
   const mark = (i: number | null, col: string) => {
     if (i == null) return;
     const X = (i % MAP.cols) * T, Y = Math.floor(i / MAP.cols) * T;

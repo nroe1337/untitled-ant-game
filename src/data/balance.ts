@@ -199,21 +199,29 @@ export const EXPEDITIONS = {
 };
 
 export const MAP = {
-  cols: 40,
-  rows: 24,
-  nest: [7, 13] as [number, number],
-  rival: [32, 5] as [number, number],
-  spider: [31, 19] as [number, number],
+  /** The garden (Nov 14: grown from 40x24 to 64x64; the Map shows it through a camera, view tiles at a time). */
+  cols: 64,
+  rows: 64,
+  view: [40, 26] as [number, number],
+  nest: [12, 44] as [number, number],
+  rival: [50, 16] as [number, number],
+  spider: [48, 54] as [number, number],
+  /** Where the old 40x24 garden's nest stood: older saves are carried into the bigger garden around the new nest. */
+  oldSize: [40, 24] as [number, number], oldNest: [7, 13] as [number, number],
+  river: { x: 30, bend: 3, wave: 4 },   // the stream runs north to south, wobbling around this column
+  paved: [36, 28, 6, 6] as [number, number, number, number], // the patio: x, y, width, height
   startReveal: 2,
+  /** Land can only be claimed within this many tiles (diagonals count as one) of the nest or an outpost. */
+  reach: 8,
   claimCost: { food: 40, twig: 4 },
-  claimStep: 0.08,          // each tile held past the start makes the next claim 8% of the base dearer (linear, so the whole map stays in reach)
+  claimStep: 0.035,         // each tile held past the start makes the next claim 3.5% of the base dearer (linear, so the whole map stays in reach)
   startTiles: 1,            // the colony starts holding only the nest tile
-  claimParty: 2,            // scouts who go out to claim a tile next to the nest; they come home when it's done
-  claimScoutsPerTile: 0.5,  // extra scouts per tile of distance from the nest
-  claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nest
+  claimParty: 2,            // scouts who go out to claim a tile next to the nest or an outpost; they come home when it's done
+  claimScoutsPerTile: 0.5,  // extra scouts per tile of distance from the nearest nest or outpost
+  claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nearest nest or outpost
   claimTimePerTile: 4,
-  /** Outposts: built on a tile you hold, with resources only. Dear, and dearer each time. */
-  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.35, living: 6, defence: 2, yieldBoost: 2 },
+  /** Outposts: built on a tile you hold, with resources only. Each one adds step x the base cost to the next. */
+  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.15, living: 6, defence: 2, yieldBoost: 2 },
   expandEvery: 4,           // seconds between claims when the colony expands on its own
   /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
   upgrades: {
