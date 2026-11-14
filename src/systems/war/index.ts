@@ -236,7 +236,7 @@ function startBattle(ctx: Context) {
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
   s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0 };
   ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${comp.raiders + comp.brutes} of them pour toward the entrance.`, 'warn');
-  if (autoCry(ctx)) warCry(ctx);
+  if (autoCry(ctx) || ctx.mods.get('fierceGuards') > 0) warCry(ctx);
 }
 
 /** Standing alarm (or the accord's standing orders): the war cry sounds by itself whenever it is ready. */
@@ -476,6 +476,7 @@ function startBoss(ctx: Context, target: number, enemy: number) {
     boss: { target, army: n, enemy, cd: Q.every, phase: 0, call: 'The rival queen rises from her chamber.', callT: 4, big: true, shake: 0.6 } };
   ctx.log('The army breaks into the rival mound. Their queen waits in the deepest chamber, ringed by her guard.', 'warn');
   ctx.announce('The rival queen', 'Your army is inside her mound. Watch the fight on the War tab.', { small: true, kicker: 'Campaign' });
+  if (autoCry(ctx) || ctx.mods.get('fierceGuards') > 0) warCry(ctx);
   ctx.ping('war');
 }
 const MOVES: Record<Move, { warn: string; hit: string }> = {

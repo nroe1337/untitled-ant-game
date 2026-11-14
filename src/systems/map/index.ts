@@ -170,7 +170,7 @@ function lookouts(ctx: Context, dt: number) {
     let best = -1, bd = Infinity;
     s.tiles.forEach((t, i) => { if (t.seen) return; const d = cheb(o, i); if (d <= far && d < bd) { bd = d; best = i; } });
     if (best < 0) continue;
-    if (!ctx.res.spend({ [r]: MAP.lookout.costs[r] })) return;
+    if (!ctx.mods.get('freeLookouts') && !ctx.res.spend({ [r]: MAP.lookout.costs[r] })) return;
     const [x, y] = xy(best); reveal(ctx, x, y, 1);
   }
 }

@@ -476,6 +476,9 @@ export const RESEARCH = {
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
     packmules: ['runs', 80, 'The expedition leaders'], wonderlore: ['tiles', 25, 'Your scouts'], talltales: ['rumours', 3, 'The expedition leaders'],
     nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
+    // Age of Wings: the Swarm Spire. Each stage needs its own research, which shows as the Spire rises.
+    packedearth: ['spire', 0, 'Your diggers'], resinvault: ['spire', 1, 'Your builders'], winglore: ['spire', 3, 'Your nurses'], eveningwinds: ['spire', 4, 'Your builders'],
+    scaffolding: ['spire', 1, 'Your builders'], pulleys: ['spire', 2, 'Your builders'], weatherwatch: ['spire', 4, 'Your scouts'],
     meadowgranary: ['terrain:grass', 15, 'Your foragers'], soilmasons: ['terrain:soil', 12, 'Your diggers'],
     stoneposts: ['terrain:stone', 10, 'Your soldiers'], dewwells: ['terrain:water', 6, 'Your nurses'], warmslabs: ['terrain:paved', 6, 'Your nurses'],
   } as Record<string, [string, number, string]>,
@@ -606,13 +609,31 @@ export const LINEAGE = {
     sources: { twig: 'expeditions (the stump, the hedge) and grass tiles on the Map', resin: 'expeditions to the old leaf, the stump or the edge of the stones, and stone tiles on the Map', seed: 'Seed lore, expeditions and bare soil tiles on the Map', jelly: 'chewing it in the Castes tab' } as Record<string, string>,
     held: ['twig', 'resin', 'seed', 'silk', 'jelly'],  // what the Spire holds back from other purchases (see Lineage)
     stages: [
-      { id: 'footing',    name: 'Foundation',        cost: { soil: 1400 },                         time: 0,    desc: 'Pack a wide mound of soil above the nest.' },
-      { id: 'galleries',  name: 'Galleries',         cost: { soil: 800, twig: 100, resin: 24 },   time: 0,    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
-      { id: 'nursery',    name: 'Royal nursery',     cost: { food: 2000, seed: 120, jelly: 60 },    time: 0,    desc: 'Warm cells for the larvae chosen to be queens.' },
-      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 100, food: 1200 },              time: 4800, desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 140, resin: 24, seed: 60 },    time: 0,    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
-    ] as { id: string; name: string; cost: Record<string, number>; time: number; desc: string }[],
+      { id: 'footing',    name: 'Foundation',        cost: { soil: 1400 },                         time: 0,    needs: 'packedearth',    desc: 'Pack a wide mound of soil above the nest.' },
+      { id: 'galleries',  name: 'Galleries',         cost: { soil: 800, twig: 100, resin: 24 },   time: 0,    needs: 'resinvault',    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
+      { id: 'nursery',    name: 'Royal nursery',     cost: { food: 2000, seed: 120, jelly: 60 },    time: 0,    needs: 'royal',    desc: 'Warm cells for the larvae chosen to be queens.' },
+      { id: 'princesses', name: 'Winged princesses', cost: { jelly: 100, food: 1200 },              time: 4800, needs: 'winglore', desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { twig: 140, resin: 24, seed: 60 },    time: 0,    needs: 'eveningwinds',    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+    ] as { id: string; name: string; cost: Record<string, number>; time: number; needs: string; desc: string }[],
+    /** Pulley lines: hauling by hand carries this many times as much. */
+    pulley: 3,
   },
+  /**
+   * Fine evenings (Weather watch): every so often a warm evening comes, and some are fine. A flight on a
+   * fine evening earns more lineage. With Weather watch the colony sees them coming and can fly on its own.
+   */
+  evenings: { every: 300, last: 60, fineChance: 0.35, bonus: 0.1 },
+  /** Dowry: from this many flights, the queen carries a share of the old colony's food and soil. */
+  dowry: { after: 3, share: 0.1, ids: ['food', 'soil'] },
+  /** Princess traits: pick one at the Winged princesses stage of each colony. Kept for good, never respecced. */
+  traits: {
+    sweet:  { name: 'Sweet tooth',  desc: 'Rumoured places hold one more trip.' },
+    early:  { name: 'Early wings',  desc: 'The Winged princesses stage settles 10% faster.', per: 0.1 },
+    warborn:{ name: 'War-born',     desc: 'New colonies start knowing Soldiers.' },
+    fierce: { name: 'Fierce guards', desc: 'The war cry sounds at the start of every fight.' },
+    sky:    { name: 'Sky-reader',   desc: 'Every warm evening counts as a fine one.' },
+    keen:   { name: 'Keen eyes',    desc: 'Lookouts clear fog for free.' },
+  } as Record<string, { name: string; desc: string; per?: number }>,
   // lineage earned = sqrt(workers born) + techs researched + chambers / 10 + raid waves won / 2
   perks: {
     blood:   { name: 'Royal blood',    desc: 'Eggs hatch and larvae grow {p} faster each level.', per: 0.03, base: { lineage: 2 }, growth: 1.15, max: 50 },

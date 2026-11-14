@@ -172,11 +172,14 @@ export const GUIDE: GuidePage[] = [
       ], tip: 'Every level adds something: the Mound gives living space, the others take turns adding one of three traits to battles, the nest, expeditions or the map.' },
       { head: 'Build the Swarm Spire', do: [
         'Learn [Winged queens]. The {Lineage} tab opens.',
-        'Build the Spire\'s 5 stages. Stores are held back for it on their own.',
-        'The [Winged princesses] stage takes a long time. Keep playing while it grows.',
+        'Build the Spire\'s 5 stages. Each stage needs its own research first ([Packed earth], [Resin vaulting], [Royal court], [Wing lore], [Evening winds]); each shows as the Spire rises.',
+        'Stores are held back for it on their own. A bar above the tabs shows how far along it is.',
+        'The [Winged princesses] stage takes a long time. [Scaffolding] lets builders carry to the next stage while it settles, and [Pulley lines] make hauling by hand three times bigger.',
+        'At the Winged princesses stage, pick a princess trait. Your line keeps it, and each colony adds one more.',
       ] },
       { head: 'Send the flight', do: [
-        'Click [Send out the nuptial flight] on a warm evening.',
+        'Click [Send out the nuptial flight] on a warm evening. A fine evening earns 10% more |lineage|. With [Weather watch] you can see them coming, and tick the box to fly on the next one by itself.',
+        'From your third flight on, the queen takes a dowry: 10% of your |food| and |soil| goes with her.',
         'This colony ends. You earn |lineage|.',
         'Spend |lineage| on perks. Perks are kept forever.',
       ], tip: 'Good first perks: [Royal blood], [Old trails] and [Founding swarm].' },

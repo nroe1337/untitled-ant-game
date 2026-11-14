@@ -22,6 +22,7 @@ function counter(ctx: Context, what: string) {
   switch (what) {
     case 'runs': return st.expeditions?.runs ?? 0;
     case 'rumours': return st.expeditions?.heard ?? 0;
+    case 'spire': return ctx.flags.has('tech:flight') ? (st.lineage?.wonder?.stage ?? 0) : -1;
     case 'tiles': return (st.map?.tiles as { o: string | null }[] | undefined)?.filter((t) => t.o === 'you').length ?? 0;
     case 'raids': return st.war?.raids ?? 0;
     case 'wave': return st.war?.wave ?? 0;

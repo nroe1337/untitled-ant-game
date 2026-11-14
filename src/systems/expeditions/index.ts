@@ -84,7 +84,7 @@ function hearRumour(ctx: Context) {
   const pool = RU.places.filter((p) => !open.some((o) => o.id === p.id));
   if (!pool.length) return;
   const p = pool[Math.floor(Math.random() * pool.length)];
-  const runs = RU.runs + (ctx.flags.has('tech:talltales') ? 1 : 0);
+  const runs = RU.runs + (ctx.flags.has('tech:talltales') ? 1 : 0) + ctx.mods.get('rumourRuns');
   open.push({ id: p.id, left: RU.last, runs });
   s.heard = (s.heard ?? 0) + 1;
   ctx.log(`A rumour: ${p.name}. ${p.note} Open for ${runs} trips before the trail goes cold.`, 'story');
