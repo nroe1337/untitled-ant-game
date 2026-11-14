@@ -18,6 +18,7 @@ new standing rule in a thread, add it here in the same pull request.
 - Avoid micromanagement: automated systems (war, expeditions) stay automated. Don't force over-preparation.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
+- Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
