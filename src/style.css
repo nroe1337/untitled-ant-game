@@ -407,3 +407,34 @@ canvas.map.world { cursor: pointer; }
 p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-spacing: .01em; }
 /* chamber upgrades: the "0/5" badge is wider than a chamber count, so long names wrap clear of it */
 .tilegroups.compact.chamberups .action.tile { padding-left: 30px; padding-right: 30px; }
+.pace { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.pace .ghost:disabled { opacity: 0.45; cursor: default; }
+/* the Map's camera: a window onto the garden, with the whole garden small in the corner */
+.camera { max-width: 720px; }
+.camview { position: relative; line-height: 0; }
+.camview canvas.map { width: 100%; touch-action: none; cursor: grab; outline: none; }
+.camview canvas.map:focus-visible { box-shadow: 0 0 0 1px var(--accent); }
+.camview canvas.map.dragging { cursor: grabbing; }
+.camview canvas.minimap { position: absolute; right: 6px; bottom: 6px; width: 22%; max-width: 128px; aspect-ratio: 1; image-rendering: pixelated; border: 1px solid var(--line); background: var(--bg); cursor: pointer; touch-action: none; opacity: 0.92; }
+.camctl { align-items: center; justify-content: space-between; gap: 8px; }
+.camctl .controls { margin: 0; }
+/* Research: one tab per age. A finished age fades and gets a tick. */
+.agetabs { margin-bottom: 4px; }
+.agetab.complete { opacity: 0.5; }
+.agetab.complete::before { content: "✓ "; color: var(--food, #8fa35a); }
+.agetab.complete.on { opacity: 0.85; }
+.agepage { display: grid; gap: 12px; }
+.agepage[hidden] { display: none; }
+.agepage .age { margin: 0; }
+/* Research map: each age's research as linked nodes, top to bottom (Thaumcraft / Astral Sorcery style) */
+.techmap { position: relative; max-width: 720px; }
+.techlinks { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; overflow: visible; border: 0; }
+.techlinks path { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+.techlinks path.open { stroke: #6a5a48; stroke-dasharray: none; }
+.techlinks path.lit { stroke: var(--accent); stroke-dasharray: none; opacity: .75; }
+.techpos { position: absolute; padding: 0 5px; box-sizing: border-box; }
+.techpos[hidden] { display: none; }
+.techpos .action.tile { min-height: 52px; padding: 8px 10px; }
+.techpos .tile.done.technode { min-height: 52px; padding: 8px 10px; border-color: var(--accent); color: var(--fg); background: color-mix(in srgb, var(--accent) 14%, var(--panel)); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent); }
+.techpos .tile.unknown { display: flex; align-items: center; justify-content: center; min-height: 52px; border: 1px dashed var(--line); border-radius: 4px; color: #5a4c3e; font-weight: 700; background: #141210; }
+.techpos [hidden] { display: none !important; }

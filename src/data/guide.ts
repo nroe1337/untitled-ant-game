@@ -20,6 +20,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Start research', do: [
         'At 3 workers the {Research} tab opens.',
         'Learn [Tunnelling] first. It unlocks Diggers and the {Nest} tab.',
+        'New research shows up as the colony does things: digs chambers, raises workers, fills its stores. Keep growing and check back.',
       ] },
       { head: 'Give everyone a job', do: [
         'Open the {Jobs} tab.',
@@ -31,11 +32,16 @@ export const GUIDE: GuidePage[] = [
         'When living space is full, no new workers hatch. Dig ahead.',
       ] },
       { head: 'Research the basics', do: [
-        'Learn [Storage chambers], [Brood care] and [Elder memory].',
+        'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (when |knowledge| is nearly full).',
         'After [Brood care], every chamber slowly gathers |mould|. Put workers on Nurse to scrub it away.',
         'Dig a [Food store] or [Soil pit] whenever a resource sits at its cap.',
         'Put a few workers on Elder for |knowledge|.',
       ], tip: '!Keep |mould| low.! It slows the brood. At 500 eggs rot and food spoils; at 750 workers fall sick. The queen keeps up with 8 chambers, each nurse 8 more. Later, [Grooming] raises it to 12. Overgrown? [Scrub the mould] on the {Queen} tab.' },
+      { head: 'Shape the colony', do: [
+        '[Buried finds]: diggers now and then strike a root, a seed or a pocket of |soil|.',
+        '[Brood rhythm]: set the larvae to Quick (faster, hungrier) or Lean (slower, thriftier) on the {Queen} tab.',
+        '[Famine law] appears after a worker first starves. From then on, the nurses give up eggs and larvae before any worker dies.',
+      ] },
     ],
     next: 'Learn [Upward tunnels] and reach 10 chambers. The Age of Forage begins.',
   },
@@ -44,13 +50,13 @@ export const GUIDE: GuidePage[] = [
     goal: 'Make the colony run itself, start expeditions, and lay the groundwork for mapping the garden.',
     steps: [
       { head: 'Automate jobs', do: [
-        'Learn [Daily routine].',
+        'Learn [Daily routine]. It appears once the colony reaches 25 workers.',
         'On the {Jobs} tab, click the ☆ next to Forager.',
         'New idle workers now go to Forager on their own.',
       ], tip: 'You can change the starred job any time.' },
       { head: 'Grow the stores', do: [
-        'Learn [Wider tunnels], [Packed walls] and [Memory songs].',
-        'They are cheap and make every chamber better.',
+        '[Wider tunnels] appears at 12 chambers, and [Deep galleries] follows it for more living space.',
+        '[Packed walls] appears when the |food| store is nearly full, [Memory songs] when |knowledge| is.',
       ] },
       { head: 'Clear the air', do: [
         'Learn [Ventilation] and dig [Purification chamber]s.',
@@ -63,7 +69,7 @@ export const GUIDE: GuidePage[] = [
         'Spend the trail marks they earn on the {Surface} tab.',
       ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
       { head: 'Make pheromone', do: [
-        'Learn [Trail scent]. Put a few workers on Scout.',
+        'After a few expeditions, learn [Trail scent]. Put a few workers on Scout.',
         'Scouts make |pheromone|. The Map costs a lot of it, so start early.',
       ] },
       { head: 'Set up queues', do: [
@@ -72,7 +78,7 @@ export const GUIDE: GuidePage[] = [
         'Fill both before you step away from the game.',
       ] },
       { head: 'Free food', do: [
-        'Learn [Seed lore] and dig [Seed granary]s. They make |food| with no workers.',
+        'Once you hold a few |seed|s, learn [Seed lore] and dig [Seed granary]s. They make |food| with no workers.',
         'Learn [Sanitation] and dig a [Midden]. It lowers how much the colony eats.',
       ] },
     ],
@@ -84,21 +90,24 @@ export const GUIDE: GuidePage[] = [
     steps: [
       { head: 'Claim land', do: [
         'Learn [Mapping] first. It opens the {Map} tab.',
-        'On the {Map} tab, click a tile next to your land, then claim it.',
+        'On the {Map} tab, drag to look around. Click a tile next to your land, then claim it.',
+        'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out.',
+        'Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
-      ], tip: 'Learn [Frontier sense] to turn on "Expand on its own".' },
+      ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },
       { head: 'Prepare for raids', do: [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
         'Put workers on Soldier and dig Guard posts.',
       ], tip: '!Raids will come.! Have soldiers ready before the first wave.' },
       { head: 'Use the chitin', do: [
         'Dead raiders drop |chitin|.',
-        'Spend it on fortifications on the {War} tab.',
-        'Learn [Husk masonry] and dig [Hall of husks] for room and defence.',
+        '[Fortification] appears after the first raid. Spend |chitin| on fortifications on the {War} tab.',
+        'With 15 |chitin| in store, learn [Husk masonry] and dig [Hall of husks] for room and defence.',
+        'War research keeps appearing as you fight more raids.',
       ] },
       { head: 'Take the fight to them', do: [
-        'Learn [Campaigning].',
+        'Learn [Campaigning]. It appears once you reach wave 3.',
         'Pick an enemy tile on the {Map}, then launch from the {War} tab.',
         'Every tile you take makes the rival army smaller.',
       ] },

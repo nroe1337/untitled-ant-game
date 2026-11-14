@@ -27,6 +27,13 @@ export const BROOD = {
     sick: 900, sickEvery: 60,         // 900+: a sick worker dies every 60 s
     scrubClick: 10, scrubCooldown: 0.5 }, // the Queen tab's Scrub button: always a way back
   healCap: 0.5,             // most Wound care can cut expedition worker losses
+  /** Brood rhythm research: the Queen tab's pace for the larvae. grow multiplies growth speed, eat multiplies food eaten. */
+  rhythm: {
+    steady: { name: 'Steady', grow: 1, eat: 1, desc: 'Larvae grow and eat as usual.' },
+    quick: { name: 'Quick', grow: 1.4, eat: 1.5, desc: 'Larvae grow 40% faster but eat 50% more.' },
+    lean: { name: 'Lean', grow: 0.7, eat: 0.6, desc: 'Larvae eat 40% less but grow 30% slower.' },
+  } as Record<string, { name: string; grow: number; eat: number; desc: string }>,
+  rhythmCooldown: 15,       // seconds before the pace can be changed again
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
@@ -80,6 +87,15 @@ export const JOBS = {
   digger: { soil: 0.06 },
   /** With Deep diggers, each digger also brings up this much clay a second. */
   diggerClay: 0.012,
+  /** Buried finds research: each digger strikes something about once per this many seconds (Deep finds: 3x as often). */
+  findEvery: 1000, deepFindMult: 3,
+  finds: [
+    { weight: 5, res: 'food', amt: [12, 25], text: 'A digger strikes a fat root. The colony eats.' },
+    { weight: 3, res: 'soil', amt: [20, 40], text: 'A tunnel wall gives way into a loose pocket of soil.' },
+    { weight: 2, res: 'seed', amt: [1, 3], text: 'A digger turns up a buried seed.' },
+    { weight: 4, res: 'clay', amt: [10, 25], deep: true, text: 'Deep down, a digger breaks into a seam of soft clay.' },
+    { weight: 2, res: 'chitin', amt: [2, 5], deep: true, text: 'A digger uncovers the shell of a long-dead beetle.' },
+  ] as { weight: number; res: string; amt: [number, number]; deep?: boolean; text: string }[],
   clayCap: 200,
   scout: { pheromone: 0.02 },
   elder: { knowledge: 0.03 },
@@ -97,6 +113,8 @@ export const NEST = {
   storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
   storageBoost: 0.5,
+  /** Storage techs that boost by a different share than storageBoost. */
+  storageBoostBy: { shelving: 0.25, songs: 0.25 } as Record<string, number>,
   /** Research that adds a share to all living space from chambers (a colony of thousands needs these). */
   wideTunnels: 1,           // extra living space per tunnel once Wider tunnels is researched
   housingTechs: { deepgalleries: 0.25, vaults: 0.25, partitions: 0.5 } as Record<string, number>,
@@ -181,21 +199,36 @@ export const EXPEDITIONS = {
 };
 
 export const MAP = {
-  cols: 40,
-  rows: 24,
-  nest: [7, 13] as [number, number],
-  rival: [32, 5] as [number, number],
-  spider: [31, 19] as [number, number],
+  /** The garden (Nov 14: grown from 40x24 to 64x64; the Map shows it through a camera, view tiles at a time). */
+  cols: 64,
+  rows: 64,
+  view: [40, 26] as [number, number],
+  nest: [12, 44] as [number, number],
+  rival: [50, 16] as [number, number],
+  spider: [48, 54] as [number, number],
+  /** Where the old 40x24 garden's nest stood: older saves are carried into the bigger garden around the new nest. */
+  oldSize: [40, 24] as [number, number], oldNest: [7, 13] as [number, number],
+  river: { x: 30, bend: 3, wave: 4 },   // the stream runs north to south, wobbling around this column
+  paved: [36, 28, 6, 6] as [number, number, number, number], // the patio: x, y, width, height
   startReveal: 2,
+  /** Land can only be claimed within this many tiles (diagonals count as one) of the nest or an outpost. */
+  reach: 8,
   claimCost: { food: 40, twig: 4 },
-  claimStep: 0.08,          // each tile held past the start makes the next claim 8% of the base dearer (linear, so the whole map stays in reach)
+  claimStep: 0.035,         // each tile held past the start makes the next claim 3.5% of the base dearer (linear, so the whole map stays in reach)
   startTiles: 1,            // the colony starts holding only the nest tile
-  claimParty: 2,            // scouts who go out to claim a tile next to the nest; they come home when it's done
-  claimScoutsPerTile: 0.5,  // extra scouts per tile of distance from the nest
-  claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nest
+  claimParty: 2,            // scouts who go out to claim a tile next to the nest or an outpost; they come home when it's done
+  claimScoutsPerTile: 0.5,  // extra scouts per tile of distance from the nearest nest or outpost
+  claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nearest nest or outpost
   claimTimePerTile: 4,
-  /** Outposts: built on a tile you hold, with resources only. Dear, and dearer each time. */
-  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.35, living: 6, defence: 2, yieldBoost: 2 },
+  /** Outposts: built on a tile you hold, with resources only. Each one adds step x the base cost to the next. */
+  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.15, living: 6, defence: 2, yieldBoost: 2 },
+  /** Outpost research (Nov 14). */
+  lookout: { every: 10, sight: 3, costs: { pheromone: 4, food: 15, seed: 2 } as Record<string, number> }, // each outpost clears one patch of fog within reach + sight every few seconds, paid in the chosen resource
+  camps: 1,                 // Foraging camps: held tiles next to an outpost yield this much more (+100%)
+  waystations: 3,           // Waystations: outposts' own yield is multiplied by this
+  linked: 0.1,              // Linked trails: every outpost linked to the nest adds this to every linked outpost's yield
+  /** Terrain works: what an outpost makes from its own ground, per second. */
+  works: { grass: { twig: 0.01 }, soil: { seed: 0.006 }, stone: { resin: 0.008 }, water: { pheromone: 0.05 }, paved: { food: 0.3 } } as Record<string, Record<string, number>>,
   expandEvery: 4,           // seconds between claims when the colony expands on its own
   /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
   upgrades: {
@@ -309,8 +342,8 @@ export const RESEARCH = {
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['routine', 'shelving'], desc: 'Unlocks the Purification chamber, which scrubs a slow trickle of mould.' },
     grooming:   { name: 'Grooming',          age: 'conquest', cost: { knowledge: 540, food: 450 },      needs: ['halls', 'ventilation'],             desc: 'Nurses learn to groom the walls: each scrubs 12 chambers\' worth of mould instead of 8.' },
-    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 50% more.' },
-    songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
+    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 25% more.' },
+    songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 25% more knowledge.' },
     lining:     { name: 'Resin lining',      age: 'conquest', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'], flag: 'legacy:flown', desc: 'Opens the Techniques tab.' },
     worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'], flag: 'legacy:flown', desc: 'Unlocks the Marching songs and Load bearing techniques.' },
@@ -318,7 +351,7 @@ export const RESEARCH = {
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 120 },          pop: 0.06, needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 12 },           pop: 0.1, needs: ['scouting'],             desc: 'Unlocks the Seed granary.' },
     resin:      { name: 'Resin working',     age: 'conquest', cost: { knowledge: 260, resin: 8 },          pop: 0.2, needs: ['cartography'],               desc: 'Unlocks the Resin gallery.' },
-    deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['plans'],            desc: 'Chambers give 25% more living space.' },
+    deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['widetunnels'],      desc: 'Chambers give 25% more living space.' },
     halls:      { name: 'Sleeping halls',    age: 'conquest', cost: { knowledge: 360, twig: 80 },          pop: 0.27, needs: ['resin', 'deepgalleries'], desc: 'Unlocks the Worker hall: +12 living space each.' },
     vaults:     { name: 'Vaulted roofs',     age: 'conquest', cost: { knowledge: 480, resin: 30, twig: 70 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Chambers give 25% more living space.' },
     partitions: { name: 'Paper partitions',  age: 'settlement', cost: { knowledge: 500, paper: 45 },     pop: 1.0, needs: ['papercraft'],          desc: 'Chambers give 50% more living space.' },
@@ -350,6 +383,33 @@ export const RESEARCH = {
     metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 700, grease: 35 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
     campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, TechDef>,
+  /**
+   * Hidden milestones (Nate, Nov 14): these research stay out of sight until the colony has done something,
+   * so the Age of Conquest opens up bit by bit. [counter, at least, who has the idea]. Once seen, a tech stays seen.
+   * Every age is designed this way: research appears because of what the colony did, not all at once.
+   * Counters: runs (expeditions), tiles (held), raids (fought), wave (next wave to provoke), peak (most workers
+   * this colony), born (workers hatched), rooms (chambers dug), starved (workers lost to hunger), techs (research
+   * learned), full:<res> (store filled to this %), or any resource id (amount in store).
+   */
+  milestones: {
+    // Age of Dirt
+    storage: ['rooms', 3, 'Your diggers'], brood: ['born', 5, 'The queen'], elders: ['full:knowledge', 80, 'Your elders'],
+    buriedfinds: ['rooms', 4, 'Your diggers'], broodrhythm: ['born', 15, 'Your nurses'], faminelaw: ['starved', 1, 'Your nurses'],
+    // Age of Forage
+    routine: ['peak', 25, 'The queen'], widetunnels: ['rooms', 12, 'Your diggers'], deepgalleries: ['rooms', 18, 'Your diggers'],
+    plans: ['rooms', 15, 'Your diggers'], shelving: ['full:food', 80, 'Your foragers'], songs: ['full:knowledge', 90, 'Your elders'],
+    studyplans: ['techs', 12, 'Your elders'], ventilation: ['rooms', 16, 'Your nurses'], sanitation: ['born', 100, 'Your nurses'],
+    scouting: ['runs', 3, 'The expedition leaders'], seeds: ['seed', 5, 'Your foragers'], worksongs: ['runs', 5, 'Your foragers'],
+    // Age of Conquest
+    quartermasters: ['runs', 10, 'The expedition leaders'], widedoors: ['runs', 25, 'The expedition leaders'],
+    frontier: ['tiles', 6, 'Your scouts'], outpostwalls: ['tiles', 10, 'Your scouts'], supplylines: ['tiles', 15, 'Your scouts'],
+    fortify: ['raids', 1, 'Your soldiers'], rivalscent: ['raids', 2, 'Your soldiers'], alarmscent: ['raids', 3, 'Your soldiers'],
+    fielddressing: ['raids', 4, 'Your nurses'], columnbreak: ['raids', 6, 'Your soldiers'], counterraid: ['raids', 10, 'Your soldiers'],
+    husks: ['chitin', 15, 'Your diggers'], rendering: ['chitin', 40, 'Your diggers'],
+    campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
+    lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
+    linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
+  } as Record<string, [string, number, string]>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
     { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },

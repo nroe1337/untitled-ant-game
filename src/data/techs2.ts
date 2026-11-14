@@ -51,16 +51,18 @@ function effects(mods: Record<string, number> = {}, caps: Record<string, number>
 type Row = [id: string, name: string, needs: string[], cost: Record<string, number>, mods?: Record<string, number>, caps?: Record<string, number>, extra?: { screen?: string; flag?: string; lead?: string }];
 const AGE_ROWS: Record<string, Row[]> = {
   dirt: [
-    ['sharedstomach', 'Shared stomachs', ['brood'], { knowledge: 20, food: 20 }, { upkeep: -0.05 }],
-    ['soilsense', 'Soil sense', ['digging'], { knowledge: 15, soil: 25 }, { 'job:digger': 0.1 }],
-    ['queenscent', 'Queen\'s scent', ['brood'], { knowledge: 30, food: 30 }, { brood: 0.05 }],
-    ['eggpiles', 'Egg piles', ['brood'], { knowledge: 35, soil: 30 }, {}, { egg: 4 }],
+    // Dirt research changes how the colony works rather than adding a few percent (Nate, Nov 14).
+    ['buriedfinds', 'Buried finds', ['digging'], { knowledge: 15, soil: 25 }, {}, {}, { lead: 'Now and then a digger strikes something buried: a root to eat, a seed, or a loose pocket of soil.' }],
+    ['broodrhythm', 'Brood rhythm', ['brood'], { knowledge: 30, food: 30 }, {}, {}, { lead: 'Set the brood\'s pace on the Queen tab: Quick larvae grow faster but eat more, Lean larvae eat less but grow slower.' }],
+    ['faminelaw', 'Famine law', ['brood'], { knowledge: 20, food: 20 }, {}, {}, { lead: 'When the colony starves, nurses feed eggs and then larvae to the workers before any worker dies.' }],
   ],
   conquest: [
-    ['linkedlegs', 'Linked legs', ['cartography'], { knowledge: 300, twig: 30 }, { claimCost: -0.1 }, {}, { screen: 'bridges' }],
-    ['longspans', 'Long spans', ['linkedlegs'], { knowledge: 380, twig: 35 }, { expSpeed: -0.08 }, {}, { screen: 'bridges' }],
-    ['bridgecrews', 'Bridge crews', ['longspans'], { knowledge: 450, resin: 20 }, { expSafety: -0.15 }, {}, { screen: 'bridges' }],
-    ['farfence', 'The far fence', ['bridgecrews', 'frontier'], { knowledge: 600, twig: 35 }, { expLoot: 0.15 }, {}, { screen: 'bridges' }],
+    // Outposts (Nov 14): they push the colony's reach out across the bigger garden, and these make them worth it.
+    ['lookouts', 'Lookouts', ['cartography'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with a resource you choose on the Map.' }],
+    ['foragingcamps', 'Foraging camps', ['cartography'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
+    ['terrainworks', 'Terrain works', ['lookouts'], { knowledge: 420, twig: 40 }, {}, {}, { lead: 'Each outpost works its own ground: stone gives resin, grass twigs, bare soil seeds, streams pheromone, patio slabs food.' }],
+    ['waystations', 'Waystations', ['terrainworks'], { knowledge: 480, soil: 300 }, {}, {}, { lead: 'Outposts become waystations: an outpost\'s own tile yields three times as much again.' }],
+    ['linkedtrails', 'Linked trails', ['waystations'], { knowledge: 560, pheromone: 80 }, {}, {}, { lead: 'Outposts linked to the nest by a chain of outposts, each within reach of the last, share their trails: every linked outpost yields 10% more for each one in the chain.' }],
     ['alarmscent', 'Alarm scent', ['martial'], { knowledge: 320, pheromone: 30 }, { soldierPower: 0.05 }],
     ['outpostwalls', 'Outpost walls', ['fortify'], { knowledge: 420, twig: 35 }, { claimCost: -0.1 }],
     ['columnbreak', 'Column breaking', ['alarmscent', 'husks'], { knowledge: 520, chitin: 25 }, { soldierPower: 0.08 }],
@@ -76,6 +78,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['widedoors', 'Wide doors', ['halls'], { knowledge: 420, soil: 300 }, { expSpeed: -0.1 }],
   ],
   wings: [
+    ['deepfinds', 'Deep finds', ['deepdig'], { knowledge: 560, clay: 60 }, {}, {}, { lead: 'Diggers strike buried things three times as often, and down in the clay they turn up clay and old beetle shells (chitin).' }],
     ['deepvents', 'Deep vents', ['deepdig'], { knowledge: 500, clay: 40 }, { mouldMade: -0.05 }, {}, { lead: 'Unlocks the Deep vent, which scrubs mould for a big nest.' }],
     ['tunnelwatch', 'Tunnel watch', ['royal', 'fortify'], { knowledge: 500, chitin: 30 }, { soldierPower: 0.08 }],
     ['chokepoints', 'Choke points', ['tunnelwatch'], { knowledge: 560, clay: 40 }, { 'slotsPer:soldier': 1 }],

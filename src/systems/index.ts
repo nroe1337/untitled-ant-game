@@ -3,7 +3,7 @@
 import type { GameSystem } from '../core/types';
 import { brood } from './brood';
 import { jobs, techniques } from './jobs';
-import { research, researchDone } from './research';
+import { research } from './research';
 import { nest } from './nest';
 import { expeditions } from './expeditions';
 import { map } from './map';
@@ -31,7 +31,6 @@ export const SYSTEMS: GameSystem[] = [
   jobs,
   techniques,
   research,
-  researchDone,
   nest,
   expeditions,
   map,
