@@ -114,25 +114,30 @@ export const research: GameSystem = {
   },
 
   panel: (() => {
+    // One tab per age (Nate, Nov 14). Each shows what can be learned now and what has been learned.
+    // An older age with research still waiting gets a dot; an age with nothing left fades and gets a tick.
     const rows = new Map<string, ReturnType<typeof tileButton>>();
-    const groups = new Map<string, { head: HTMLElement; list: HTMLElement }>();
-    let empty: HTMLElement, ageEl: HTMLElement;
+    const pages = new Map<string, { tab: HTMLButtonElement; page: HTMLElement; list: HTMLElement; learned: HTMLElement; learnedHead: HTMLElement; status: HTMLElement; empty: HTMLElement }>();
+    let picked: string | null = null, tabBar: HTMLElement;
     return {
       title: 'Research',
       group: 'Research',
       mount(root, ctx) {
-        ageEl = el('p.age');
+        tabBar = el('div.tabs.agetabs');
         root.append(
           el('p.flavor', {}, 'Elders remember. What one ant learns, the colony keeps.'),
-          ageEl,
-          el('p.muted', {}, 'Put workers on the Elder job to gather knowledge.'),
+          el('p.muted', {}, 'Put workers on the Elder job to gather knowledge. New ideas appear as the colony grows and does new things.'),
+          tabBar,
         );
-        // one group per age, in order
         for (const age of RESEARCH.ages) {
-          const head = el('h3', { hidden: true }, age.name);
-          const list = el('div.tiles');
-          groups.set(age.id, { head, list });
-          root.append(head, list);
+          const tab = el('button.tab.agetab', { type: 'button', hidden: true }, age.name.replace(/^Age of /, '')) as HTMLButtonElement;
+          tab.addEventListener('click', () => { picked = age.id; });
+          tabBar.append(tab);
+          const list = el('div.tiles'), learned = el('div.tiles.learned'), learnedHead = el('h3', {}, 'Learned');
+          const status = el('p.muted'), empty = el('p.muted', {}, 'Nothing to research here right now.');
+          const page = el('div.agepage', { hidden: true }, el('p.age', {}, `${age.name}. ${age.note}`), status, list, empty, learnedHead, learned);
+          root.append(page);
+          pages.set(age.id, { tab, page, list, learned, learnedHead, status, empty });
         }
         for (const id of IDS) {
           const t = TECHS[id];
@@ -152,58 +157,52 @@ export const research: GameSystem = {
             },
           });
           btn.root.hidden = true;
-          (groups.get(t.age) ?? groups.get('dirt')!).list.append(btn.root);
+          (pages.get(t.age) ?? pages.get('dirt')!).list.append(btn.root);
           rows.set(id, btn);
         }
-        empty = el('p.muted', {}, 'Nothing to research right now. New ideas come as the colony grows.');
-        root.append(empty);
       },
       update(_root, ctx) {
-        let any = false;
-        const shown = new Set<string>();
         const slots = researchSlots(ctx), q = RQ(ctx);
+        const cur = RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id);
+        const open = new Map<string, number>(); // age -> research you can see and learn now
         for (const id of IDS) {
-          const r = rows.get(id)!;
-          const show = available(ctx, id);
+          const r = rows.get(id)!, show = available(ctx, id);
           r.root.hidden = !show;
           if (!show) continue;
+          open.set(TECHS[id].age, (open.get(TECHS[id].age) ?? 0) + 1);
           r.root.classList.toggle('queues', slots > q.length && bigEnough(ctx, id) && !q.includes(id));
-          any = true;
-          shown.add(TECHS[id].age);
           r.update(ctx);
         }
-        for (const [age, g] of groups) g.head.hidden = !shown.has(age);
-        empty.hidden = any;
-        const age = currentAge(ctx);
-        ageEl.textContent = `${age.name}. ${age.note}`;
-      },
-    };
-  })(),
-};
-
-/** Completed research gets its own sub-tab, grouped by age; hover a tile for what it did. */
-export const researchDone: GameSystem = {
-  id: 'researchDone',
-  init() {},
-  isUnlocked: (ctx) => IDS.some((id) => done(ctx, id)),
-  panel: (() => {
-    let box: HTMLElement;
-    return {
-      title: 'Completed',
-      group: 'Research',
-      quiet: true,
-      mount(root) {
-        box = el('div');
-        root.append(el('p.flavor', {}, 'What the colony knows.'), box);
-      },
-      update(_root, ctx) {
-        const known = IDS.filter((id) => done(ctx, id));
-        if (box.dataset.n === String(known.length)) return;
-        box.dataset.n = String(known.length);
-        box.replaceChildren(...RESEARCH.ages.flatMap((age) => {
-          const ids = known.filter((id) => TECHS[id].age === age.id);
-          return ids.length ? [el('h3', {}, age.name), el('div.tiles', {}, ...ids.map((id) => { const t = el('div.tile.done', { tabindex: 0 }, TECHS[id].name); hoverTip(t, () => [el('div.teffect', {}, TECHS[id].desc)]); return t; }))] : [];
-        }));
+        // tabs: every age up to the current one, plus any age with something open
+        RESEARCH.ages.forEach((age, i) => {
+          const pg = pages.get(age.id)!;
+          pg.tab.hidden = !(i <= cur || open.has(age.id));
+        });
+        if (!picked || pages.get(picked)!.tab.hidden) picked = RESEARCH.ages[cur].id;
+        RESEARCH.ages.forEach((age, i) => {
+          const pg = pages.get(age.id)!;
+          if (pg.tab.hidden) return;
+          const ids = IDS.filter((id) => TECHS[id].age === age.id);
+          const known = ids.filter((id) => done(ctx, id));
+          // still to come: not learned, and not shut out by a flag this line hasn't earned
+          const left = ids.filter((id) => !done(ctx, id) && (!TECHS[id].flag || ctx.flags.has(TECHS[id].flag!)));
+          const waiting = open.get(age.id) ?? 0, hidden = left.length - waiting;
+          const complete = left.length === 0;
+          pg.tab.classList.toggle('on', picked === age.id);
+          pg.tab.classList.toggle('complete', complete);
+          pg.tab.classList.toggle('new', i < cur && waiting > 0 && picked !== age.id);
+          pg.tab.title = complete ? 'Everything learned' : waiting ? `${waiting} to research` : 'Nothing to research yet';
+          pg.page.hidden = picked !== age.id;
+          if (pg.page.hidden) return;
+          pg.empty.hidden = waiting > 0 || complete;
+          pg.status.textContent = complete ? `Everything in this age is learned (${known.length}).`
+            : `Learned ${known.length}. ` + (waiting ? `${waiting} to research now. ` : '') + (hidden > 0 ? 'More ideas will come as the colony grows.' : '');
+          pg.learnedHead.hidden = !known.length;
+          if (pg.learned.dataset.n !== String(known.length)) {
+            pg.learned.dataset.n = String(known.length);
+            pg.learned.replaceChildren(...known.map((id) => { const t = el('div.tile.done', { tabindex: 0 }, TECHS[id].name); hoverTip(t, () => [el('div.teffect', {}, TECHS[id].desc)]); return t; }));
+          }
+        });
       },
     };
   })(),

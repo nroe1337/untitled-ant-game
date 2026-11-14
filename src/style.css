@@ -418,3 +418,12 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .camview canvas.minimap { position: absolute; right: 6px; bottom: 6px; width: 22%; max-width: 128px; aspect-ratio: 1; image-rendering: pixelated; border: 1px solid var(--line); background: var(--bg); cursor: pointer; touch-action: none; opacity: 0.92; }
 .camctl { align-items: center; justify-content: space-between; gap: 8px; }
 .camctl .controls { margin: 0; }
+/* Research: one tab per age. A finished age fades and gets a tick. */
+.agetabs { margin-bottom: 4px; }
+.agetab.complete { opacity: 0.5; }
+.agetab.complete::before { content: "✓ "; color: var(--food, #8fa35a); }
+.agetab.complete.on { opacity: 0.85; }
+.agepage { display: grid; gap: 12px; }
+.agepage[hidden] { display: none; }
+.agepage .age { margin: 0; }
+.tiles.learned .tile.done { min-height: 34px; padding: 6px 10px; font-size: 13px; background: none; border-style: dashed; color: var(--muted); }
