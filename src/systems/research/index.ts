@@ -31,6 +31,7 @@ function counter(ctx: Context, what: string) {
     case 'starved': return st.jobs?.starved ?? 0;
     case 'techs': return IDS.filter((t) => done(ctx, t)).length;
     default:
+      if (what.startsWith('terrain:')) { const k = what.slice(8); return (st.map?.tiles as { o: string | null; t: string }[] | undefined)?.filter((t) => t.o === 'you' && t.t === k).length ?? 0; }
       if (what.startsWith('full:')) { const r = what.slice(5); return ctx.res.has(r) && ctx.res.cap(r) > 0 ? ctx.res.amt(r) / ctx.res.cap(r) * 100 : 0; } return ctx.res.has(what) ? ctx.res.amt(what) : 0;
   }
 }

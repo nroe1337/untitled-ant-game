@@ -95,6 +95,7 @@ export const GUIDE: GuidePage[] = [
         'Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
+        'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
       ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },
       { head: 'Prepare for raids', do: [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
@@ -115,6 +116,10 @@ export const GUIDE: GuidePage[] = [
         'Every tile you take makes the rival army smaller.',
         'Their home tile is a boss fight with the rival queen: she hatches guards, spits acid, turns your soldiers and goes berserk when hurt. Bring more strength than hers. Kill her and the raids stop for good.',
         'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
+      ] },
+      { head: 'Let the nest run itself', do: [
+        'After 300 workers are born, [Night shift] appears: the queen lays on her own while food is over half full.',
+        'With 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
       ] },
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',

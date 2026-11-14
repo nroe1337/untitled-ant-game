@@ -6,7 +6,7 @@ import { upgradeList, type UpgradeDef } from '../../core/upgrades';
 import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
-import { COLONY, NEST, RESEARCH } from '../../data/balance';
+import { BROOD, COLONY, NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
 import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
@@ -135,6 +135,16 @@ function liveDesc(ctx: Context, id: ChamberId) {
   if (m !== 1) d = d.replace(/\+(\d+)(?![\d.]*%)(?! living)/g, (_, n) => `+${num(Number(n) * m)}`);
   // job slots this room gives (see COLONY.jobSlots)
   for (const [job, [room, per]] of Object.entries(COLONY.jobSlots)) if (room === id) d += `, +${per} ${job} slots`;
+  const extra: Partial<Record<ChamberId, [string, string]>> = {
+    granary: ['meadowgranary', `+${NEST.terrain.meadowgranary} seed/s (Meadow granaries)`],
+    storeroom: ['soilmasons', `+${NEST.terrain.soilmasons} living space (Soil masons)`],
+    barracks: ['stoneposts', 'defence doubled (Stone posts)'],
+    cistern: ['dewwells', `scrubs ${NEST.terrain.dewwells} mould/s (Dew wells)`],
+    warmth: ['warmslabs', `+${NEST.terrain.warmslabs} brood space (Warm slabs)`],
+    midden: ['compost', `turns ${BROOD.compost.share * 100}% of scrubbed mould into soil (Midden compost)`],
+  };
+  const x = extra[id];
+  if (x && ctx.flags.has('tech:' + x[0])) d += `, ${x[1]}`;
   return d;
 }
 
@@ -143,15 +153,19 @@ function applyEffects(ctx: Context) {
   const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * (k.endsWith('Cap') ? stack(ctx, id) * mult(id) : count(ctx, id)) * power(ctx, id), 0);
   const roomier = roominess(ctx);
   const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') * power(ctx, 'tunnel') : 0;
-  ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide) * roomier));
+  // terrain specialists: held ground upgrades chambers already dug
+  const T = NEST.terrain, has = (t: string) => ctx.flags.has('tech:' + t);
+  const masons = has('soilmasons') ? T.soilmasons * count(ctx, 'storeroom') * power(ctx, 'storeroom') : 0;
+  ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide + masons) * roomier));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
-  ctx.res.setCapBonus('egg', 'nest', sum('broodCap'));
+  ctx.res.setCapBonus('egg', 'nest', sum('broodCap') + (has('warmslabs') ? T.warmslabs * count(ctx, 'warmth') * power(ctx, 'warmth') : 0));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
   for (const r of Object.keys(NEST.baseMaterialCap)) {
     if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * stack(ctx, id) * mult(id) * power(ctx, id), 0));
   }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
-  ctx.mods.set('defence', 'nest', sum('defence'));
+  ctx.mods.set('defence', 'nest', sum('defence') + (has('stoneposts') ? (DEFS.barracks.defence ?? 0) * count(ctx, 'barracks') * power(ctx, 'barracks') : 0));
+  ctx.mods.set('mouldClean', 'dewwells', has('dewwells') ? T.dewwells * count(ctx, 'cistern') * power(ctx, 'cistern') : 0);
   ctx.mods.set('upkeep', 'nest', -sum('upkeep'));
   ctx.mods.set('job:scout', 'nest', sum('scout'));
   ctx.mods.set('job:elder', 'nest', sum('elder'));
@@ -191,6 +205,7 @@ export const nest: GameSystem = {
     if (queueSlots(ctx)) runQueue(ctx);
     const g = count(ctx, 'granary');
     if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * power(ctx, 'granary') * dt);
+    if (g && ctx.flags.has('tech:meadowgranary')) ctx.res.add('seed', g * NEST.terrain.meadowgranary * power(ctx, 'granary') * dt);
     if (!ctx.flags.has('surface') && ctx.flags.has('tech:surface') && totalChambers(ctx) >= NEST.surfaceAtChambers) {
       ctx.flags.add('surface');
       ctx.log('A digger pushes upward and the soil gives way. Light. Wind. The surface.');

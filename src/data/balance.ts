@@ -9,6 +9,8 @@ export const BROOD = {
   eggFoodCost: 2,           // food per egg the queen lays by hand
   layOpensAtFood: 4,        // Lay an egg appears once the stores first reach this (a few forages)
   layEggCooldown: 3,        // seconds between manual lays
+  nightShiftAt: 0.5,        // Night shift: the queen lays on her own while food is over this share of the cap
+  compost: { share: 0.03, soil: 2 }, // Midden compost: each Midden turns this share of scrubbed mould into soil, this much soil per mould
   eggHatchTime: 30,         // seconds for an egg to become a larva
   larvaGrowTime: 40,        // seconds for a larva to become a worker
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
@@ -119,6 +121,8 @@ export const NEST = {
   wideTunnels: 1,           // extra living space per tunnel once Wider tunnels is researched
   housingTechs: { deepgalleries: 0.25, vaults: 0.25, partitions: 0.5 } as Record<string, number>,
   surfaceAtChambers: 10,
+  /** Terrain specialist research: what each adds per chamber. */
+  terrain: { meadowgranary: 0.01, soilmasons: 2, dewwells: 0.3, warmslabs: 2 },
   baseFoodCap: 40,
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Soil pits hold far more
@@ -448,6 +452,9 @@ export const RESEARCH = {
     campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
+    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
+    meadowgranary: ['terrain:grass', 15, 'Your foragers'], soilmasons: ['terrain:soil', 12, 'Your diggers'],
+    stoneposts: ['terrain:stone', 10, 'Your soldiers'], dewwells: ['terrain:water', 6, 'Your nurses'], warmslabs: ['terrain:paved', 6, 'Your nurses'],
   } as Record<string, [string, number, string]>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
