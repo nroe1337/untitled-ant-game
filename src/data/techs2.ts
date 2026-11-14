@@ -57,10 +57,6 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['faminelaw', 'Famine law', ['brood'], { knowledge: 20, food: 20 }, {}, {}, { lead: 'When the colony starves, nurses feed eggs and then larvae to the workers before any worker dies.' }],
   ],
   conquest: [
-    ['linkedlegs', 'Linked legs', ['cartography'], { knowledge: 300, twig: 30 }, { claimCost: -0.1 }, {}, { screen: 'bridges' }],
-    ['longspans', 'Long spans', ['linkedlegs'], { knowledge: 380, twig: 35 }, { expSpeed: -0.08 }, {}, { screen: 'bridges' }],
-    ['bridgecrews', 'Bridge crews', ['longspans'], { knowledge: 450, resin: 20 }, { expSafety: -0.15 }, {}, { screen: 'bridges' }],
-    ['farfence', 'The far fence', ['bridgecrews', 'frontier'], { knowledge: 600, twig: 35 }, { expLoot: 0.15 }, {}, { screen: 'bridges' }],
     ['alarmscent', 'Alarm scent', ['martial'], { knowledge: 320, pheromone: 30 }, { soldierPower: 0.05 }],
     ['outpostwalls', 'Outpost walls', ['fortify'], { knowledge: 420, twig: 35 }, { claimCost: -0.1 }],
     ['columnbreak', 'Column breaking', ['alarmscent', 'husks'], { knowledge: 520, chitin: 25 }, { soldierPower: 0.08 }],

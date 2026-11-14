@@ -24,7 +24,13 @@ function counter(ctx: Context, what: string) {
     case 'tiles': return (st.map?.tiles as { o: string | null }[] | undefined)?.filter((t) => t.o === 'you').length ?? 0;
     case 'raids': return st.war?.raids ?? 0;
     case 'wave': return st.war?.wave ?? 0;
-    default: return ctx.res.has(what) ? ctx.res.amt(what) : 0;
+    case 'peak': return peak(ctx);
+    case 'born': return st.brood?.born ?? 0;
+    case 'rooms': return Object.values((st.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
+    case 'starved': return st.jobs?.starved ?? 0;
+    case 'techs': return IDS.filter((t) => done(ctx, t)).length;
+    default:
+      if (what.startsWith('full:')) { const r = what.slice(5); return ctx.res.has(r) && ctx.res.cap(r) > 0 ? ctx.res.amt(r) / ctx.res.cap(r) * 100 : 0; } return ctx.res.has(what) ? ctx.res.amt(what) : 0;
   }
 }
 /** Reveal research whose milestone has been reached (and whose other needs are met), with a Chronicle line. */

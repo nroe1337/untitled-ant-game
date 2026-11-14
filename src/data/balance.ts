@@ -371,11 +371,22 @@ export const RESEARCH = {
   /**
    * Hidden milestones (Nate, Nov 14): these research stay out of sight until the colony has done something,
    * so the Age of Conquest opens up bit by bit. [counter, at least, who has the idea]. Once seen, a tech stays seen.
-   * Counters: runs (expeditions), tiles (held), raids (fought), chitin (in store), wave (next wave to provoke).
+   * Every age is designed this way: research appears because of what the colony did, not all at once.
+   * Counters: runs (expeditions), tiles (held), raids (fought), wave (next wave to provoke), peak (most workers
+   * this colony), born (workers hatched), rooms (chambers dug), starved (workers lost to hunger), techs (research
+   * learned), full:<res> (store filled to this %), or any resource id (amount in store).
    */
   milestones: {
+    // Age of Dirt
+    storage: ['rooms', 3, 'Your diggers'], brood: ['born', 5, 'The queen'], elders: ['full:knowledge', 80, 'Your elders'],
+    buriedfinds: ['rooms', 4, 'Your diggers'], broodrhythm: ['born', 15, 'Your nurses'], faminelaw: ['starved', 1, 'Your nurses'],
+    // Age of Forage
+    routine: ['peak', 25, 'The queen'], widetunnels: ['rooms', 12, 'Your diggers'], deepgalleries: ['rooms', 18, 'Your diggers'],
+    plans: ['rooms', 15, 'Your diggers'], shelving: ['full:food', 80, 'Your foragers'], songs: ['full:knowledge', 90, 'Your elders'],
+    studyplans: ['techs', 12, 'Your elders'], ventilation: ['rooms', 16, 'Your nurses'], sanitation: ['born', 100, 'Your nurses'],
+    scouting: ['runs', 3, 'The expedition leaders'], seeds: ['seed', 5, 'Your foragers'], worksongs: ['runs', 5, 'Your foragers'],
+    // Age of Conquest
     quartermasters: ['runs', 10, 'The expedition leaders'], widedoors: ['runs', 25, 'The expedition leaders'],
-    linkedlegs: ['tiles', 4, 'Your scouts'], longspans: ['tiles', 8, 'Your scouts'], bridgecrews: ['tiles', 12, 'Your scouts'], farfence: ['tiles', 20, 'Your scouts'],
     frontier: ['tiles', 6, 'Your scouts'], outpostwalls: ['tiles', 10, 'Your scouts'], supplylines: ['tiles', 15, 'Your scouts'],
     fortify: ['raids', 1, 'Your soldiers'], rivalscent: ['raids', 2, 'Your soldiers'], alarmscent: ['raids', 3, 'Your soldiers'],
     fielddressing: ['raids', 4, 'Your nurses'], columnbreak: ['raids', 6, 'Your soldiers'], counterraid: ['raids', 10, 'Your soldiers'],
