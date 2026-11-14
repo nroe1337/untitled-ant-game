@@ -117,8 +117,58 @@ export const research: GameSystem = {
     // One tab per age (Nate, Nov 14). Each shows what can be learned now and what has been learned.
     // An older age with research still waiting gets a dot; an age with nothing left fades and gets a tick.
     const rows = new Map<string, ReturnType<typeof tileButton>>();
-    const pages = new Map<string, { tab: HTMLButtonElement; page: HTMLElement; list: HTMLElement; learned: HTMLElement; learnedHead: HTMLElement; status: HTMLElement; empty: HTMLElement }>();
+    const pages = new Map<string, { tab: HTMLButtonElement; page: HTMLElement; list: HTMLElement; svg: SVGSVGElement; status: HTMLElement }>();
+    // each research on an age's map: the live tile when it can be learned, a lit node once learned, a faint "?" before
+    const nodes = new Map<string, { root: HTMLElement; done: HTMLElement; unknown: HTMLElement }>();
+    const links: { from: string; to: string; line: SVGPathElement }[] = [];
     let picked: string | null = null, tabBar: HTMLElement;
+    const COLS = window.innerWidth < 560 ? 3 : 4, ROW = 78; // nodes per row (3 on phones), row height in px
+    /** Lay one age out top to bottom: each research sits below the ones it needs (within this age). */
+    function layoutAge(age: string) {
+      const pg = pages.get(age)!, ids = IDS.filter((id) => TECHS[id].age === age);
+      const depth = new Map<string, number>();
+      const d = (id: string): number => {
+        if (depth.has(id)) return depth.get(id)!;
+        depth.set(id, 0);
+        const inAge = TECHS[id].needs.filter((n) => TECHS[n]?.age === age);
+        const v = inAge.length ? Math.max(...inAge.map(d)) + 1 : 0;
+        depth.set(id, v); return v;
+      };
+      ids.forEach(d);
+      const pos = new Map<string, [number, number]>(); // column (0..COLS-1, may be fractional), row
+      let row = 0;
+      const maxD = Math.max(0, ...depth.values());
+      for (let lv = 0; lv <= maxD; lv++) {
+        // order a level by where its parents sit, so links cross less
+        const here = ids.filter((id) => depth.get(id) === lv).map((id) => {
+          const ps = TECHS[id].needs.map((n) => pos.get(n)?.[0]).filter((x): x is number => x !== undefined);
+          return [id, ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : COLS / 2] as const;
+        }).sort((a, b) => a[1] - b[1]).map(([id]) => id);
+        for (let k = 0; k < here.length; k += COLS) {
+          const chunk = here.slice(k, k + COLS), off = (COLS - chunk.length) / 2;
+          chunk.forEach((id, j) => pos.set(id, [off + j, row]));
+          row++;
+        }
+      }
+      for (const id of ids) {
+        const [c, r] = pos.get(id)!, n = nodes.get(id)!;
+        n.root.style.left = `${(c / COLS) * 100}%`; n.root.style.top = `${r * ROW}px`; n.root.style.width = `${100 / COLS}%`;
+      }
+      pg.list.style.height = `${row * ROW}px`;
+      // links: in a 0..100 x 0..rows*ROW box stretched over the map
+      pg.svg.setAttribute('viewBox', `0 0 100 ${row * ROW}`); pg.svg.style.height = `${row * ROW}px`;
+      pg.svg.setAttribute('preserveAspectRatio', 'none');
+      for (const id of ids) for (const n of TECHS[id].needs) {
+        if (!pos.has(n)) continue;
+        const [c1, r1] = pos.get(n)!, [c2, r2] = pos.get(id)!;
+        const x1 = ((c1 + 0.5) / COLS) * 100, y1 = r1 * ROW + 50, x2 = ((c2 + 0.5) / COLS) * 100, y2 = r2 * ROW + 6, my = (y1 + y2) / 2;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        line.setAttribute('d', `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
+        line.setAttribute('vector-effect', 'non-scaling-stroke');
+        pg.svg.append(line);
+        links.push({ from: n, to: id, line });
+      }
+    }
     return {
       title: 'Research',
       group: 'Research',
@@ -133,11 +183,13 @@ export const research: GameSystem = {
           const tab = el('button.tab.agetab', { type: 'button', hidden: true }, age.name.replace(/^Age of /, '')) as HTMLButtonElement;
           tab.addEventListener('click', () => { picked = age.id; });
           tabBar.append(tab);
-          const list = el('div.tiles'), learned = el('div.tiles.learned'), learnedHead = el('h3', {}, 'Learned');
-          const status = el('p.muted'), empty = el('p.muted', {}, 'Nothing to research here right now.');
-          const page = el('div.agepage', { hidden: true }, el('p.age', {}, `${age.name}. ${age.note}`), status, list, empty, learnedHead, learned);
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.classList.add('techlinks');
+          const list = el('div.techmap', {}, svg as unknown as HTMLElement);
+          const status = el('p.muted');
+          const page = el('div.agepage', { hidden: true }, el('p.age', {}, `${age.name}. ${age.note}`), status, list);
           root.append(page);
-          pages.set(age.id, { tab, page, list, learned, learnedHead, status, empty });
+          pages.set(age.id, { tab, page, list, svg, status });
         }
         for (const id of IDS) {
           const t = TECHS[id];
@@ -156,18 +208,29 @@ export const research: GameSystem = {
               return true;
             },
           });
-          btn.root.hidden = true;
-          (pages.get(t.age) ?? pages.get('dirt')!).list.append(btn.root);
+          const done = el('div.tile.done.technode', { tabindex: 0 }, t.name);
+          hoverTip(done, () => [el('div.teffect', {}, t.desc)]);
+          const unknown = el('div.tile.unknown', { title: 'Not yet known. Keep growing.' }, '?');
+          const node = el('div.techpos', {}, btn.root, done, unknown);
+          (pages.get(t.age) ?? pages.get('dirt')!).list.append(node);
+          nodes.set(id, { root: node, done, unknown });
           rows.set(id, btn);
         }
+        for (const age of RESEARCH.ages) layoutAge(age.id);
       },
       update(_root, ctx) {
         const slots = researchSlots(ctx), q = RQ(ctx);
         const cur = RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id);
         const open = new Map<string, number>(); // age -> research you can see and learn now
         for (const id of IDS) {
-          const r = rows.get(id)!, show = available(ctx, id);
+          const r = rows.get(id)!, show = available(ctx, id), n = nodes.get(id)!, learned = done(ctx, id);
+          const t = TECHS[id], shut = !!t.flag && !ctx.flags.has(t.flag) && !learned;
           r.root.hidden = !show;
+          n.done.hidden = !learned;
+          n.unknown.hidden = show || learned;
+          // Like a research book: only what is known and the next step beyond it is drawn. A "?" marks an idea
+          // whose prerequisites are learned but that hasn't come to the colony yet (a milestone, or too small).
+          n.root.hidden = shut || (!learned && !show && !t.needs.every((x) => done(ctx, x)));
           if (!show) continue;
           open.set(TECHS[id].age, (open.get(TECHS[id].age) ?? 0) + 1);
           r.root.classList.toggle('queues', slots > q.length && bigEnough(ctx, id) && !q.includes(id));
@@ -194,13 +257,16 @@ export const research: GameSystem = {
           pg.tab.title = complete ? 'Everything learned' : waiting ? `${waiting} to research` : 'Nothing to research yet';
           pg.page.hidden = picked !== age.id;
           if (pg.page.hidden) return;
-          pg.empty.hidden = waiting > 0 || complete;
           pg.status.textContent = complete ? `Everything in this age is learned (${known.length}).`
             : `Learned ${known.length}. ` + (waiting ? `${waiting} to research now. ` : '') + (hidden > 0 ? 'More ideas will come as the colony grows.' : '');
-          pg.learnedHead.hidden = !known.length;
-          if (pg.learned.dataset.n !== String(known.length)) {
-            pg.learned.dataset.n = String(known.length);
-            pg.learned.replaceChildren(...known.map((id) => { const t = el('div.tile.done', { tabindex: 0 }, TECHS[id].name); hoverTip(t, () => [el('div.teffect', {}, TECHS[id].desc)]); return t; }));
+          // the map is only as tall as what is drawn on it
+          let bottom = 0;
+          for (const id of IDS) if (TECHS[id].age === age.id && !nodes.get(id)!.root.hidden) bottom = Math.max(bottom, parseFloat(nodes.get(id)!.root.style.top) + ROW);
+          pg.list.style.height = `${bottom}px`;
+          for (const l of links) {
+            if (TECHS[l.to].age !== age.id) continue;
+            l.line.setAttribute('class', done(ctx, l.from) && done(ctx, l.to) ? 'lit' : done(ctx, l.from) ? 'open' : '');
+            l.line.style.display = nodes.get(l.to)!.root.hidden || nodes.get(l.from)!.root.hidden ? 'none' : '';
           }
         });
       },
