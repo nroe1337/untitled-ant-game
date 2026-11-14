@@ -222,6 +222,13 @@ export const MAP = {
   claimTimePerTile: 4,
   /** Outposts: built on a tile you hold, with resources only. Each one adds step x the base cost to the next. */
   outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.15, living: 6, defence: 2, yieldBoost: 2 },
+  /** Outpost research (Nov 14). */
+  lookout: { every: 10, sight: 3, costs: { pheromone: 4, food: 15, seed: 2 } as Record<string, number> }, // each outpost clears one patch of fog within reach + sight every few seconds, paid in the chosen resource
+  camps: 1,                 // Foraging camps: held tiles next to an outpost yield this much more (+100%)
+  waystations: 3,           // Waystations: outposts' own yield is multiplied by this
+  linked: 0.1,              // Linked trails: every outpost linked to the nest adds this to every linked outpost's yield
+  /** Terrain works: what an outpost makes from its own ground, per second. */
+  works: { grass: { twig: 0.01 }, soil: { seed: 0.006 }, stone: { resin: 0.008 }, water: { pheromone: 0.05 }, paved: { food: 0.3 } } as Record<string, Record<string, number>>,
   expandEvery: 4,           // seconds between claims when the colony expands on its own
   /** Outpost upgrades, bought per colony (they reset on a flight; the tiles don't). */
   upgrades: {
@@ -400,6 +407,8 @@ export const RESEARCH = {
     fielddressing: ['raids', 4, 'Your nurses'], columnbreak: ['raids', 6, 'Your soldiers'], counterraid: ['raids', 10, 'Your soldiers'],
     husks: ['chitin', 15, 'Your diggers'], rendering: ['chitin', 40, 'Your diggers'],
     campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
+    lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
+    linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
   } as Record<string, [string, number, string]>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [

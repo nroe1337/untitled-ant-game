@@ -19,7 +19,7 @@ export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean }
 interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
-interface MapState { seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
+interface MapState { lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
 const SKY_UPS = fromBalance(WORLD.skyUps);
 const skyL = (ctx: Context, id: keyof typeof WORLD.skyUps) => S(ctx).skyUps?.[id] ?? 0;
@@ -125,6 +125,48 @@ const basesChanged = () => { baseCache.at = -1; };
 /** Steps (diagonals count as one) from tile i to the nearest nest or outpost. */
 const homeDist = (ctx: Context, i: number) => { const [x, y] = xy(i); return Math.min(...bases(ctx).map((b) => { const [bx, by] = xy(b); return Math.max(Math.abs(x - bx), Math.abs(y - by)); })); };
 export const inReach = (ctx: Context, i: number) => homeDist(ctx, i) <= MAP.reach;
+
+// ---- outpost research ----
+const cheb = (a: number, b: number) => { const [ax, ay] = xy(a), [bx, by] = xy(b); return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); };
+/** Outposts joined to the nest by a chain of outposts, each within reach of the one before (Linked trails). */
+function linkedOutposts(ctx: Context) {
+  const all = bases(ctx), nest = all.filter((i) => S(ctx).tiles[i].core);
+  const linked = new Set<number>(nest), queue = [...nest];
+  while (queue.length) { const a = queue.pop()!; for (const b of all) if (!linked.has(b) && cheb(a, b) <= MAP.reach) { linked.add(b); queue.push(b); } }
+  for (const n of nest) linked.delete(n);
+  return linked;
+}
+/** How much more an outpost's own tile yields, from every outpost upgrade. */
+function outpostMult(ctx: Context, i: number, linked: Set<number> | null) {
+  let m = (1 + MAP.outpost.yieldBoost) * (ctx.flags.has('tech:waystations') ? MAP.waystations : 1);
+  if (linked?.has(i)) m *= 1 + MAP.linked * linked.size;
+  return m;
+}
+/** Held tiles next to an outpost (Foraging camps). */
+const besideOutpost = (ctx: Context, i: number) => { const [x, y] = xy(i); for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if ((dx || dy) && inside(x + dx, y + dy) && S(ctx).tiles[idx(x + dx, y + dy)].outpost && S(ctx).tiles[idx(x + dx, y + dy)].o === 'you') return true; } return false; };
+/** Every held tile's yield multiplier, outposts and camps included. */
+function tileMult(ctx: Context, i: number, linked: Set<number> | null) {
+  const t = S(ctx).tiles[i];
+  if (t.outpost) return outpostMult(ctx, i, linked);
+  return ctx.flags.has('tech:foragingcamps') && besideOutpost(ctx, i) ? 1 + MAP.camps : 1;
+}
+/** Lookouts: every few seconds each outpost clears the nearest fog around it, paid for in the chosen resource. */
+function lookouts(ctx: Context, dt: number) {
+  const s = S(ctx), r = s.lookout;
+  if (!ctx.flags.has('tech:lookouts') || !r || !MAP.lookout.costs[r]) return;
+  s.lookCd = (s.lookCd ?? MAP.lookout.every) - dt;
+  if (s.lookCd > 0) return;
+  s.lookCd = MAP.lookout.every;
+  const far = MAP.reach + MAP.lookout.sight;
+  for (const o of bases(ctx)) {
+    if (!s.tiles[o].outpost) continue;
+    let best = -1, bd = Infinity;
+    s.tiles.forEach((t, i) => { if (t.seen) return; const d = cheb(o, i); if (d <= far && d < bd) { bd = d; best = i; } });
+    if (best < 0) continue;
+    if (!ctx.res.spend({ [r]: MAP.lookout.costs[r] })) return;
+    const [x, y] = xy(best); reveal(ctx, x, y, 1);
+  }
+}
 
 const adjacentToYou = (ctx: Context, i: number) => {
   const [x, y] = xy(i);
@@ -243,7 +285,16 @@ export const map: GameSystem = {
     }
     // territory pays only once the colony has mapped it; an outpost triples its tile
     const O = MAP.outpost, n = outposts(ctx);
-    if (ctx.flags.has('tech:cartography')) for (const t of mine) for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * yieldMult(ctx) * (t.outpost ? 1 + O.yieldBoost : 1) * dt);
+    if (ctx.flags.has('tech:cartography')) {
+      const linked = ctx.flags.has('tech:linkedtrails') ? linkedOutposts(ctx) : null, works = ctx.flags.has('tech:terrainworks');
+      s.tiles.forEach((t, i) => {
+        if (t.o !== 'you') return;
+        const m = yieldMult(ctx) * tileMult(ctx, i, linked);
+        for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * m * dt);
+        if (works && t.outpost) for (const [rid, per] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * m * dt);
+      });
+      lookouts(ctx, dt);
+    }
     // land beyond the garden yields by terrain too
     const far = heldTerrain(ctx);
     for (const t of far) for (const [rid, per] of Object.entries(MAP.yield[t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * yieldMult(ctx) * dt);
@@ -254,7 +305,8 @@ export const map: GameSystem = {
 
   panel: (() => {
     let autoBox: HTMLInputElement, autoWrap: HTMLElement;
-    let abandonWrap: HTMLElement;
+    let abandonWrap: HTMLElement, lookBox: HTMLElement, lookText: HTMLElement;
+    const lookBtns = new Map<string, HTMLButtonElement>();
     let cam: Camera, ccam: Camera, lastLooking = -1;
     let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement;
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement, skyUps: ReturnType<typeof upgradeList>, skyHead: HTMLElement;
@@ -309,6 +361,14 @@ export const map: GameSystem = {
           setTimeout(() => { delete abandon.dataset.armed; abandon.textContent = 'Abandon outpost'; }, 3000);
         });
         abandonWrap = el('div.row', {}, abandon);
+        lookText = el('span.muted');
+        lookBox = el('div.row.lookouts', { hidden: true }, el('strong', {}, 'Lookouts burn'),
+          ...[null, ...Object.keys(MAP.lookout.costs)].map((r) => {
+            const b = el('button.ghost', { type: 'button' }, r ? `${MAP.lookout.costs[r]} ${r}` : 'Nothing') as HTMLButtonElement;
+            b.addEventListener('click', () => { S(ctx).lookout = r; });
+            lookBtns.set(String(r), b);
+            return b;
+          }), lookText);
         buildWrap = el('div.row', {}, build.root);
         autoBox = el('input', { type: 'checkbox', id: 'map-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { S(ctx).auto = autoBox.checked; });
@@ -321,7 +381,7 @@ export const map: GameSystem = {
         gardenBox = el('div.mapview', {},
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           el('div.row.camctl', {}, el('p.controls', {}, 'Drag the map or use the arrow keys to look around. Click a tile to inspect it. Click the small map to jump.'), homeBtn),
-          cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap),
+          cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap), lookBox,
           el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap, abandonWrap,
           upsHead, ups.root,
         );
@@ -400,6 +460,11 @@ export const map: GameSystem = {
         hoverI = cam.hover;
         drawMap(cam.source, s, (i) => inReach(ctx, i));
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
+        lookBox.hidden = !ctx.flags.has('tech:lookouts');
+        if (!lookBox.hidden) {
+          for (const [r, b] of lookBtns) b.classList.toggle('on', String(s.lookout ?? null) === r);
+          lookText.textContent = s.lookout ? ` Each outpost clears a patch of fog every ${MAP.lookout.every}s, up to ${MAP.reach + MAP.lookout.sight} tiles out.` : ' Lookouts are idle.';
+        }
         autoBox.checked = !!s.auto;
         const describe = (i: number | null) => {
           if (i == null) return '';
@@ -410,7 +475,13 @@ export const map: GameSystem = {
         upsHead.hidden = !ups.update(ctx);
         const mine = owned(ctx);
         const income: Record<string, number> = {};
-        for (const t of mine) for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * yieldMult(ctx);
+        { const linked = ctx.flags.has('tech:linkedtrails') ? linkedOutposts(ctx) : null;
+          s.tiles.forEach((t, i) => {
+            if (t.o !== 'you') return;
+            const m = yieldMult(ctx) * tileMult(ctx, i, linked);
+            for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * m;
+            if (t.outpost && ctx.flags.has('tech:terrainworks')) for (const [r, v] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(r)) income[r] = (income[r] ?? 0) + v * m;
+          }); }
         const c = s.claiming;
         summary.textContent = `You hold ${mine.length} tiles` + (outposts(ctx) ? `, with ${outposts(ctx)} outpost${outposts(ctx) > 1 ? 's' : ''}` : '') + '. ' +
           (Object.keys(income).length ? 'Territory gives ' + Object.entries(income).map(([r, v]) => `+${fmt(v)} ${ctx.res.get(r).name.toLowerCase()}/s`).join(', ') + '.' : '');
@@ -423,7 +494,7 @@ export const map: GameSystem = {
         const rows: [string, string][] = [['Tile', describe(i)]];
         if (t.seen) {
           const yl = (m: number) => Object.entries(y).map(([r, v]) => `+${fmt(v * m * yieldMult(ctx))} ${r}/s`).join(', ');
-          const boost = 1 + MAP.outpost.yieldBoost;
+          const boost = outpostMult(ctx, i, null);
           rows.push(['Yield if held', Object.keys(y).length ? yl(1) : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
           if (!t.core && (t.o === null || t.o === 'you' || t.o === 'humans')) rows.push(['Yield with outpost', (Object.keys(y).length ? yl(boost) + ', ' : '') + `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence`]);
           if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)

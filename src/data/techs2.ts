@@ -57,6 +57,12 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['faminelaw', 'Famine law', ['brood'], { knowledge: 20, food: 20 }, {}, {}, { lead: 'When the colony starves, nurses feed eggs and then larvae to the workers before any worker dies.' }],
   ],
   conquest: [
+    // Outposts (Nov 14): they push the colony's reach out across the bigger garden, and these make them worth it.
+    ['lookouts', 'Lookouts', ['cartography'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with a resource you choose on the Map.' }],
+    ['foragingcamps', 'Foraging camps', ['cartography'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
+    ['terrainworks', 'Terrain works', ['lookouts'], { knowledge: 420, twig: 40 }, {}, {}, { lead: 'Each outpost works its own ground: stone gives resin, grass twigs, bare soil seeds, streams pheromone, patio slabs food.' }],
+    ['waystations', 'Waystations', ['terrainworks'], { knowledge: 480, soil: 300 }, {}, {}, { lead: 'Outposts become waystations: an outpost\'s own tile yields three times as much again.' }],
+    ['linkedtrails', 'Linked trails', ['waystations'], { knowledge: 560, pheromone: 80 }, {}, {}, { lead: 'Outposts linked to the nest by a chain of outposts, each within reach of the last, share their trails: every linked outpost yields 10% more for each one in the chain.' }],
     ['alarmscent', 'Alarm scent', ['martial'], { knowledge: 320, pheromone: 30 }, { soldierPower: 0.05 }],
     ['outpostwalls', 'Outpost walls', ['fortify'], { knowledge: 420, twig: 35 }, { claimCost: -0.1 }],
     ['columnbreak', 'Column breaking', ['alarmscent', 'husks'], { knowledge: 520, chitin: 25 }, { soldierPower: 0.08 }],

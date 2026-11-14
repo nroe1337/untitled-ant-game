@@ -27,6 +27,7 @@ function counter(ctx: Context, what: string) {
     case 'peak': return peak(ctx);
     case 'born': return st.brood?.born ?? 0;
     case 'rooms': return Object.values((st.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
+    case 'outposts': return (st.map?.tiles as { o: string | null; outpost?: boolean }[] | undefined)?.filter((t) => t.o === 'you' && t.outpost).length ?? 0;
     case 'starved': return st.jobs?.starved ?? 0;
     case 'techs': return IDS.filter((t) => done(ctx, t)).length;
     default:

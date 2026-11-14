@@ -16,6 +16,8 @@ new standing rule in a thread, add it here in the same pull request.
   out of sight until the colony has done something (chambers dug, workers born, stores filled, expeditions
   run, tiles held, raids fought...). Use this for every age. Once seen, a research stays seen.
 - Avoid micromanagement: automated systems (war, expeditions) stay automated. Don't force over-preparation.
+- Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
+- Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
