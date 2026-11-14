@@ -49,7 +49,7 @@ const ageAt = (ctx: Context) => RESEARCH.ages.findIndex((a) => a.id === st(ctx).
 /** Research the colony can pay for and has the knowledge for, but is still too small to start. */
 const tooSmall = (ctx: Context) => Object.entries(TECHS).filter(([id, t]) =>
   !ctx.flags.has('tech:' + id) && (t.pop ?? 0) * COLONY.targetColony > S(ctx).colonyPeak &&
-  t.needs.every((n) => ctx.flags.has('tech:' + n)) &&
+  t.needs.every((n) => ctx.flags.has('tech:' + n)) && (!RESEARCH.milestones[id] || ctx.flags.has('idea:' + id)) &&
   Object.entries(t.cost).every(([r, n]) => ctx.res.has(r) && ctx.res.amt(r) >= n)).length;
 
 /** Whole numbers with thousands separators: records are counts, never fractions. */

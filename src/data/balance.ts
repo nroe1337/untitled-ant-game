@@ -368,6 +368,20 @@ export const RESEARCH = {
     metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 700, grease: 35 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
     campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, TechDef>,
+  /**
+   * Hidden milestones (Nate, Nov 14): these research stay out of sight until the colony has done something,
+   * so the Age of Conquest opens up bit by bit. [counter, at least, who has the idea]. Once seen, a tech stays seen.
+   * Counters: runs (expeditions), tiles (held), raids (fought), chitin (in store), wave (next wave to provoke).
+   */
+  milestones: {
+    quartermasters: ['runs', 10, 'The expedition leaders'], widedoors: ['runs', 25, 'The expedition leaders'],
+    linkedlegs: ['tiles', 4, 'Your scouts'], longspans: ['tiles', 8, 'Your scouts'], bridgecrews: ['tiles', 12, 'Your scouts'], farfence: ['tiles', 20, 'Your scouts'],
+    frontier: ['tiles', 6, 'Your scouts'], outpostwalls: ['tiles', 10, 'Your scouts'], supplylines: ['tiles', 15, 'Your scouts'],
+    fortify: ['raids', 1, 'Your soldiers'], rivalscent: ['raids', 2, 'Your soldiers'], alarmscent: ['raids', 3, 'Your soldiers'],
+    fielddressing: ['raids', 4, 'Your nurses'], columnbreak: ['raids', 6, 'Your soldiers'], counterraid: ['raids', 10, 'Your soldiers'],
+    husks: ['chitin', 15, 'Your diggers'], rendering: ['chitin', 40, 'Your diggers'],
+    campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
+  } as Record<string, [string, number, string]>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
   ages: [
     { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },

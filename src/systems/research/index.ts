@@ -12,8 +12,32 @@ const IDS = Object.keys(TECHS);
 const done = (ctx: Context, id: string) => ctx.flags.has('tech:' + id);
 const available = (ctx: Context, id: string) => {
   const t = TECHS[id];
-  return !done(ctx, id) && t.needs.every((n) => done(ctx, n)) && (!t.flag || ctx.flags.has(t.flag));
+  return !done(ctx, id) && t.needs.every((n) => done(ctx, n)) && (!t.flag || ctx.flags.has(t.flag)) && revealed(ctx, id);
 };
+/** Hidden milestones: some research stays out of sight until the colony has done something. */
+const MS = RESEARCH.milestones;
+const revealed = (ctx: Context, id: string) => !MS[id] || ctx.flags.has('idea:' + id);
+function counter(ctx: Context, what: string) {
+  const st = ctx.state as Record<string, any>;
+  switch (what) {
+    case 'runs': return st.expeditions?.runs ?? 0;
+    case 'tiles': return (st.map?.tiles as { o: string | null }[] | undefined)?.filter((t) => t.o === 'you').length ?? 0;
+    case 'raids': return st.war?.raids ?? 0;
+    case 'wave': return st.war?.wave ?? 0;
+    default: return ctx.res.has(what) ? ctx.res.amt(what) : 0;
+  }
+}
+/** Reveal research whose milestone has been reached (and whose other needs are met), with a Chronicle line. */
+function checkMilestones(ctx: Context) {
+  for (const [id, [what, at, who]] of Object.entries(MS)) {
+    const t = TECHS[id];
+    if (!t || ctx.flags.has('idea:' + id)) continue;
+    if (done(ctx, id)) { ctx.flags.add('idea:' + id); continue; }
+    if (!t.needs.every((n) => done(ctx, n)) || (t.flag && !ctx.flags.has(t.flag)) || counter(ctx, what) < at) continue;
+    ctx.flags.add('idea:' + id);
+    ctx.log(`${who} have a new idea: ${t.name} (Research).`, 'info');
+  }
+}
 /** Big research needs a colony that has reached a size: a share of COLONY.targetColony, by peak workers this colony. */
 const popNeed = (id: string) => Math.round((TECHS[id].pop ?? 0) * COLONY.targetColony);
 const peak = (ctx: Context) => Math.max((ctx.state.stats as { colonyPeak?: number } | undefined)?.colonyPeak ?? 0, Math.floor(ctx.res.amt('ant')));
@@ -61,6 +85,7 @@ export const research: GameSystem = {
       if (now) ctx.flags.add('tech:' + now);
     }
     applyTechEffects(ctx);
+    checkMilestones(ctx);
     if (researchSlots(ctx)) runQueue(ctx, RQ(ctx), (id) => id.startsWith('u:') ? upgradeItem(ctx, id) : TECHS[id] && {
       name: TECHS[id].name, cost: () => TECHS[id].cost,
       ok: () => available(ctx, id), buy: () => learn(ctx, id),
