@@ -330,6 +330,7 @@ export const WAR = {
    *  guard: guards per point of the tile's strength; queen health per point; her bite = base + per point. */
   rivalQueen: {
     guard: 0.8, hp: 5, atk: 2, atkPer: 0.03,
+    slow: 0.5,                    // the whole fight runs at this speed (moves, bites, timers alike)
     every: 7, warn: 2,            // seconds between her moves, and the warning before each lands
     phases: [0.66, 0.33],         // health shares where she changes: a brood hatches at the first, she goes berserk at the second
     summon: 0.2,                  // Royal brood: guards per point of strength

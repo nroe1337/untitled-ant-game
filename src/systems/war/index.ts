@@ -276,6 +276,8 @@ function biteSide(xs: Stack[], dmg: number, onDeath: (x: Stack, n: number) => vo
 
 function stepBattle(ctx: Context, dt: number) {
   const s = S(ctx), b = s.battle!;
+  // the queen's fight plays out slower, everything in it alike, so it lasts longer at the same difficulty
+  if (b.boss) dt *= WAR.rivalQueen.slow;
   b.t = (b.t ?? 0) + dt;
   for (const x of [...b.us, ...b.them]) { x.hit = Math.max(0, (x.hit ?? 0) - dt); x.fell = Math.max(0, (x.fell ?? 0) - dt); }
   if (b.boss) bossStep(ctx, b, dt);
