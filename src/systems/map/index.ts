@@ -650,9 +650,9 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
         if (watch > 2 && Math.floor(performance.now() / 600) % 2) rect(c, X + 1, Y + 7 - watch - 3, 1, 1, '#f2c14e');
         if (fire) { const flick = Math.floor(performance.now() / 250 + i) % 2; rect(c, X + 5, Y + 2 + flick, 1, 2 - flick + (fire > 1 ? 1 : 0), fire > 1 ? '#f2c14e' : PAL.amber); if (fire > 2) rect(c, X + 5, Y, 1, 1, '#8a8a8a'); }
       }
-      // Paved roads: faint road lines on held tiles near the nest
+      // Paved roads: road lines running out from the nest, along its row and column
       const roads = stones[2];
-      if (roads && tile.o === 'you' && !tile.core && Math.max(Math.abs(x - MAP.nest[0]), Math.abs(y - MAP.nest[1])) <= WONDERS.roadsWithin) {
+      if (roads && tile.o === 'you' && !tile.core && (x === MAP.nest[0] || y === MAP.nest[1]) && Math.max(Math.abs(x - MAP.nest[0]), Math.abs(y - MAP.nest[1])) <= WONDERS.roadsWithin) {
         const rc = roads > 2 ? '#a8a29a' : roads > 1 ? '#8f8a82' : '#6f6a62';
         if (Math.abs(x - MAP.nest[0]) >= Math.abs(y - MAP.nest[1])) rect(c, X + 1, Y + 4, T - 2, 1, rc); else rect(c, X + 4, Y + 1, 1, T - 2, rc);
       }

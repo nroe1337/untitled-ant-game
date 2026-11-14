@@ -554,8 +554,8 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string, r
       if (raft && row === rows - 1) { // a leaf under each ant of the bottom row; at III the lead leaf has a sail
         rect(c, x - 1, y + 2, 6 + raft, 1, '#6f9a3a');
         if (raft > 1) rect(c, x, y + 3, 4 + raft, 1, '#557a2c');
-        if (raft > 2 && i === 0) { rect(c, x + 1, y - 7, 1, 7, '#b8966a'); rect(c, x + 2, y - 7, 3, 4, PAL.bone); }
       }
+      if (raft > 2 && i === 0) { rect(c, x + 1, y - 8, 1, 6, '#b8966a'); rect(c, x + 2, y - 8, 3, 4, PAL.bone); }
       rect(c, x, y - bob, 4, 2, PAL.bone);
       rect(c, x + (out ? 4 : -1), y - 1 - bob, 1, 1, PAL.bone);
       if (i === 0) { // the lead ant holds the trail mark, both ways
