@@ -15,7 +15,7 @@ const B = WAR.battle;
 const F = WAR.fortifications;
 
 /** One stack per kind of ant on each side: a count, and the hit points left on the ant at the front of it. */
-type Kind = 'major' | 'soldier' | 'worker' | 'queen' | 'wall' | 'raider' | 'brute' | 'rqueen';
+type Kind = 'major' | 'soldier' | 'worker' | 'queen' | 'wall' | 'raider' | 'brute' | 'rqueen' | 'thrall';
 interface Stack { kind: Kind; n: number; hp: number; max: number; atk: number; start: number; hit?: number; fell?: number }
 interface Battle {
   /** ours, in the order the raiders bite them: majors, then soldiers, then rallied workers */
@@ -25,11 +25,27 @@ interface Battle {
   chitin?: number; kills: number; breaches: number; soldiersLost: number; majorsLost?: number; workersLost: number; rallied: number; soldiersAtStart: number;
   rescued?: number;
   /** A fight at the rival's home tile against their queen (a campaign), not a raid at our entrance. */
-  boss?: { target: number; army: number };
+  boss?: Boss;
   /** seconds until the next raider slips in, once nobody holds the entrance */
   slip?: number;
   t?: number;
 }
+/** The rival queen's fight: she makes a move every few seconds, warned of first, and changes as she weakens. */
+interface Boss {
+  target: number; army: number; enemy: number;
+  /** seconds to her next move; the move she is winding up and seconds until it lands */
+  cd: number; next?: Move; warn?: number;
+  phase: number; enraged?: boolean;
+  frenzy?: number; burrow?: number;
+  /** the line over the field: what she is doing now */
+  call?: string; callT?: number; big?: boolean;
+  /** seconds left of a shake, for the screen */
+  shake?: number;
+  charmed?: number;
+  /** the last effect to show on the field, and a counter so the screen knows it is new */
+  fx?: Move | 'scream' | 'berserk' | 'death'; fxN?: number;
+}
+type Move = 'brood' | 'acid' | 'scent' | 'cry' | 'burrow';
 interface Campaign { target: number; army: number; elapsed: number; duration: number }
 interface WarState {
   rivalArmy: number;
@@ -262,6 +278,7 @@ function stepBattle(ctx: Context, dt: number) {
   const s = S(ctx), b = s.battle!;
   b.t = (b.t ?? 0) + dt;
   for (const x of [...b.us, ...b.them]) { x.hit = Math.max(0, (x.hit ?? 0) - dt); x.fell = Math.max(0, (x.fell ?? 0) - dt); }
+  if (b.boss) bossStep(ctx, b, dt);
   const P = B.pace * dt;
   // away from home (the rival queen's fight) there are no thorns and no walls
   const blunt = b.boss ? 1 : Math.max(0.2, 1 - F.thorns.per * fl(ctx, 'thorns'));
@@ -269,8 +286,12 @@ function stepBattle(ctx: Context, dt: number) {
   // the walls (nest defence) bite whoever is in front, all fight long
   const towers = b.boss ? 0 : defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
   const outDmg = ours.reduce((t, x) => t + x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)), 0) + towers;
-  const inDmg = theirs.reduce((t, x) => t + x.n * x.atk, 0) * blunt;
-  biteSide(b.them, outDmg * P, (x, n) => {
+  const fr = b.boss?.frenzy ? 2 : 1;
+  const inDmg = theirs.reduce((t, x) => t + x.n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1), 0) * blunt;
+  // while she is burrowed our bites can't reach her, only her guard
+  const targets = b.boss?.burrow ? b.them.filter((x) => x.kind !== 'rqueen') : b.them;
+  biteSide(targets, outDmg * P, (x, n) => {
+    if (x.kind === 'thrall') { b.soldiersLost += n; return; }
     b.kills += n;
     b.chitin = (b.chitin ?? 0) + n * (x.kind === 'brute' ? B.brute.chitin * (skullWorks(ctx, 'brute') ? 2 : 1) : B.raider.chitin);
     if (x.kind === 'raider' || x.kind === 'brute') addTrophy(ctx, x.kind);
@@ -303,7 +324,8 @@ function stepBattle(ctx: Context, dt: number) {
       if (x) { x.n--; x.hp = x.max; b.breaches++; }
     }
   }
-  if (!alive(b.them).length) { if (b.boss) endBoss(ctx, true); else endBattle(ctx); }
+  if (b.boss && !b.them.find((x) => x.kind === 'rqueen')?.n) endBoss(ctx, true);
+  else if (!alive(b.them).length) endBattle(ctx);
 }
 
 function endBattle(ctx: Context) {
@@ -414,14 +436,78 @@ function startBoss(ctx: Context, target: number, enemy: number) {
   const n = us.reduce((t, x) => t + x.n, 0);
   if (!n) { ctx.log('Nobody is left to march on the rival mound. The campaign is called off.', 'warn'); return; }
   const them = [stack('raider', Math.max(1, Math.round(enemy * Q.guard)), B.raider.hp, B.raider.atk), stack('rqueen', 1, enemy * Q.hp, Q.atk + enemy * Q.atkPer)];
-  s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: n, t: 0, boss: { target, army: n } };
+  s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: n, t: 0,
+    boss: { target, army: n, enemy, cd: Q.every, phase: 0, call: 'The rival queen rises from her chamber.', callT: 4, big: true, shake: 0.6 } };
   ctx.log('The army breaks into the rival mound. Their queen waits in the deepest chamber, ringed by her guard.', 'warn');
   ctx.announce('The rival queen', 'Your army is inside her mound. Watch the fight on the War tab.', { small: true, kicker: 'Campaign' });
   ctx.ping('war');
 }
+const MOVES: Record<Move, { warn: string; hit: string }> = {
+  brood:  { warn: 'She arches her back. Eggs are splitting in the dark…', hit: 'Royal brood! Fresh guards hatch around her.' },
+  acid:   { warn: 'She raises her gaster high…', hit: 'Acid rain! It sprays over every one of us.' },
+  scent:  { warn: 'A sweet, wrong smell spreads through the chamber…', hit: 'Queen\'s scent! Some of ours turn and fight for her.' },
+  cry:    { warn: 'She drums the floor with her legs…', hit: 'War cry! Her guard bites twice as hard.' },
+  burrow: { warn: 'She digs her claws into the floor…', hit: 'She burrows! Nothing can reach her.' },
+};
+const say = (bs: Boss, text: string, big = false, t = 2.5) => { bs.call = text; bs.callT = t; bs.big = big; };
+/** Bite one of our groups directly (her acid): the dead are counted like any other fallen. */
+function hurt(b: Battle, x: Stack, dmg: number) {
+  const n = bite(x, Math.min(dmg, x.hp + (x.n - 1) * x.max));
+  if (x.kind === 'major') b.majorsLost = (b.majorsLost ?? 0) + n; else if (x.kind !== 'worker') b.soldiersLost += n;
+}
+function bossMove(b: Battle, m: Move) {
+  const bs = b.boss!, Q = WAR.rivalQueen, E = bs.enemy;
+  const guards = () => { let g = b.them.find((x) => x.kind === 'raider'); if (!g) { g = stack('raider', 0, B.raider.hp, B.raider.atk); b.them.unshift(g); } return g; };
+  if (m === 'brood') { const g = guards(), n = Math.max(2, Math.round(E * Q.summon)); g.n += n; g.start += n; }
+  if (m === 'acid') { for (const x of alive(b.us)) hurt(b, x, E * Q.acid * (bs.enraged ? 1.5 : 1)); bs.shake = 0.5; }
+  if (m === 'scent') {
+    const from = alive(b.us).filter((x) => x.kind === 'soldier' || x.kind === 'major').pop();
+    const k = from ? Math.min(from.n, Math.max(1, Math.round(bs.army * Q.charm))) : 0;
+    if (from && k) {
+      from.n -= k;
+      let t = b.them.find((x) => x.kind === 'thrall');
+      if (!t) { t = stack('thrall', 0, from.max, from.atk); b.them.unshift(t); }
+      t.n += k; t.start += k; bs.charmed = (bs.charmed ?? 0) + k;
+    }
+  }
+  if (m === 'cry') bs.frenzy = Q.frenzy;
+  if (m === 'burrow') { bs.burrow = Q.burrow; const q = b.them.find((x) => x.kind === 'rqueen'); if (q && q.n) q.hp = Math.min(q.max, q.hp + q.max * Q.heal); }
+  say(bs, MOVES[m].hit, true);
+  bs.fx = m; bs.fxN = (bs.fxN ?? 0) + 1;
+}
+/** Her turn, every frame: wind up a move, land it, and change when her health falls past a phase. */
+function bossStep(ctx: Context, b: Battle, dt: number) {
+  const bs = b.boss!, Q = WAR.rivalQueen, q = b.them.find((x) => x.kind === 'rqueen');
+  bs.callT = Math.max(0, (bs.callT ?? 0) - dt); bs.shake = Math.max(0, (bs.shake ?? 0) - dt);
+  bs.frenzy = Math.max(0, (bs.frenzy ?? 0) - dt); bs.burrow = Math.max(0, (bs.burrow ?? 0) - dt);
+  if (!q || !q.n) return;
+  const share = q.hp / q.max;
+  if (bs.phase < Q.phases.length && share <= Q.phases[bs.phase]) {
+    bs.phase++;
+    if (bs.phase === 1) { bossMove(b, 'brood'); bossMove(b, 'brood'); say(bs, 'She SCREAMS. The whole mound shakes, and her brood pours out of the walls!', true, 3.5); bs.shake = 1; bs.fx = 'scream'; bs.fxN = (bs.fxN ?? 0) + 1; ctx.log('The rival queen screams, and her brood pours out of the walls.', 'warn'); }
+    else { bs.enraged = true; q.atk *= 2; say(bs, 'Berserk! She tears off her own wing stubs and charges!', true, 3.5); bs.shake = 1.2; bs.fx = 'berserk'; bs.fxN = (bs.fxN ?? 0) + 1; ctx.log('The rival queen goes berserk.', 'warn'); }
+    bs.cd = Math.max(bs.cd, 2.5);
+  }
+  if (bs.next) {
+    bs.warn = (bs.warn ?? 0) - dt;
+    if (bs.warn <= 0) { bossMove(b, bs.next); bs.next = undefined; }
+    return;
+  }
+  bs.cd -= dt;
+  if (bs.cd > 0) return;
+  // early on she only calls her brood and spits; later she uses everything
+  const pool: Move[] = bs.phase === 0 ? ['brood', 'acid', 'cry'] : ['brood', 'acid', 'scent', 'cry', 'burrow'];
+  bs.next = pool[Math.floor(Math.random() * pool.length)];
+  bs.warn = Q.warn;
+  bs.cd = Q.every * (bs.enraged ? 0.6 : 1);
+  say(bs, MOVES[bs.next].warn, false, Q.warn);
+}
 function endBoss(ctx: Context, win: boolean) {
   const s = S(ctx), b = s.battle!, boss = b.boss!;
   s.battle = null;
+  // turned fighters still standing come home if she dies, and stay with her if we lose
+  const thralls = b.them.find((x) => x.kind === 'thrall')?.n ?? 0;
+  if (!win) b.soldiersLost += thralls;
   const fell = b.soldiersLost + (b.majorsLost ?? 0);
   const lost = Math.min(fell, Math.ceil(boss.army * WAR.campaignLoss * 2 * lossMult(ctx)));
   if (lost) {
@@ -634,7 +720,7 @@ export const war: GameSystem = {
 };
 
 // ---- the entrance: one ant for each stack, with the front ant's health and the count over its head ----
-const NAMES: Record<Kind, string> = { queen: 'Queen', major: 'Majors', soldier: 'Soldiers', worker: 'Workers', wall: 'Barricade', raider: 'Raiders', brute: 'Brutes', rqueen: 'Rival queen' };
+const NAMES: Record<Kind, string> = { queen: 'Queen', major: 'Majors', soldier: 'Soldiers', worker: 'Workers', wall: 'Barricade', raider: 'Raiders', brute: 'Brutes', rqueen: 'Rival queen', thrall: 'Turned' };
 const LEGS_A = ['...#..#..#......', '..#..#..#.......'];
 const LEGS_B = ['...#..#..#......', '....#..#..#.....'];
 /** Pixel ants, facing right. '#' is body. */
@@ -699,7 +785,7 @@ function drawAnt(cv: HTMLCanvasElement, x: Stack, theirs: boolean, fighting: boo
   const still = x.kind === 'wall';
   const rows = still ? [...shape, '################', '################'] : [...shape, ...(step ? LEGS_B : LEGS_A)];
   const top = CH - rows.length;
-  let col = theirs ? (x.kind === 'rqueen' ? mix(PAL.rival, PAL.amber, 0.35) : PAL.rival) : x.kind === 'worker' ? PAL.bone : x.kind === 'queen' ? PAL.amber : x.kind === 'wall' ? mix(PAL.rival, PAL.bg, 0.3) : PAL.you;
+  let col = theirs ? (x.kind === 'rqueen' ? mix(PAL.rival, PAL.amber, 0.35) : x.kind === 'thrall' ? mix(PAL.you, PAL.rival, 0.55) : PAL.rival) : x.kind === 'worker' ? PAL.bone : x.kind === 'queen' ? PAL.amber : x.kind === 'wall' ? mix(PAL.rival, PAL.bg, 0.3) : PAL.you;
   if (x.n <= 0) col = mix(col, PAL.bg, 0.65);
   else if ((x.hit ?? 0) > 0.12) col = mix(col, PAL.bone, 0.55);
   c.fillStyle = col;
@@ -715,7 +801,7 @@ interface Card { root: HTMLElement; fill: HTMLElement; count: HTMLElement; cv: H
 function card(kind: Kind, info: (x: Stack) => (Node | string)[]): Card {
   const fill = el('span.fill'), count = el('span.fcount');
   const cv = el('canvas', { width: CW, height: CH, 'aria-hidden': 'true' }) as HTMLCanvasElement;
-  const root = el('div.fighter', { tabindex: 0 }, el('div.fhead', {}, el('span.bar', {}, fill), count), cv, el('div.fname', {}, NAMES[kind]));
+  const root = el('div.fighter', { tabindex: 0, class: 'fighter k-' + kind }, el('div.fhead', {}, el('span.bar', {}, fill), count), cv, el('div.fname', {}, NAMES[kind]));
   const cd: Card = { root, fill, count, cv };
   hoverTip(root, () => (cd.stack ? info(cd.stack) : []));
   return cd;
@@ -755,7 +841,35 @@ function fighterInfo(ctx: Context, x: Stack, theirs: boolean, boss: boolean): (N
 /** The entrance, drawn as stacks. Idle: our fighters at the gate and the next wave waiting, faded. */
 function battleField() {
   const us = el('div.side'), them = el('div.side.them');
-  const root = el('div.field', { role: 'img', 'aria-label': 'The nest entrance' }, us, el('div.gate', {}, 'vs'), them);
+  const bossFill = el('span.fill'), bossName = el('span.bname'), call = el('div.bosscall', { 'aria-live': 'polite' });
+  const bossBar = el('div.bossbar', { hidden: true }, bossName, el('span.bar', {}, bossFill));
+  const fxLayer = el('div.fx', { 'aria-hidden': 'true' });
+  const field = el('div.field', { role: 'img', 'aria-label': 'The nest entrance' }, us, el('div.gate', {}, 'vs'), them, fxLayer);
+  let fxSeen = 0;
+  /** A burst of little CSS particles for one of her moves. */
+  const burst = (kind: string) => {
+    const spec: Record<string, { n: number; cls: string; from: [number, number]; to: [number, number] }> = {
+      acid:    { n: 26, cls: 'drop',  from: [2, 50], to: [0, 0] },
+      brood:   { n: 14, cls: 'egg',   from: [62, 98], to: [0, 0] },
+      scream:  { n: 28, cls: 'egg',   from: [50, 98], to: [0, 0] },
+      scent:   { n: 16, cls: 'wisp',  from: [70, 95], to: [-60, 0] },
+      cry:     { n: 3,  cls: 'ring',  from: [85, 85], to: [0, 0] },
+      berserk: { n: 5,  cls: 'ring',  from: [85, 85], to: [0, 0] },
+      burrow:  { n: 18, cls: 'dirt',  from: [76, 94], to: [0, 0] },
+    };
+    const sp = spec[kind];
+    if (!sp) return;
+    for (let i = 0; i < sp.n; i++) {
+      const d = el('span', { class: 'p ' + sp.cls + (kind === 'berserk' ? ' red' : '') });
+      d.style.left = `${sp.from[0] + Math.random() * (sp.from[1] - sp.from[0])}%`;
+      d.style.animationDelay = `${(sp.cls === 'ring' ? i * 0.18 : Math.random() * 0.5).toFixed(2)}s`;
+      d.style.setProperty('--dx', `${sp.to[0] * (0.6 + Math.random() * 0.8)}%`);
+      d.style.setProperty('--r', Math.random().toFixed(2));
+      fxLayer.append(d);
+      setTimeout(() => d.remove(), 2200);
+    }
+  };
+  const root = el('div.arena', {}, bossBar, call, field);
   const cards = new Map<string, Card>();
   let key = '';
   return {
@@ -781,7 +895,23 @@ function battleField() {
         us.replaceChildren(...ours.map((x) => mk(x, 'u')));
         them.replaceChildren(...theirs.map((x) => mk(x, 't')));
       }
-      root.classList.toggle('idle', !b);
+      field.classList.toggle('idle', !b);
+      const bs = b?.boss, q = b?.them.find((x) => x.kind === 'rqueen');
+      bossBar.hidden = !bs;
+      field.classList.toggle('boss', !!bs);
+      field.classList.toggle('shake', !!bs?.shake);
+      field.classList.toggle('enraged', !!bs?.enraged);
+      field.classList.toggle('frenzy', !!bs?.frenzy);
+      field.classList.toggle('burrowed', !!bs?.burrow);
+      if (bs && q) {
+        bossFill.style.width = `${q.n ? (q.hp / q.max) * 100 : 0}%`;
+        bossName.textContent = `The rival queen${bs.enraged ? ', berserk' : bs.phase ? ', wounded' : ''}`;
+      }
+      const text = bs && bs.callT ? bs.call ?? '' : '';
+      if (call.textContent !== text) { call.textContent = text; call.classList.remove('pop'); void call.offsetWidth; call.classList.toggle('pop', !!bs?.big); }
+      call.classList.toggle('warn', !!bs?.next);
+      if (bs && (bs.fxN ?? 0) !== fxSeen) { fxSeen = bs.fxN ?? 0; if (bs.fx) burst(bs.fx); }
+      if (!bs) fxSeen = 0;
       const show = (x: Stack, side: string) => {
         const cd = cards.get(side + x.kind);
         if (!cd) return;

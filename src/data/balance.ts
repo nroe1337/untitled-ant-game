@@ -328,7 +328,16 @@ export const WAR = {
   } as { rareFrom: number; royalFrom: number; perWave: number; kinds: Record<'common' | 'rare' | 'royal', { name: string; rolls: number; rareOdds: number }>; table: Record<string, [number, number]>; rare: Record<string, [number, number]> },
   /** Taking the rival's home tile is a fight with their queen and her guard, on the battle screen.
    *  guard: guards per point of the tile's strength; queen health per point; her bite = base + per point. */
-  rivalQueen: { guard: 1.1, hp: 2, atk: 2, atkPer: 0.05 },
+  rivalQueen: {
+    guard: 0.8, hp: 5, atk: 2, atkPer: 0.03,
+    every: 7, warn: 2,            // seconds between her moves, and the warning before each lands
+    phases: [0.66, 0.33],         // health shares where she changes: a brood hatches at the first, she goes berserk at the second
+    summon: 0.2,                  // Royal brood: guards per point of strength
+    acid: 0.12,                   // Acid rain: damage to every group of ours, per point of strength
+    charm: 0.08,                  // Queen's scent: share of our fighters turned against us
+    frenzy: 5,                    // War cry: seconds her guard bites double
+    burrow: 4, heal: 0.06,        // Burrow: seconds she can't be bitten, and the share of health she heals
+  },
   /** Skulls for the Hall of husks: the first kill of each kind of foe. Each works once a Hall of husks is dug. */
   trophies: [
     { id: 'raider',  name: 'Raider skull',       from: 'your first raider kill',     desc: 'Rallied workers bite twice as hard.' },

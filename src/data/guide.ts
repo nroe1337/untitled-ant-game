@@ -113,7 +113,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Campaigning]. It appears once you reach wave 3.',
         'Pick an enemy tile on the {Map}, then launch from the {War} tab.',
         'Every tile you take makes the rival army smaller.',
-        'Their home tile is a fight with the rival queen and her guard. Kill her and the raids stop for good.',
+        'Their home tile is a boss fight with the rival queen: she hatches guards, spits acid, turns your soldiers and goes berserk when hurt. Bring more strength than hers. Kill her and the raids stop for good.',
         'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
       ] },
       { head: 'Make room', do: [
