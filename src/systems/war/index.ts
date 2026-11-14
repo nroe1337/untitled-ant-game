@@ -24,6 +24,8 @@ interface Battle {
   them: Stack[];
   chitin?: number; kills: number; breaches: number; soldiersLost: number; majorsLost?: number; workersLost: number; rallied: number; soldiersAtStart: number;
   rescued?: number;
+  /** seconds left of the war cry */
+  cry?: number;
   /** A fight at the rival's home tile against their queen (a campaign), not a raid at our entrance. */
   boss?: Boss;
   /** seconds until the next raider slips in, once nobody holds the entrance */
@@ -175,11 +177,6 @@ const waveComp = (w: number) => ({
 const toughness = (w: number) => Math.pow(B.wave.toughness, w - 1);
 const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round((toughness(w) - 1) * 100)}% tougher` : ''); };
 
-function freeWorkers(ctx: Context) {
-  const assigned = Object.values((ctx.state.jobs?.assigned ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-  const busy = Object.values(ctx.busy).reduce((a, b) => a + b, 0);
-  return Math.max(0, Math.floor(ctx.res.amt('ant')) - assigned - busy);
-}
 
 /** Fighters died: take them off their jobs, and queue them for refilling from idle if that's on. */
 function loseFighters(ctx: Context, n: number) {
@@ -237,19 +234,19 @@ function startBattle(ctx: Context) {
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
   s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0 };
   ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${comp.raiders + comp.brutes} of them pour toward the entrance.`, 'warn');
-  if (fl(ctx, 'alarm') || ctx.flags.has('accord:alarm')) rally(ctx);
+  if (autoCry(ctx)) warCry(ctx);
 }
 
-function rally(ctx: Context) {
+/** Standing alarm (or the accord's standing orders): the war cry sounds by itself whenever it is ready. */
+const autoCry = (ctx: Context) => fl(ctx, 'alarm') > 0 || ctx.flags.has('accord:alarm');
+/** The war cry: every fighter bites harder for a few seconds, then it needs time to come back. */
+const cryTime = (ctx: Context) => B.warCry.time * (skullWorks(ctx, 'raider') ? 2 : 1);
+function warCry(ctx: Context) {
   const s = S(ctx);
-  if (!s.battle || s.battle.boss || s.rallyCd > 0) return;
-  const n = Math.min(B.rallyMax, freeWorkers(ctx) + Math.floor((ctx.state.jobs?.assigned?.forager ?? 0) / 2));
-  s.rallyCd = B.rallyCooldown;
-  if (!n) return;
-  const w = s.battle.us.find((x) => x.kind === 'worker');
-  if (w) { w.n += n; w.start += n; } else s.battle.us.push(stack('worker', n, B.worker.hp, B.worker.atk * (skullWorks(ctx, 'raider') ? 2 : 1)));
-  s.battle.rallied += n;
-  ctx.log(`${n} workers drop what they carry and rush to the entrance.`, 'info');
+  if (!s.battle || s.rallyCd > 0) return;
+  s.rallyCd = B.warCry.cooldown;
+  s.battle.cry = cryTime(ctx);
+  ctx.log('The war cry goes up. Every fighter bites harder.', 'info');
 }
 
 const alive = (xs: Stack[]) => xs.filter((x) => x.n > 0);
@@ -288,7 +285,9 @@ function stepBattle(ctx: Context, dt: number) {
   const ours = alive(b.us), theirs = alive(b.them);
   // the walls (nest defence) bite whoever is in front, all fight long
   const towers = b.boss ? 0 : defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
-  const outDmg = ours.reduce((t, x) => t + x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)), 0) + towers;
+  b.cry = Math.max(0, (b.cry ?? 0) - dt);
+  const cry = b.cry > 0 ? 1 + B.warCry.boost : 1;
+  const outDmg = ours.reduce((t, x) => t + x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)) * (x.kind === 'wall' ? 1 : cry), 0) + towers;
   const fr = b.boss?.frenzy ? 2 : 1;
   const inDmg = theirs.reduce((t, x) => t + x.n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1), 0) * blunt;
   // while she is burrowed our bites can't reach her, only her guard
@@ -566,6 +565,7 @@ export const war: GameSystem = {
     ctx.mods.set('lineageGain', 'legend', hasMilestone(ctx, 'legend') ? 0.1 : 0);
     ctx.mods.set('hunting', 'spiderskull', skullWorks(ctx, 'spider') ? 0.5 : 0);
     s.rallyCd = Math.max(0, s.rallyCd - dt);
+    if (s.battle && s.rallyCd <= 0 && autoCry(ctx)) warCry(ctx);
     if (!s.battle && s.wall != null) s.wall = Math.min(wallMax(ctx), s.wall + (wallMax(ctx) * dt) / WAR.barricadeRegrow);
     refill(ctx);
     if (!s.rivalDefeated) {
@@ -603,8 +603,8 @@ export const war: GameSystem = {
           onBuy: (c) => startBattle(c),
         });
         rallyBtn = actionButton({
-          ctx, label: 'Rally the workers', desc: `Up to ${B.rallyMax} idle workers and foragers rush out to carry the fallen home, and fight if the line reaches them.`,
-          enabled: (c) => !!S(c).battle && !S(c).battle!.boss && S(c).rallyCd <= 0, onBuy: (c) => rally(c),
+          ctx, label: 'War cry', desc: () => `Every fighter bites ${B.warCry.boost * 100}% harder for ${cryTime(ctx)}s. Ready again ${B.warCry.cooldown}s after it sounds. The Standing alarm sounds it by itself.`,
+          enabled: (c) => !!S(c).battle && S(c).rallyCd <= 0, onBuy: (c) => warCry(c),
         });
         refillBox = el('input', { type: 'checkbox', id: 'war-refill' }) as HTMLInputElement;
         refillBox.addEventListener('change', () => { const s = S(ctx); s.replenish = refillBox.checked; if (!s.replenish) s.refill = undefined; });
@@ -634,7 +634,7 @@ export const war: GameSystem = {
           el('p.flavor', {}, 'They know where we are now. Hold the entrance, then take the fight to them.'),
           el('details.info', {}, el('summary', {}, 'Information'),
           el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and every wave cleared without losses earns war honours. Deeper waves reach war milestones, each a lasting reward for this colony. Chitin builds fortifications, husk halls, training grounds and majors; honours buy honour upgrades.'),
-          el('p.muted', {}, 'How it works: every ant on both sides fights at once, so numbers and strength are what count. Each side bites the first group of the other: raiders take our majors first, then soldiers, then rallied workers; we cut down raiders first, then brutes. Nest defence (guard posts, stone tiles, husk halls) bites from the walls the whole fight. Rallied workers fight too, and carry fallen soldiers home alive. If nobody is left at the entrance, raiders slip in one by one and steal food.')),
+          el('p.muted', {}, 'How it works: every ant on both sides fights at once, so numbers and strength are what count. Each side bites the first group of the other: raiders take our majors first, then soldiers, then rallied workers; we cut down raiders first, then brutes. Nest defence (guard posts, stone tiles, husk halls) bites from the walls the whole fight. The War cry makes every fighter bite harder for a few seconds. If nobody is left at the entrance, raiders slip in one by one and steal food.')),
           field.root, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap, autoWrap), ledger,
           spoilsSection = el('div.section', {}, el('h3', {}, 'Spoils'), spoilsText, el('div.row', {}, openBtn)),
           trophySection = el('div.section', {}, el('h3', {}, 'Trophies'), el('p.muted', {}, 'The first kill of each kind of foe gives a skull. Skulls work once they hang in a Hall of husks.'), trophyList),
@@ -691,7 +691,7 @@ export const war: GameSystem = {
         else if (s.battle) {
           const b = s.battle, sum = (xs: Stack[]) => xs.reduce((t, x) => t + x.n, 0);
           const fighters = sum(b.us.filter((x) => x.kind !== 'worker' && x.kind !== 'wall')), helpers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
-          status.textContent = `Raid in progress: ${sum(b.them)} of them left, ${fighters} of ${b.soldiersAtStart} fighters standing` + (helpers ? `, ${helpers} workers helping` : '') + `, ${b.kills} killed` + (b.rescued ? `, ${b.rescued} wounded carried in` : '') + (b.breaches ? `, ${b.breaches} got in` : '') + '.' + (s.rallyCd > 0 ? ` Rally ready in ${Math.ceil(s.rallyCd)}s.` : '');
+          status.textContent = `Raid in progress: ${sum(b.them)} of them left, ${fighters} of ${b.soldiersAtStart} fighters standing` + (helpers ? `, ${helpers} workers helping` : '') + `, ${b.kills} killed` + (b.rescued ? `, ${b.rescued} wounded carried in` : '') + (b.breaches ? `, ${b.breaches} got in` : '') + '.' + (b.cry ? ` War cry: ${Math.ceil(b.cry / ctx.speed)}s left.` : s.rallyCd > 0 ? ` War cry ready in ${Math.ceil(s.rallyCd / ctx.speed)}s.` : '');
         } else status.textContent = 'The rival only attacks when you provoke it. ' +
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
           (s.lastReport ? 'Last raid: ' + s.lastReport : '');
@@ -835,6 +835,7 @@ function fighterInfo(ctx: Context, x: Stack, theirs: boolean, boss: boolean): (N
   } else {
     const sp = ctx.mods.get('soldierPower');
     if (sp) why.push(`Strength ${pct(sp)} (plating, standards and more)`);
+    if (S(ctx).battle?.cry) why.push(`War cry: bite ${pct(B.warCry.boost)}`);
     if (fl(ctx, 'carapace')) why.push(`Hardened carapace: health ${pct(F.carapace.per * fl(ctx, 'carapace'))}`);
     if (x.kind === 'major') why.push('Majors stand in front and take the first bites.');
   }
@@ -902,6 +903,7 @@ function battleField() {
       const bs = b?.boss, q = b?.them.find((x) => x.kind === 'rqueen');
       bossBar.hidden = !bs;
       field.classList.toggle('boss', !!bs);
+      field.classList.toggle('warcry', !!b?.cry);
       field.classList.toggle('shake', !!bs?.shake);
       field.classList.toggle('enraged', !!bs?.enraged);
       field.classList.toggle('frenzy', !!bs?.frenzy);

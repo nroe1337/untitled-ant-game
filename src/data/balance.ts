@@ -291,6 +291,7 @@ export const WAR = {
     soldier:  { hp: 5, atk: 1 },
     worker:   { hp: 2, atk: 0.4 },   // rallied workers
     defenceDps: 0.3,                 // damage per second per point of nest defence (guard posts, stones, husks)
+    warCry: { cooldown: 60, time: 10, boost: 0.5 }, // the War cry button: every fighter bites harder for a while
     rallyCooldown: 30,
     rallyMax: 8,                     // most workers that answer one rally
     rescuePerWorker: 0.06,           // each rallied worker at the entrance: this chance that a fallen soldier is carried home alive
@@ -312,7 +313,7 @@ export const WAR = {
     husktiles: { name: 'Husk tiles',    desc: 'Spare husks line new walls. Chambers cost {p} less each level.', per: -0.01, base: { chitin: 60 }, growth: 1.15, max: 20 },
     sickles:   { name: 'Husk sickles',  desc: 'Foragers cut with old mandibles. They gather {p} more food each level.', per: 0.02, base: { chitin: 80 }, growth: 1.15, max: 25 },
     barricade: { name: 'Husk barricade', desc: 'A wall of old husks at the entrance. It takes the first {p} damage of every raid, then regrows between raids.', per: 15, unit: 'flat' as const, base: { chitin: 25 }, growth: 1.35, max: 10, needs: 'tech:husks' },
-    alarm:   { name: 'Standing alarm',  desc: 'Workers rally by themselves when raiders come', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
+    alarm:   { name: 'Standing alarm',  desc: 'The war cry sounds by itself whenever it is ready', per: 1, base: { chitin: 15, pheromone: 20 }, growth: 1, max: 1, unit: 'flat' as const },
   },
   // war honours: earned by clearing waves and winning campaigns, spent on the honour upgrades below
   honours: {
@@ -366,7 +367,7 @@ export const WAR = {
   },
   /** Skulls for the Hall of husks: the first kill of each kind of foe. Each works once a Hall of husks is dug. */
   trophies: [
-    { id: 'raider',  name: 'Raider skull',       from: 'your first raider kill',     desc: 'Rallied workers bite twice as hard.' },
+    { id: 'raider',  name: 'Raider skull',       from: 'your first raider kill',     desc: 'The war cry lasts twice as long.' },
     { id: 'brute',   name: 'Brute skull',        from: 'your first brute kill',      desc: 'Brutes leave twice the chitin.' },
     { id: 'queen',   name: 'Rival queen\'s skull', from: 'killing the rival queen',  desc: 'Campaigns and assaults lose a third fewer soldiers.' },
     { id: 'spider',  name: 'Spider skull',       from: 'killing the spider',         desc: 'Soldiers hunt 50% better between fights.' },
@@ -686,7 +687,7 @@ export const ARCHIVE = {
   accords: [
     { id: 'habit',    track: 'wings',  n: 1,    cost: 2,  name: 'The queen\'s habit',  desc: 'The queen lays an egg on her own every 20 seconds.' },
     { id: 'basics',   track: 'earth',  n: 120,  cost: 3, name: 'Old knowledge',       desc: 'New colonies start knowing Tunnelling, Storage chambers and Brood care.' },
-    { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'Workers rally to the entrance by themselves during raids.' },
+    { id: 'alarm',    track: 'iron',   n: 40,   cost: 3, name: 'Standing orders',     desc: 'The war cry sounds by itself during fights.' },
     { id: 'surface',  track: 'trails', n: 80,   cost: 4, name: 'Remembered sky',      desc: 'New colonies start knowing Upward tunnels and Trail scent.' },
     { id: 'decree',   track: 'brood',  n: 2500, cost: 3,  name: 'The queen\'s decree', desc: 'Set the colony\'s worker mix once in the Jobs tab, and new workers take jobs to match it.' },
     { id: 'plans',    track: 'wings',  n: 3,    cost: 4, name: 'Spire plans',         desc: 'The Swarm Spire\'s foundation is laid before you start.' },
