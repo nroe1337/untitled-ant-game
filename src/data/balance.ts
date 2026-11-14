@@ -27,6 +27,13 @@ export const BROOD = {
     sick: 900, sickEvery: 60,         // 900+: a sick worker dies every 60 s
     scrubClick: 10, scrubCooldown: 0.5 }, // the Queen tab's Scrub button: always a way back
   healCap: 0.5,             // most Wound care can cut expedition worker losses
+  /** Brood rhythm research: the Queen tab's pace for the larvae. grow multiplies growth speed, eat multiplies food eaten. */
+  rhythm: {
+    steady: { name: 'Steady', grow: 1, eat: 1, desc: 'Larvae grow and eat as usual.' },
+    quick: { name: 'Quick', grow: 1.4, eat: 1.5, desc: 'Larvae grow 40% faster but eat 50% more.' },
+    lean: { name: 'Lean', grow: 0.7, eat: 0.6, desc: 'Larvae eat 40% less but grow 30% slower.' },
+  } as Record<string, { name: string; grow: number; eat: number; desc: string }>,
+  rhythmCooldown: 15,       // seconds before the pace can be changed again
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
@@ -80,6 +87,15 @@ export const JOBS = {
   digger: { soil: 0.06 },
   /** With Deep diggers, each digger also brings up this much clay a second. */
   diggerClay: 0.012,
+  /** Buried finds research: each digger strikes something about once per this many seconds (Deep finds: 3x as often). */
+  findEvery: 1000, deepFindMult: 3,
+  finds: [
+    { weight: 5, res: 'food', amt: [12, 25], text: 'A digger strikes a fat root. The colony eats.' },
+    { weight: 3, res: 'soil', amt: [20, 40], text: 'A tunnel wall gives way into a loose pocket of soil.' },
+    { weight: 2, res: 'seed', amt: [1, 3], text: 'A digger turns up a buried seed.' },
+    { weight: 4, res: 'clay', amt: [10, 25], deep: true, text: 'Deep down, a digger breaks into a seam of soft clay.' },
+    { weight: 2, res: 'chitin', amt: [2, 5], deep: true, text: 'A digger uncovers the shell of a long-dead beetle.' },
+  ] as { weight: number; res: string; amt: [number, number]; deep?: boolean; text: string }[],
   clayCap: 200,
   scout: { pheromone: 0.02 },
   elder: { knowledge: 0.03 },

@@ -54,6 +54,12 @@ export const research: GameSystem = {
   isUnlocked: (ctx) => ctx.flags.has('research') || Math.floor(ctx.res.amt('ant')) >= RESEARCH.appearAtWorkers,
 
   tick(ctx) {
+    // older saves: the Dirt stat techs became mechanics (Nov 14). Egg piles is gone and is not replaced.
+    for (const [was, now] of [['soilsense', 'buriedfinds'], ['queenscent', 'broodrhythm'], ['sharedstomach', 'faminelaw'], ['eggpiles', '']]) {
+      if (!ctx.flags.has('tech:' + was)) continue;
+      ctx.flags.delete('tech:' + was);
+      if (now) ctx.flags.add('tech:' + now);
+    }
     applyTechEffects(ctx);
     if (researchSlots(ctx)) runQueue(ctx, RQ(ctx), (id) => id.startsWith('u:') ? upgradeItem(ctx, id) : TECHS[id] && {
       name: TECHS[id].name, cost: () => TECHS[id].cost,

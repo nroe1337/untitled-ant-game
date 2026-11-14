@@ -55,6 +55,8 @@ interface JobsState {
   defaultJob?: string;
   /** Workers last tick: only a rise (new hatchlings) is sent to the default job. */
   routineHome?: number;
+  /** Famine law already told the Chronicle about this famine. */
+  famineLogged?: boolean;
 }
 const S = (ctx: Context) => ctx.state.jobs as JobsState;
 /** Per-worker rates get three significant figures, so 'each' times the count matches the total. */
@@ -83,6 +85,20 @@ export const idleAnts = (ctx: Context) => totalAnts(ctx) - assignedSum(ctx) - bu
 const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
 const jobMult = (ctx: Context, id: string) => (1 + ctx.mods.get('job:' + id)) * mouldWork(ctx);
 const jobOpen = (ctx: Context, j: JobDef) => !j.requires || ctx.flags.has(j.requires);
+
+/** Buried finds: diggers now and then strike something (Deep finds: more often, and clay and chitin too). */
+function buriedFind(ctx: Context, diggerSeconds: number) {
+  const deep = ctx.flags.has('tech:deepfinds');
+  const chance = diggerSeconds / JOBS.findEvery * (deep ? JOBS.deepFindMult : 1);
+  if (Math.random() >= chance) return;
+  const pool = JOBS.finds.filter((f) => (!f.deep || deep) && ctx.res.has(f.res));
+  let roll = Math.random() * pool.reduce((t, f) => t + f.weight, 0);
+  const f = pool.find((p) => (roll -= p.weight) < 0) ?? pool[0];
+  if (!f) return;
+  const n = Math.round(f.amt[0] + Math.random() * (f.amt[1] - f.amt[0]));
+  ctx.res.lump(f.res, n);
+  ctx.log(`${f.text} (+${n} ${ctx.res.get(f.res).name.toLowerCase()})`);
+}
 
 /** Daily routine: newly hatched workers go to the default job (after any decree). */
 function followRoutine(ctx: Context) {
@@ -194,9 +210,19 @@ export const jobs: GameSystem = {
     ctx.res.add('food', -need);
     const unpaid = Math.max(0, need - have);
     s.hunger = unpaid ? (s.hunger ?? 0) + unpaid : 0; // fed again: hunger is forgiven
-    if (!unpaid) s.lowest = undefined; // a new famine reports from the start
+    if (!unpaid) { s.lowest = undefined; s.famineLogged = false; } // a new famine reports from the start
     while (s.hunger >= COLONY.starveFoodPerDeath && totalAnts(ctx) > 0) {
       s.hunger -= COLONY.starveFoodPerDeath;
+      // Famine law: the brood is given up before a grown worker dies, eggs first
+      if (ctx.flags.has('tech:faminelaw')) {
+        const kind = ctx.res.amt('egg') >= 1 ? 'egg' : ctx.res.amt('larva') >= 1 ? 'larva' : '';
+        if (kind) {
+          ctx.res.source = 'Famine law';
+          ctx.res.add(kind, -1);
+          if (!s.famineLogged) { s.famineLogged = true; ctx.log(kind === 'egg' ? 'Famine. The nurses feed eggs to the hungry workers.' : 'Famine. The nurses feed larvae to the hungry workers.', 'warn'); }
+          continue;
+        }
+      }
       ctx.res.add('ant', -1);
       s.starved = (s.starved ?? 0) + 1;
       const left = totalAnts(ctx);
@@ -235,6 +261,7 @@ export const jobs: GameSystem = {
       ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
       if (j.id === 'digger' && ctx.flags.has('tech:deepdig')) ctx.res.add('clay', JOBS.diggerClay * n * mult * jobMult(ctx, j.id) * dt);
+      if (j.id === 'digger' && ctx.flags.has('tech:buriedfinds')) buriedFind(ctx, n * mult * dt);
     }
     // Off duty, soldiers and majors hunt near the nest, so they never sit idle between fights.
     const hunters = offDutyFighters(ctx);

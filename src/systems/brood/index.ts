@@ -24,6 +24,9 @@ interface BroodState {
   mouldWarned?: boolean;
   mouldIntro?: boolean;
   royal: Record<string, number>;
+  /** Brood rhythm research: the larvae's pace, and seconds until it can change again. */
+  rhythm?: string;
+  rhythmCd?: number;
 }
 
 const S = (ctx: Context) => ctx.state.brood as BroodState;
@@ -35,8 +38,10 @@ const RB = BROOD.royal;
 const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt('ant')) - Math.floor(ctx.res.amt('larva'));
 // mods: 'brood' (lineage perks) speeds both; 'larvaGrowth' (fungus feeding) speeds larvae
 const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
-const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth'));
-const larvaFood = (_ctx: Context) => BROOD.larvaFoodPerSecond;
+/** The brood's pace (Brood rhythm research). Steady without it. */
+const rhythm = (ctx: Context) => BROOD.rhythm[(ctx.flags.has('tech:broodrhythm') && S(ctx).rhythm) || 'steady'] ?? BROOD.rhythm.steady;
+const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth')) / rhythm(ctx).grow;
+const larvaFood = (ctx: Context) => BROOD.larvaFoodPerSecond * rhythm(ctx).eat;
 /** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
 const MO = BROOD.mould;
 /** Mould scrubbed away per second by the queen, nurses and Purification chambers. */
@@ -127,6 +132,7 @@ export const brood: GameSystem = {
 
   tick(ctx, dt) {
     const s = S(ctx);
+    if (s.rhythmCd) s.rhythmCd = Math.max(0, s.rhythmCd - dt);
     // older saves: Rich feeding folded into Warm brood, Devoted nurses into Royal rhythm
     if (s.royal.jelly || s.royal.devotion) {
       s.royal.quicken = Math.max(s.royal.quicken ?? 0, s.royal.jelly ?? 0);
@@ -230,6 +236,8 @@ export const brood: GameSystem = {
     let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, layWrap: HTMLElement, hint: HTMLElement;
     let scrub: ActionButton, scrubWrap: HTMLElement;
     let ledger: HTMLElement, royalHead: HTMLElement;
+    let paceBox: HTMLElement, paceNote: HTMLElement;
+    const paceBtns = new Map<string, HTMLButtonElement>();
     let royal: ReturnType<typeof upgradeList>;
     return {
       title: 'Queen',
@@ -257,6 +265,17 @@ export const brood: GameSystem = {
         scrubWrap = el('div', {}, scrub.root);
         eggTxt = el('span'); larvaTxt = el('span'); pupaTxt = el('span'); hint = el('p.muted');
         ledger = el('div.ledger');
+        paceNote = el('span.muted');
+        paceBox = el('div.pace', { hidden: true }, el('strong', {}, 'Brood rhythm '),
+          ...Object.entries(BROOD.rhythm).map(([id, r]) => {
+            const b = el('button.ghost', { type: 'button', title: r.desc, onclick: () => {
+              const s = S(ctx);
+              if ((s.rhythmCd ?? 0) > 0 || (s.rhythm ?? 'steady') === id) return;
+              s.rhythm = id; s.rhythmCd = BROOD.rhythmCooldown;
+            } }, r.name) as HTMLButtonElement;
+            paceBtns.set(id, b);
+            return b;
+          }), paceNote);
         royalHead = el('h3', {}, 'Royal care');
         royal = upgradeList(ctx, () => S(ctx).royal, ROYAL);
         forageWrap = el('div', {}, forage.root);
@@ -267,6 +286,7 @@ export const brood: GameSystem = {
           el('div.stat', {}, el('span.statlabel', {}, icon('egg', 24), eggTxt), eggBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('larva', 24), larvaTxt), larvaBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('pupa', 24), pupaTxt)),
+          paceBox,
           hint,
           ledger,
           royalHead, royal.root,
@@ -301,6 +321,12 @@ export const brood: GameSystem = {
         if (auto) lines.push(['Eggs laid without you', `${auto.toFixed(3)}/s`]);
         ledger.replaceChildren(...lines.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         ledger.hidden = !s.firstAnt;
+        paceBox.hidden = !ctx.flags.has('tech:broodrhythm');
+        if (!paceBox.hidden) {
+          const cur = s.rhythm ?? 'steady', cd = s.rhythmCd ?? 0;
+          for (const [id, b] of paceBtns) { b.classList.toggle('on', id === cur); b.disabled = cd > 0 && id !== cur; }
+          paceNote.textContent = ' ' + BROOD.rhythm[cur].desc + (cd > 0 ? ` Can change again in ${Math.ceil(cd)}s.` : '');
+        }
         royalHead.hidden = !royal.update(ctx);
       },
     };

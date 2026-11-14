@@ -51,10 +51,10 @@ function effects(mods: Record<string, number> = {}, caps: Record<string, number>
 type Row = [id: string, name: string, needs: string[], cost: Record<string, number>, mods?: Record<string, number>, caps?: Record<string, number>, extra?: { screen?: string; flag?: string; lead?: string }];
 const AGE_ROWS: Record<string, Row[]> = {
   dirt: [
-    ['sharedstomach', 'Shared stomachs', ['brood'], { knowledge: 20, food: 20 }, { upkeep: -0.05 }],
-    ['soilsense', 'Soil sense', ['digging'], { knowledge: 15, soil: 25 }, { 'job:digger': 0.1 }],
-    ['queenscent', 'Queen\'s scent', ['brood'], { knowledge: 30, food: 30 }, { brood: 0.05 }],
-    ['eggpiles', 'Egg piles', ['brood'], { knowledge: 35, soil: 30 }, {}, { egg: 4 }],
+    // Dirt research changes how the colony works rather than adding a few percent (Nate, Nov 14).
+    ['buriedfinds', 'Buried finds', ['digging'], { knowledge: 15, soil: 25 }, {}, {}, { lead: 'Now and then a digger strikes something buried: a root to eat, a seed, or a loose pocket of soil.' }],
+    ['broodrhythm', 'Brood rhythm', ['brood'], { knowledge: 30, food: 30 }, {}, {}, { lead: 'Set the brood\'s pace on the Queen tab: Quick larvae grow faster but eat more, Lean larvae eat less but grow slower.' }],
+    ['faminelaw', 'Famine law', ['brood'], { knowledge: 20, food: 20 }, {}, {}, { lead: 'When the colony starves, nurses feed eggs and then larvae to the workers before any worker dies.' }],
   ],
   conquest: [
     ['linkedlegs', 'Linked legs', ['cartography'], { knowledge: 300, twig: 30 }, { claimCost: -0.1 }, {}, { screen: 'bridges' }],
@@ -76,6 +76,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['widedoors', 'Wide doors', ['halls'], { knowledge: 420, soil: 300 }, { expSpeed: -0.1 }],
   ],
   wings: [
+    ['deepfinds', 'Deep finds', ['deepdig'], { knowledge: 560, clay: 60 }, {}, {}, { lead: 'Diggers strike buried things three times as often, and down in the clay they turn up clay and old beetle shells (chitin).' }],
     ['deepvents', 'Deep vents', ['deepdig'], { knowledge: 500, clay: 40 }, { mouldMade: -0.05 }, {}, { lead: 'Unlocks the Deep vent, which scrubs mould for a big nest.' }],
     ['tunnelwatch', 'Tunnel watch', ['royal', 'fortify'], { knowledge: 500, chitin: 30 }, { soldierPower: 0.08 }],
     ['chokepoints', 'Choke points', ['tunnelwatch'], { knowledge: 560, clay: 40 }, { 'slotsPer:soldier': 1 }],
