@@ -146,7 +146,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers.',
         'Each caste has a long road of 5 stages. Push one caste first.',
-        'With majors and 80 expeditions behind you, [Pack mules] appears: up to 3 majors carry loot on each trip.',
+        'With majors and 80 expeditions behind you, [Pack mules] appears: up to 3 majors guard each trip and carry its rare finds.',
       ] },
       { head: 'Dig into the clay', do: [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',

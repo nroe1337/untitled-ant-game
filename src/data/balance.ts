@@ -218,8 +218,9 @@ export const EXPEDITIONS = {
       { id: 'honeycomb', name: 'A cracked honeycomb', note: 'Bees are about. The prize is worth it.', time: 900, tile: [18, -10], loss: 0.6, wipe: 0.3, scene: 'stream', loot: { sugar: [3, 6], resin: [4, 8] } },
     ] as { id: string; name: string; note: string; time: number; tile: [number, number]; loss: number; wipe: number; scene: string; loot: Record<string, [number, number]> }[],
   },
-  /** Pack mules: majors walk with the party as carriers. Each adds loot and slows the column a little. They never die on the trail. */
-  packMules: { max: 3, loot: 0.15, slow: 0.05 },
+  /** Pack mules: majors walk with the party. Each guards it (guard: less chance of losses), carries rare finds (rare: more amber,
+   *  sugar and ivory), and slows it a little. They never die on the trail. */
+  packMules: { max: 3, guard: 0.2, rare: 0.5, rareIds: ['sugar', 'ivory'], slow: 0.05 },
 };
 
 export const MAP = {

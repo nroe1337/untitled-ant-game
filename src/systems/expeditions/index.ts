@@ -158,8 +158,10 @@ function send(ctx: Context) {
   const marked = st.marked === true || st.marked === d.id;
   if (st.reserve) st.reserved = Math.max(0, (st.reserved ?? 0) - st.party); // reserve goes first, idle workers top it up
   // The trip's luck is decided as it sets out; the loss itself happens somewhere along the trail.
-  const wipe = Math.random() < wipeOf(ctx, d);
-  const lost = !wipe && Math.random() < lossOf(ctx, d) ? Math.min(st.party, 1 + Math.floor(Math.random() * maxLost(st.party))) : 0;
+  // majors walking with the party guard it: each one makes losses less likely
+  const guard = Math.max(0, 1 - X.packMules.guard * mules);
+  const wipe = Math.random() < wipeOf(ctx, d) * guard;
+  const lost = !wipe && Math.random() < lossOf(ctx, d) * guard ? Math.min(st.party, 1 + Math.floor(Math.random() * maxLost(st.party))) : 0;
   const fate: Fate = { at: 0.25 + Math.random() * 0.5, lost, wipe };
   st.parties.push({ dest: d.id, mules, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked, mules), told: 0, fate });
   ctx.busy['job:major'] = mulesOut(ctx);
@@ -205,10 +207,12 @@ function finish(ctx: Context, p: Party) {
   // a party lost on the trail still holds its column until its time is up
   ctx.ping('expeditions');
   if (p.ants <= 0) { s.runs += 1; return; } // a wiped party earns no marks
-  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * (1 + X.packMules.loot * (p.mules ?? 0));
+  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+  // majors carry what workers can't: the rare things (amber, royal sugar, beetle ivory)
+  const heavy = 1 + X.packMules.rare * (p.mules ?? 0);
   const got: string[] = [];
   for (const [rid, [lo, hi]] of Object.entries(d.loot)) {
-    const n = Math.round((lo + Math.random() * (hi - lo)) * mult);
+    const n = Math.round((lo + Math.random() * (hi - lo)) * mult * (X.packMules.rareIds.includes(rid) ? heavy : 1));
     if (n > 0) { ctx.res.lump(rid, n); got.push(`${n} ${ctx.res.get(rid).name.toLowerCase()}`); }
   }
   const marks = marksFor(d.time);
@@ -216,12 +220,12 @@ function finish(ctx: Context, p: Party) {
   s.earned = before + marks;
   ctx.res.lump('trailmark', marks);
   got.push(`${marks} trail mark${marks === 1 ? '' : 's'}`);
-  if (Math.random() < X.rareChance * (1 + U.eyes.per * lvl(ctx, 'eyes'))) {
+  if (Math.random() < X.rareChance * (1 + U.eyes.per * lvl(ctx, 'eyes')) * heavy) {
     ctx.res.add('amber', 1); s.rare += 1;
     ctx.log('Among the haul: a bead of amber with something tiny trapped inside.');
   }
   s.runs += 1;
-  ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.` + (p.mules ? ` ${p.mules} major${p.mules > 1 ? 's' : ''} carried the heavy loads.` : ''));
+  ctx.log(`The party returns from ${d.name.toLowerCase()} with ${got.join(', ')}.` + (p.mules ? ` ${p.mules} major${p.mules > 1 ? 's' : ''} guarded the column and carried the rare finds.` : ''));
   if (isRumour(d.id) && !openRumours(ctx).some((r) => r.id === d.id) && !s.parties.some((q) => q.dest === d.id)) ctx.log(`${d.name} is picked clean.`, 'info');
   if (!isRumour(d.id)) hearRumour(ctx);
   const sent = p.sent ?? p.ants;
@@ -314,7 +318,7 @@ export const expeditions: GameSystem = {
         rumourBox = el('div.section', { hidden: true }, el('h3', {}, 'Rumours'), rumourList);
         mulesEl = el('span.count');
         const mule = (d: number) => el('button.small', { type: 'button', onclick: () => { s.mules = Math.max(0, Math.min(X.packMules.max, (s.mules ?? 0) + d)); } }, d > 0 ? '+' : '−');
-        mulesRow = el('div.row', { hidden: true, title: `Each major brings back ${X.packMules.loot * 100}% more loot and slows the party ${X.packMules.slow * 100}%. They never fall on the trail.` },
+        mulesRow = el('div.row', { hidden: true, title: `Each major guards the party (${X.packMules.guard * 100}% less chance of losing workers or the whole party) and carries rare finds (${X.packMules.rare * 100}% more amber, royal sugar and beetle ivory), but slows it ${X.packMules.slow * 100}%. They never fall on the trail.` },
           el('span', {}, 'Pack mules (majors)'), mule(-1), mulesEl, mule(1));
         const party = (d: number) => el('button.small', { type: 'button', onclick: (e: MouseEvent) => {
           const step = e.shiftKey ? d * 5 : d;
