@@ -113,6 +113,8 @@ export const NEST = {
   storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
   storageBoost: 0.5,
+  /** Storage techs that boost by a different share than storageBoost. */
+  storageBoostBy: { shelving: 0.25, songs: 0.25 } as Record<string, number>,
   /** Research that adds a share to all living space from chambers (a colony of thousands needs these). */
   wideTunnels: 1,           // extra living space per tunnel once Wider tunnels is researched
   housingTechs: { deepgalleries: 0.25, vaults: 0.25, partitions: 0.5 } as Record<string, number>,
@@ -325,8 +327,8 @@ export const RESEARCH = {
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['routine', 'shelving'], desc: 'Unlocks the Purification chamber, which scrubs a slow trickle of mould.' },
     grooming:   { name: 'Grooming',          age: 'conquest', cost: { knowledge: 540, food: 450 },      needs: ['halls', 'ventilation'],             desc: 'Nurses learn to groom the walls: each scrubs 12 chambers\' worth of mould instead of 8.' },
-    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 50% more.' },
-    songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 50% more knowledge.' },
+    shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 25% more.' },
+    songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 25% more knowledge.' },
     lining:     { name: 'Resin lining',      age: 'conquest', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'], flag: 'legacy:flown', desc: 'Opens the Techniques tab.' },
     worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'], flag: 'legacy:flown', desc: 'Unlocks the Marching songs and Load bearing techniques.' },
@@ -334,7 +336,7 @@ export const RESEARCH = {
     scouting:   { name: 'Trail scent',       age: 'forage', cost: { knowledge: 120, food: 120 },          pop: 0.06, needs: ['surface'],             desc: 'Unlocks Scouts, pheromone and the Scent chamber.' },
     seeds:      { name: 'Seed lore',         age: 'forage', cost: { knowledge: 180, seed: 12 },           pop: 0.1, needs: ['scouting'],             desc: 'Unlocks the Seed granary.' },
     resin:      { name: 'Resin working',     age: 'conquest', cost: { knowledge: 260, resin: 8 },          pop: 0.2, needs: ['cartography'],               desc: 'Unlocks the Resin gallery.' },
-    deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['plans'],            desc: 'Chambers give 25% more living space.' },
+    deepgalleries: { name: 'Deep galleries', age: 'forage', cost: { knowledge: 280, soil: 240 },        pop: 0.2, needs: ['widetunnels'],      desc: 'Chambers give 25% more living space.' },
     halls:      { name: 'Sleeping halls',    age: 'conquest', cost: { knowledge: 360, twig: 80 },          pop: 0.27, needs: ['resin', 'deepgalleries'], desc: 'Unlocks the Worker hall: +12 living space each.' },
     vaults:     { name: 'Vaulted roofs',     age: 'conquest', cost: { knowledge: 480, resin: 30, twig: 70 }, pop: 0.4, needs: ['halls', 'lining'],    desc: 'Chambers give 25% more living space.' },
     partitions: { name: 'Paper partitions',  age: 'settlement', cost: { knowledge: 500, paper: 45 },     pop: 1.0, needs: ['papercraft'],          desc: 'Chambers give 50% more living space.' },

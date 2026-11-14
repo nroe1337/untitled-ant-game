@@ -123,7 +123,7 @@ const stack = (ctx: Context, id: ChamberId) => { const n = count(ctx, id); retur
 const nextScale = (ctx: Context, id: ChamberId) => (grows(id) ? Math.pow(NEST.storeGrowth, count(ctx, id)) : 1);
 /** Storage techs (Packed walls, Memory songs, Resin lining) multiply what some chambers store. */
 const storeMult = (ctx: Context, id: ChamberId) => 1 + Object.entries(NEST.storageTechs)
-  .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoost : 0), 0);
+  .reduce((t, [tech, ids]) => t + (ctx.flags.has('tech:' + tech) && ids.includes(id) ? NEST.storageBoostBy[tech] ?? NEST.storageBoost : 0), 0);
 /** Housing techs multiply all living space from chambers. */
 const roominess = (ctx: Context) => 1 + Object.entries(NEST.housingTechs).reduce((t, [tech, b]) => t + (ctx.flags.has('tech:' + tech) ? b : 0), 0) + ctx.mods.get('livingSpace');
 const num = (n: number) => String(Number(n.toFixed(2)));
