@@ -24,3 +24,19 @@ new standing rule in a thread, add it here in the same pull request.
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
 - `src/data/techs2.ts`: the wider tech tree, one row list per age.
 - `src/systems/<name>/index.ts`: one system per tab or mechanic. `npm run build` type-checks and builds.
+
+## Where things stand (Nov 14)
+- Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
+  queen boss, rumours and pack mules, tile wonders (PR #203), and the Swarm Spire batch (PR #204: stage gates,
+  princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
+- Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
+  like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
+  feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc
+  (https://claude.ai/artifact/6ngZiwrfRrhgWYJam71nFJ), under "Rethink ideas":
+  - Blueprints dropping from special places, with bad luck protection.
+  - Building a wonder by doing its activity.
+  - One wonder per colony.
+
+  Nate hasn't picked a direction yet: ask him first.
+- Later ideas Nate liked: building the placeholder screens that techs point at (`screen` tags in techs2.ts),
+  a balance playtest pass, and colony curses.

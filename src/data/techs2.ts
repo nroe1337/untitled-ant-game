@@ -89,6 +89,14 @@ const AGE_ROWS: Record<string, Row[]> = {
   ],
   wings: [
     ['packmules', 'Pack mules', ['castes'], { knowledge: 600, food: 400 }, {}, {}, { lead: 'Majors walk with expeditions. Choose up to 3 on the Surface tab: each cuts the chance of losing workers by 10% and carries rare finds (25% more amber, royal sugar and beetle ivory), but slows the party 10%. They never fall on the trail, but they are away from the nest.' }],
+    // The Swarm Spire (Nov 14): each stage needs its own research; two change how it is built; one reads the weather
+    ['packedearth', 'Packed earth', ['flight'], { knowledge: 520, soil: 500 }, {}, {}, { lead: 'The colony learns to pack soil hard enough to stand tall. Opens the Spire\'s Foundation.' }],
+    ['resinvault', 'Resin vaulting', ['packedearth'], { knowledge: 560, resin: 30 }, {}, {}, { lead: 'Twig ribs sealed with resin. Opens the Spire\'s Galleries.' }],
+    ['winglore', 'Wing lore', ['resinvault'], { knowledge: 620, jelly: 20 }, {}, {}, { lead: 'Nurses learn how wings grow. Opens the Spire\'s Winged princesses, and each colony\'s princesses carry one new trait for your line.' }],
+    ['eveningwinds', 'Evening winds', ['winglore'], { knowledge: 660, pheromone: 80 }, {}, {}, { lead: 'Scouts learn which winds carry the winged ones. Opens the Spire\'s Launch crown.' }],
+    ['scaffolding', 'Scaffolding', ['packedearth'], { knowledge: 540, twig: 60 }, {}, {}, { lead: 'Builders work in shifts: while a Spire stage settles, they already carry to the next one.' }],
+    ['pulleys', 'Pulley lines', ['scaffolding'], { knowledge: 580, silk: 20 }, {}, {}, { lead: 'Silk lines and twig pulleys: hauling by hand to the Spire carries three times as much.' }],
+    ['weatherwatch', 'Weather watch', ['eveningwinds'], { knowledge: 620, pheromone: 60 }, {}, {}, { lead: 'Scouts read the sky. You can see when a fine evening is coming (a flight then earns 10% more lineage), and the colony can fly on the next fine evening by itself.' }],
     ['wonderlore', 'Wonder lore', ['castes'], { knowledge: 620, soil: 600 }, {}, {}, { lead: 'Hold enough of one kind of ground and the colony can raise a wonder on it (Map, select a held tile). A finished wonder rises one level for good, through every flight. Builders carry to wonders too.' }],
     ['deepfinds', 'Deep finds', ['deepdig'], { knowledge: 560, clay: 60 }, {}, {}, { lead: 'Diggers strike buried things three times as often, and down in the clay they turn up clay and old beetle shells (chitin).' }],
     ['deepvents', 'Deep vents', ['deepdig'], { knowledge: 500, clay: 40 }, { mouldMade: -0.05 }, {}, { lead: 'Unlocks the Deep vent, which scrubs mould for a big nest.' }],
