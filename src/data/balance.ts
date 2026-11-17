@@ -36,6 +36,19 @@ export const BROOD = {
     lean: { name: 'Lean', grow: 0.7, eat: 0.6, desc: 'Larvae eat 40% less but grow 30% slower.' },
   } as Record<string, { name: string; grow: number; eat: number; desc: string }>,
   rhythmCooldown: 15,       // seconds before the pace can be changed again
+  /** Brood temperament: rolled at random for every colony (never the same twice running), not chosen.
+   *  Workers of this brood are keen on one job and reluctant at another, so the best worker mix shifts a
+   *  little from colony to colony. keen and loath are job ids; soldier leans change fighting power. */
+  temperKeen: 0.15,         // +15% for the job the brood is keen on
+  temperLoath: 0.10,        // -10% for the job it is reluctant at
+  temperaments: {
+    bold:       { name: 'Bold',       keen: 'soldier', loath: 'nurse',   desc: 'They would rather fight than fuss over eggs.' },
+    tender:     { name: 'Tender',     keen: 'nurse',   loath: 'soldier', desc: 'They hover over the brood and shy from a fight.' },
+    restless:   { name: 'Restless',   keen: 'scout',   loath: 'digger',  desc: 'They itch to be out on the surface, not down in the clay.' },
+    burrowing:  { name: 'Burrowing',  keen: 'digger',  loath: 'scout',   desc: 'They love the deep dark and dislike the open sky.' },
+    thoughtful: { name: 'Thoughtful', keen: 'elder',   loath: 'forager', desc: 'They linger over memories and dawdle on the forage runs.' },
+    hungry:     { name: 'Hungry',     keen: 'forager', loath: 'elder',   desc: 'Always out for food, never still long enough to remember.' },
+  } as Record<string, { name: string; keen: string; loath: string; desc: string }>,
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
