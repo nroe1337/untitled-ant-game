@@ -6,7 +6,8 @@ import { actionButton, el, progressBar, type ActionButton } from '../../core/ui'
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { dockProject } from '../../core/queue';
-import { BROOD, LINEAGE, SEASONS, RESEARCH } from '../../data/balance';
+import { BROOD, LINEAGE, SEASONS, RESEARCH, NEST } from '../../data/balance';
+import { reworkLevel } from '../nest';
 
 /** next: what Scaffolding has already carried to the stage after this one. */
 interface Wonder { stage: number; paid: Record<string, number>; settle: number; hold?: boolean; next?: Record<string, number> }
@@ -16,6 +17,8 @@ interface LineageState {
   traits?: string[]; picked?: boolean;
   /** Hall of records (a chamber rework): one research the next colony starts with. */
   recorded?: string;
+  /** Hall of records II: a second research. III: one chamber rework kept at its level. */
+  recorded2?: string; recordedRework?: string; recordedLevel?: number;
   /** Fine evenings: seconds to the next evening, seconds left of the current one, and whether it is fine. */
   eveCd?: number; eveLeft?: number; fine?: boolean; autoFly?: boolean;
   /** Dowry carried from the last colony, still to be unpacked into stores as room allows. */
@@ -40,6 +43,13 @@ const wonder = (ctx: Context) => (S(ctx).wonder ??= { stage: 0, paid: {}, settle
 const moundDone = (ctx: Context) => wonder(ctx).stage >= W.stages.length;
 /** A flight needs a warm evening: not in autumn or winter (once the year turns). */
 const warm = (ctx: Context) => ctx.mods.get('cold') <= 0;
+/** What the Hall of records carries to the next colony, by its level. */
+function keptRecords(ctx: Context) {
+  const s = S(ctx), L = reworkLevel(ctx, 'library'), known = (id?: string) => (id && ctx.flags.has('tech:' + id) ? id : undefined);
+  if (!L) return {};
+  const rw = L >= 3 && s.recordedRework ? reworkLevel(ctx, s.recordedRework) : 0;
+  return { recorded: known(s.recorded), recorded2: L >= 2 ? known(s.recorded2) : undefined, recordedRework: rw ? s.recordedRework : undefined, recordedLevel: rw || undefined };
+}
 /** Research the Hall of records can keep: learned, from the first three ages. */
 const RECORD_AGES = ['dirt', 'forage', 'conquest'];
 const recordable = (ctx: Context) => Object.keys(RESEARCH.techs).filter((id) => ctx.flags.has('tech:' + id) && RECORD_AGES.includes(RESEARCH.techs[id].age ?? ''));
@@ -150,7 +160,14 @@ export const lineage: GameSystem = {
       const swarm = LINEAGE.perks.swarm.per * P(ctx, 'swarm');
       if (swarm) { ctx.res.setCapBonus('ant', 'swarm', swarm); ctx.res.set('ant', swarm); }
       if (trait(ctx, 'warborn')) ctx.flags.add('tech:martial');
-      if (s.recorded) { ctx.flags.add('tech:' + s.recorded); ctx.log(`The new queen remembers what the hall of records kept: ${RESEARCH.techs[s.recorded]?.name ?? s.recorded}.`, 'story'); s.recorded = undefined; }
+      const techs = [s.recorded, s.recorded2].filter((x): x is string => !!x);
+      for (const id of techs) ctx.flags.add('tech:' + id);
+      if (techs.length) ctx.log(`The new queen remembers what the hall of records kept: ${techs.map((id) => RESEARCH.techs[id]?.name ?? id).join(' and ')}.`, 'story');
+      if (s.recordedRework && s.recordedLevel && ctx.state.nest) {
+        ((ctx.state.nest as { reworks?: Record<string, number | boolean> }).reworks ??= {})[s.recordedRework] = s.recordedLevel;
+        ctx.log(`The records keep the old plans too: the ${NEST.reworks[s.recordedRework]?.name.toLowerCase()} rework (level ${s.recordedLevel}) is known from the start.`, 'story');
+      }
+      s.recorded = s.recorded2 = s.recordedRework = undefined; s.recordedLevel = undefined;
       const dw = s.dowry && Object.values(s.dowry).some((n) => n > 0) ? ` She brings a dowry: ${Object.entries(s.dowry).map(([r, n]) => `${fmt(n)} ${r}`).join(' and ')}, unpacked as the stores make room.` : '';
       ctx.log(`The wedding flight is over. A young queen sheds her wings and digs into new earth. This is flight ${s.flights} of your line.` + (swarm ? ` ${swarm} workers came with her.` : '') + dw);
     });
@@ -203,13 +220,13 @@ export const lineage: GameSystem = {
     // carry unspent lineage as part of total; perks stay bought. Deeper prestiges (migration, supercolony)
     // never wipe the line: they pay their own currencies, and flights can always be ground for more.
     return { perks: s.perks, flights: s.flights, best: s.best, total: s.total, pending: true, traits: s.traits ?? [], dowry: s.dowry, autoFly: s.autoFly,
-      recorded: (ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.library && s.recorded && ctx.flags.has('tech:' + s.recorded) ? s.recorded : undefined };
+      ...keptRecords(ctx) };
   },
 
   panel: (() => {
     let ledger: HTMLElement, flyBtn: HTMLButtonElement, note: HTMLElement, perks: ReturnType<typeof upgradeList>;
     let mound: HTMLElement, moundHead: HTMLElement, moundInfo: HTMLElement, haul: ActionButton, holdBox: HTMLInputElement;
-    let traitBox: HTMLElement, traitRow: HTMLElement, traitHave: HTMLElement, weather: HTMLElement, weatherText: HTMLElement, autoBox: HTMLInputElement, recordBox: HTMLElement, recordSel: HTMLSelectElement;
+    let traitBox: HTMLElement, traitRow: HTMLElement, traitHave: HTMLElement, weather: HTMLElement, weatherText: HTMLElement, autoBox: HTMLInputElement, recordBox: HTMLElement, recordSel: HTMLSelectElement, recordSel2: HTMLSelectElement, recordRw: HTMLSelectElement, rec2Row: HTMLElement, recRwRow: HTMLElement;
     const traitBtns = new Map<string, HTMLButtonElement>();
     const moundBar = progressBar();
     return {
@@ -250,9 +267,15 @@ export const lineage: GameSystem = {
           traitRow, traitHave);
         recordSel = el('select') as HTMLSelectElement;
         recordSel.addEventListener('change', () => { S(ctx).recorded = recordSel.value || undefined; });
+        recordSel2 = el('select') as HTMLSelectElement;
+        recordSel2.addEventListener('change', () => { S(ctx).recorded2 = recordSel2.value || undefined; });
+        recordRw = el('select') as HTMLSelectElement;
+        recordRw.addEventListener('change', () => { S(ctx).recordedRework = recordRw.value || undefined; });
+        rec2Row = el('label.row', {}, 'And: ', recordSel2);
+        recRwRow = el('label.row', {}, 'Rework plans: ', recordRw);
         recordBox = el('div.section', { hidden: true }, el('h3', {}, 'Hall of records'),
           el('p.muted', {}, 'Your elders keep one research on the walls. The next colony starts with it already learned. (Age of Dirt, Forage and Conquest research only.)'),
-          el('label.row', {}, 'Keep: ', recordSel));
+          el('label.row', {}, 'Keep: ', recordSel), rec2Row, recRwRow);
         weatherText = el('span');
         autoBox = el('input', { type: 'checkbox', id: 'fly-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { S(ctx).autoFly = autoBox.checked; });
@@ -321,14 +344,23 @@ export const lineage: GameSystem = {
         traitHave.textContent = (owned.length ? `Your line carries: ${owned.map((id) => `${LINEAGE.traits[id].name} (${LINEAGE.traits[id].desc.replace(/\.$/, '')})`).join('; ')}.` : 'Your line carries no traits yet.')
           + (can ? '' : s.picked ? ' This colony\'s pick is made.' : !pickable(ctx).length ? '' : ' A new pick opens at the Winged princesses stage.');
         // Hall of records
-        recordBox.hidden = !(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.library;
-        if (!recordBox.hidden) {
+        const RL = reworkLevel(ctx, 'library');
+        recordBox.hidden = !RL;
+        if (RL) {
           const ids = recordable(ctx), key = ids.join(',');
-          if (recordSel.dataset.key !== key) {
-            recordSel.dataset.key = key;
-            recordSel.replaceChildren(el('option', { value: '' }, 'Nothing yet'), ...ids.map((id) => el('option', { value: id }, RESEARCH.techs[id].name)));
-          }
+          const fill = (sel: HTMLSelectElement, opts: [string, string][], k: string) => {
+            if (sel.dataset.key === k) return;
+            sel.dataset.key = k;
+            sel.replaceChildren(el('option', { value: '' }, 'Nothing yet'), ...opts.map(([v, n]) => el('option', { value: v }, n)));
+          };
+          const techOpts = ids.map((id) => [id, RESEARCH.techs[id].name] as [string, string]);
+          fill(recordSel, techOpts, key); fill(recordSel2, techOpts, key);
           recordSel.value = s.recorded && ids.includes(s.recorded) ? s.recorded : '';
+          recordSel2.value = s.recorded2 && ids.includes(s.recorded2) ? s.recorded2 : '';
+          rec2Row.hidden = RL < 2; recRwRow.hidden = RL < 3;
+          const rws = Object.keys(NEST.reworks).filter((id) => reworkLevel(ctx, id) > 0);
+          fill(recordRw, rws.map((id) => [id, `${NEST.reworks[id].name} (level ${reworkLevel(ctx, id)})`] as [string, string]), rws.map((id) => id + reworkLevel(ctx, id)).join(','));
+          recordRw.value = s.recordedRework && rws.includes(s.recordedRework) ? s.recordedRework : '';
         }
         // weather watch
         weather.hidden = !ctx.flags.has('tech:weatherwatch');
