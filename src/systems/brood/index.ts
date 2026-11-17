@@ -97,7 +97,9 @@ export const mouldWork = (ctx: Context) => { const m = ctx.res.amt('mould'); ret
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 /** Eggs or larvae each nurse looks after; Nurses' dens add more. */
 export const nurseTends = (ctx: Context) => BROOD.nurseTends + ctx.mods.get('nurseTends');
-export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity')) * (1 + ctx.mods.get('job:nurse'));
+/** Crowns can slow laying (`layRate`). */
+const layMult = (ctx: Context) => Math.max(0.1, 1 + ctx.mods.get('layRate'));
+export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity')) * (1 + ctx.mods.get('job:nurse')) * layMult(ctx);
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
@@ -106,7 +108,7 @@ export const tendSpeed = (ctx: Context) => {
   const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseTends(ctx));
   return (tended + (brood - tended) * BROOD.untendedSpeed) / brood * mouldSpeed(ctx);
 };
-const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
+const queenRate = (ctx: Context) => (RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay')) * layMult(ctx);
 
 /**
  * How much food the brood will still eat, for the food warning. Larvae eat for a while and then stop,
@@ -429,7 +431,8 @@ export const brood: GameSystem = {
           for (const [id, b] of paceBtns) { b.classList.toggle('on', id === cur); b.disabled = cd > 0 && id !== cur; }
           paceNote.textContent = ' ' + BROOD.rhythm[cur].desc + (cd > 0 ? ` Can change again in ${Math.ceil(cd)}s.` : '');
         }
-        royalHead.hidden = !royal.update(ctx);
+        royal.update(ctx);
+        royalHead.hidden = true; royal.root.hidden = true; // replaced by the Crowns tab; levels already bought keep working
       },
     };
   })(),

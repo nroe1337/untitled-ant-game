@@ -149,6 +149,11 @@ export const GUIDE: GuidePage[] = [
     age: 'wings',
     goal: 'Breed new castes, explore the wider world, and send your first nuptial flight.',
     steps: [
+      { head: 'Crown the queen', do: [
+        '[Royal court] opens the {Crowns} tab. Pick one of eight crowns for the queen.',
+        'Each crown boosts a few chambers, adds a rule and has a drawback. Pick the one that fits how you play.',
+        'Spend |jelly| to level crowns up to 10. Levels stay through flights.',
+      ], tip: 'After a change, the queen has to wait 10 minutes before she can change crowns again.' },
       { head: 'Breed castes', do: [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers.',

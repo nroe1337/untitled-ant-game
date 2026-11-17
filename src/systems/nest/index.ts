@@ -185,7 +185,7 @@ const roominess = (ctx: Context) => 1 + Object.entries(NEST.housingTechs).reduce
 const num = (n: number) => String(Number(n.toFixed(2)));
 /** A chamber's tooltip with the numbers it really gives now, after techs. */
 function liveDesc(ctx: Context, id: ChamberId) {
-  const m = storeMult(ctx, id) * nextScale(ctx, id);
+  const m = storeMult(ctx, id) * nextScale(ctx, id) * power(ctx, id);
   let d = DEFS[id].desc.replace(/\+(\d+) living space/, (_, n) =>
     `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx))} living space`);
   if (m !== 1) d = d.replace(/\+(\d+)(?![\d.]*%)(?! living)/g, (_, n) => `+${num(Number(n) * m)}`);
@@ -204,9 +204,11 @@ function liveDesc(ctx: Context, id: ChamberId) {
   return d;
 }
 
+/** A chamber's strength: crowns can boost or weaken a chamber type (`room:<id>` mods). */
+const power = (ctx: Context, id: ChamberId) => Math.max(0.1, 1 + ctx.mods.get('room:' + id));
 function applyEffects(ctx: Context) {
   const mult = (id: ChamberId) => storeMult(ctx, id);
-  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * (k.endsWith('Cap') ? stack(ctx, id) * mult(id) : count(ctx, id)), 0);
+  const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * (k.endsWith('Cap') ? stack(ctx, id) * mult(id) : count(ctx, id)) * power(ctx, id), 0);
   const roomier = roominess(ctx);
   const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') : 0;
   // terrain specialists: held ground upgrades chambers already dug
@@ -217,7 +219,7 @@ function applyEffects(ctx: Context) {
   ctx.res.setCapBonus('egg', 'nest', sum('broodCap') + (has('warmslabs') ? T.warmslabs * count(ctx, 'warmth') : 0));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
   for (const r of Object.keys(NEST.baseMaterialCap)) {
-    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * stack(ctx, id) * mult(id), 0));
+    if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * stack(ctx, id) * mult(id) * power(ctx, id), 0));
   }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
   const defence = sum('defence') + (has('stoneposts') ? (DEFS.barracks.defence ?? 0) * count(ctx, 'barracks') : 0) + Math.floor(S(ctx).walls ?? 0);
@@ -238,7 +240,7 @@ function applyEffects(ctx: Context) {
   if (ctx.res.has('jelly')) ctx.res.setCapBonus('jelly', 'nest', sum('jellyCap'));
   ctx.mods.set('boatSlots', 'nest', sum('boats'));
   const m: Record<string, number> = {};
-  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * (id === 'airshaft' && reworked(ctx, id) ? RX.draught : 1);
+  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * power(ctx, id) * (id === 'airshaft' && reworked(ctx, id) ? RX.draught : 1);
   for (const id of IDS) for (const k of Object.keys(DEFS[id].mods ?? {})) ctx.mods.set(k, 'nest:mods', m[k] ?? 0);
 }
 
