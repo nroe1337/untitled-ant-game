@@ -61,6 +61,14 @@ new standing rule in a thread, add it here in the same pull request.
   the Migration tab and the Guide all tell the player that levelling wonders matters.
 - Keep the Guide easy to read. When an age page gets long, move the detail into a topic page and leave a pointer.
 
+## Raids
+- Raids are an ongoing system you manage, not a ladder you beat (Nate, Nov 17): no visible wave counter. Strength comes from
+  threat (colony size plus a slow creep with time) x luck x bait (`WAR.threat`, `WAR.raidKinds`, `WAR.bait`). Raids come on
+  their own (a column marches across the Map first) and never stop; after the rival queen falls, wandering colonies raid.
+- Once the player has a defence set up they can mostly leave it, but raids pay chitin, honours and chests, so effort is
+  rewarded (heavy bait). Some raids should be big swings (the great warband) that punish a nest that isn't well prepared,
+  without bricking a run (losses stay capped).
+
 ## Strongholds
 - Three fortress tiles on the Map (`WAR.strongholds`): each has its own catch when attacked, not just more strength, and
   each works only while 2 majors man it. New war objectives should follow this: a different way to take it, and a rule

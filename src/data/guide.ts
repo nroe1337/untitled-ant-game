@@ -225,19 +225,22 @@ export const GUIDE: GuidePage[] = [
     goal: 'Win raids for chitin and honours, take the rival\'s land, and hold the three strongholds.',
     steps: [
       { head: 'Raids', do: [
-        'The rival raids on its own every 10 to 15 minutes. Its column marches across the {Map} for 2 minutes first, then fights at the entrance like a provoked raid. Click [Provoke a raid] on the {War} tab to fight sooner. Have soldiers and Guard posts ready.',
+        'The rival raids on its own every 10 to 15 minutes. Its column marches across the {Map} for 2 minutes first; its look hints at what is coming. Then it fights at the entrance.',
+        'Raids never stop: they grow with your colony (workers, chambers) and slowly with time. The {War} tab shows the threat. After the rival queen falls, wandering colonies keep coming.',
+        'Each raid is rolled: plain, a swarm, a brute pack, a night raid (no war cry) or, rarely, a great warband that only a well-prepared nest holds.',
+        'Click [Provoke a raid] to lure one now. Light bait lures a smaller raid for half the spoils and no chest; heavy bait a bigger one for double.',
         'Every ant fights at once. Raiders bite your majors first, then soldiers, then workers who rally.',
-        'Clear a wave with nobody getting in and you earn war honours, a chest and the next, harder wave.',
-        'If raiders get in they steal |food|, and the wave must be fought again.',
+        'Repel a raid with nobody getting in and you earn war honours and a chest. Bigger raids pay more.',
+        'If raiders get in they steal |food|. You never lose more than a quarter of your soldiers in one raid.',
         'Hover any group on the battle screen to see its health, bite and what changes them.',
       ], tip: '[War cry] makes every fighter bite harder for a few seconds. Save it for the brutes.' },
       { head: 'Chitin and honours', do: [
         'Dead raiders drop |chitin|. [Fortification] appears after the first raid: spend chitin on fortifications on the {War} tab.',
         'With 15 |chitin|, learn [Husk masonry]. Dig [Hall of husks] and build the [Husk barricade], a wall that takes the first bites and regrows.',
-        'War honours buy honour upgrades. Deeper waves reach war milestones, each a lasting reward for this colony.',
+        'War honours buy honour upgrades. Raids repelled reach war milestones, each a lasting reward for this colony.',
       ] },
       { head: 'Campaigns', do: [
-        'Learn [Campaigning]. It appears once you reach wave 3.',
+        'Learn [Campaigning]. It appears once you have repelled 2 raids.',
         'Select an enemy tile next to your land on the {Map}, then launch from the {War} tab. All your soldiers march.',
         'Every tile you take makes the rival army smaller.',
       ] },

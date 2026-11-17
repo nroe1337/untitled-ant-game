@@ -304,7 +304,7 @@ export const lineage: GameSystem = {
           ['  from workers born', `+${sc.parts.born} (square root of all born)`],
           ['  from techs known', `+${sc.parts.techs}`],
           ['  from chambers', `+${sc.parts.chambers} (one per 10)`],
-          ['  from raid waves won', `+${sc.parts.waves} (one per 2)`],
+          ['  from raids repelled', `+${sc.parts.waves} (one per 2)`],
           ...(ctx.state.seasons?.started ? [['  from winters survived', `+${sc.parts.winters} (${SEASONS.winterLineage} each, if no one starved)`]] : []),
           ...(sc.fine ? [['  fine evening', `+${Math.round(sc.fine * 100)}%`]] : []),
           ...(s.flights + 1 >= LINEAGE.dowry.after ? [['Dowry', `${LINEAGE.dowry.ids.map((r) => `${fmt(ctx.res.amt(r) * LINEAGE.dowry.share)} ${r}`).join(' and ')} goes with the queen`]] : [['Dowry', `from flight ${LINEAGE.dowry.after}: ${Math.round(LINEAGE.dowry.share * 100)}% of food and soil goes with the queen`]]),

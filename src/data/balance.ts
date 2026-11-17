@@ -340,8 +340,29 @@ export const WAR = {
   // raids come when the player provokes one, and on their own every so often (Nate, Nov 17)
   /** Unprovoked raids: seconds between them (random in this range), a warning before, and a grace period after the War tab opens.
    *  Any raid resets the clock, and it pauses during a campaign.
-   *  The raid marches across the Map for its last `march` seconds (a column of `column` ants), then fights at the entrance. */
-  attack: { every: [600, 900] as [number, number], march: 120, warn: 30, grace: 600, column: 10 },
+   *  The raid marches across the Map for its last `march` seconds (a column whose look hints at its kind), then fights at the entrance. */
+  attack: { every: [600, 900] as [number, number], march: 120, warn: 30, grace: 600 },
+  /** Threat (Nate, Nov 17): raids are an ongoing pressure you manage, not waves you beat. A raid's strength is
+   *  threat x luck x bait, used where the wave number used to be (raider count and toughness).
+   *  threat = 1 + max(0, workers/perWorkers + chambers/perChambers - offset) + perHour per hour since the War tab opened.
+   *  After the rival queen falls, wandering colonies keep raiding at `wanderers` of it. */
+  threat: { perWorkers: 30, perChambers: 30, offset: 2, perHour: 0.5, luck: 0.25, wanderers: 0.8,
+    words: [[0, 'Low'], [4, 'Rising'], [8, 'High'], [14, 'Grave'], [22, 'Dire']] as [number, string][] },
+  /** Kinds of raid, rolled by weight once threat reaches `from`. raiders/brutes scale the count, tough the health and bite,
+   *  spoils the chitin and honours. cap: most raiders. noCry: the war cry can't be sounded. hint: what the column looks like. */
+  raidKinds: {
+    plain:   { name: 'A raid',        weight: 6, from: 0, raiders: 1,   brutes: 1, tough: 1,    spoils: 1,   column: 10, desc: '', hint: 'a column of raiders.' },
+    swarm:   { name: 'A swarm',       weight: 2, from: 2, raiders: 1.6, brutes: 0, tough: 0.7,  spoils: 1,   column: 16, cap: 45, desc: 'Many small raiders, weaker each.', hint: 'a long, thin column.' },
+    brutes:  { name: 'A brute pack',  weight: 2, from: 3, raiders: 0.5, brutes: 3, tough: 1,    spoils: 1.5, column: 6,  desc: 'Few raiders, many brutes.', hint: 'a short column of big ants.' },
+    night:   { name: 'A night raid',  weight: 1, from: 4, raiders: 1,   brutes: 1, tough: 1,    spoils: 1.5, column: 10, noCry: true, desc: 'In the dark, the war cry cannot be heard.', hint: 'a column you can barely see.' },
+    warband: { name: 'A great warband', weight: 1, from: 3, raiders: 2.2, brutes: 2, tough: 1.3, spoils: 3, column: 24, cap: 60, desc: 'A huge raid. Only a well-prepared nest holds.', hint: 'a huge column. Get ready.' },
+  } as Record<string, { name: string; weight: number; from: number; raiders: number; brutes: number; tough: number; spoils: number; column: number; cap?: number; noCry?: boolean; desc: string; hint: string }>,
+  /** Provoke's bait: how big a raid you lure, and how much of the spoils it brings. Light brings no chest. */
+  bait: {
+    light:  { name: 'Light bait',  size: 0.6, spoils: 0.5 },
+    normal: { name: 'Normal bait', size: 1,   spoils: 1 },
+    heavy:  { name: 'Heavy bait',  size: 1.5, spoils: 2 },
+  } as Record<string, { name: string; size: number; spoils: number }>,
   provokeCooldown: 60,      // seconds to regroup before you can provoke again
   provokeCost: { pheromone: 6 },
   raidShare: 0.3,           // fraction of rival army that raids
@@ -388,6 +409,7 @@ export const WAR = {
   },
   /** One-off rewards for the deepest wave cleared this colony. Each is given the moment the wave falls. */
   milestones: [
+    // `wave` here is raids repelled (Nov 17: threat replaced numbered waves)
     { wave: 3,  id: 'hunt',    name: 'First blood',     desc: 'Soldiers hunt twice as well between fights.' },
     { wave: 5,  id: 'drums',   name: 'War drums',       desc: 'Unlocks Auto-provoke: the rival is lured again the moment it can be.' },
     { wave: 8,  id: 'feared',  name: 'Feared',          desc: 'Rivals give your trails a wide berth. Expeditions lose 20% fewer workers.' },
@@ -855,7 +877,7 @@ export const ARCHIVE = {
     earth:  { name: 'Earth',  what: 'chambers dug',          first: 20,  mod: 'chamberCost',  per: -0.01, bonus: 'chambers {p} cheaper' },
     lore:   { name: 'Lore',   what: 'techs learned',         first: 10,  mod: 'job:elder',    per: 0.02,  bonus: 'elders {p} better' },
     trails: { name: 'Trails', what: 'expeditions home',      first: 10,  mod: 'expLoot',      per: 0.02,  bonus: 'expedition loot {p}' },
-    iron:   { name: 'Iron',   what: 'raid waves won',        first: 5,   mod: 'soldierPower', per: 0.02,  bonus: 'soldiers {p} harder' },
+    iron:   { name: 'Iron',   what: 'raids repelled',        first: 5,   mod: 'soldierPower', per: 0.02,  bonus: 'soldiers {p} harder' },
     tide:   { name: 'Tide',   what: 'voyages made',          first: 5,   mod: 'voyageSpeed',  per: 0.02,  bonus: 'voyages {p} faster' },
     hunt:   { name: 'Hunt',   what: 'champion kills',        first: 50,  mod: 'champAtk',     per: 0.02,  bonus: 'champion attack {p}' },
     wings:  { name: 'Wings',  what: 'nuptial flights',       first: 1,   mod: 'lineageGain',  per: 0.05,  bonus: 'lineage from flights {p}' },
@@ -975,7 +997,7 @@ export const RES_DESC: Record<string, string> = {
   clay: 'Brought up by diggers after Deep diggers. Builds Clay halls and props up big nests. Holds up to 200.',
   wax: 'Grown by scale insects and mealybugs in your herds. Builds Wax stores, galleons and island colonies. Wax stores hold more.',
   chitin: 'Left by fallen raiders and hunted creatures. Expeditions to the stream bank and the far hedge find old shells too. Builds fortifications, husk halls and majors. Husk harvest raises the drop.',
-  honour: 'Earned by clearing raid waves and winning campaigns. Buys honour upgrades on the War tab. Kept until spent.',
+  honour: 'Earned by repelling raids and winning campaigns. Buys honour upgrades on the War tab. Kept until spent.',
   venom: 'Taken from spider raiders. Arms your champion. Kept until spent.',
   crumbs: 'Gathered by town foragers at the kitchen floor and the study. Builds satellite nests and pays for town research. Holds up to 120.',
   sugar: 'Gathered by town foragers at the kitchen floor. Feeds larvae through Sugar syrup and pays for town research. Holds up to 60.',
@@ -1193,7 +1215,7 @@ export const CROWNS = {
       rule: '{v} of nurses fight in raids.', ruleV: [0.25, 0.35, 0.5, 0.75],
       bad: 'Guard post -10%.', badMods: { 'room:barracks': -0.1 } },
     { id: 'thorn', name: 'Thorn crown', theme: 'The slaver', rooms: ['husks', 'den', 'midden'],
-      rule: 'Flawless raids capture {v} workers per 5 waves (min 1).', ruleV: [1, 1.5, 2, 3],
+      rule: 'Flawless raids capture {v} workers per 5 threat (min 1).', ruleV: [1, 1.5, 2, 3],
       bad: 'Foragers -15%.', badMods: { 'job:forager': -0.15 } },
   ] as { id: string; name: string; theme: string; rooms: string[]; rule: string; ruleV: number[]; bad: string; badMods: Record<string, number> }[],
 };
