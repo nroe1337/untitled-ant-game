@@ -624,7 +624,11 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .helpbtn { margin-left: 8px; width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--raise); color: var(--muted); font: 600 12px/1 var(--ui, sans-serif); font-style: normal; cursor: pointer; vertical-align: middle; }
 .helpbtn:hover { color: var(--fg); border-color: var(--warn); }
 .helprow { display: flex; justify-content: flex-end; }
-.helpbox { grid-column: 1 / -1; flex-basis: 100%; width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--raise); display: grid; gap: 6px; justify-items: start; }
 .helpbox p { margin: 0; }
 .helpbox .ghost { white-space: nowrap; }
-.helpbox[hidden] { display: none; }
+.helpshade { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.55); }
+.helpshade[hidden] { display: none; }
+.helpbox { position: relative; max-width: 460px; width: 100%; box-sizing: border-box; padding: 16px 20px; border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--raise); display: grid; gap: 8px; justify-items: start; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); }
+.helpbox h3 { margin: 0 24px 0 0; }
+.helpx { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; padding: 0; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+.helpx:hover { color: var(--fg); border-color: var(--warn); }
