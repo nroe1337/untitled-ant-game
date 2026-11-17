@@ -1133,4 +1133,28 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     }
     rect(c, x, y, 2, 2, ANT_TINT);
   }
+  drawMould(c, ctx, rooms, t);
+}
+
+const SPORES = ['#f08cc0', '#7cb4f0', '#8ee07a'];
+/** Mould as a see-through film over every room, with pink, blue and green spores that thicken as it grows. */
+function drawMould(c: CanvasRenderingContext2D, ctx: Context, rooms: { x: number; y: number; w: number }[], t: number) {
+  if (!ctx.res.has('mould')) return;
+  const f = Math.min(1, ctx.res.amt('mould') / BROOD.mould.weak);
+  if (f < 0.02) return;
+  c.save();
+  rooms.forEach((r, i) => {
+    c.globalAlpha = 0.12 + 0.2 * f;
+    blob(c, r.x, r.y + 1, r.w + 3, 5, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3 + i)));
+    const n = Math.ceil(f * 14);
+    for (let e = 0; e < n; e++) {
+      const h = Math.imul(i * 97 + e * 131 + 7, 2654435761) >>> 0;
+      const dx = (h % (2 * r.w + 4)) - r.w - 2, dy = ((h >>> 8) % 9) - 4;
+      const drift = Math.sin(t * 0.5 + e * 1.7 + i) * 1.5;
+      c.globalAlpha = (0.35 + 0.45 * f) * (0.5 + 0.5 * wave(t, 3 + (e % 4), e * 0.9 + i));
+      const sz = (h >>> 16) % 5 === 0 ? 2 : 1;
+      rect(c, Math.round(r.x + dx + drift), Math.round(r.y + dy - (t * 0.6 + e) % 3), sz, sz, SPORES[(h >>> 4) % 3]);
+    }
+  });
+  c.restore();
 }
