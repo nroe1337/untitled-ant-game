@@ -34,7 +34,7 @@ export const GUIDE: GuidePage[] = [
         'When living space is full, no new workers hatch. Dig ahead.',
       ] },
       { head: 'Research the basics', do: [
-        'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (when |knowledge| is nearly full).',
+        'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (after 6 chambers).',
         'After [Brood care], every chamber slowly gathers |mould|. Put workers on Nurse to scrub it away.',
         'Dig a [Food store] or [Soil pit] whenever a resource sits at its cap.',
         'Put a few workers on Elder for |knowledge|.',
@@ -58,7 +58,7 @@ export const GUIDE: GuidePage[] = [
       ], tip: 'You can change the starred job any time.' },
       { head: 'Grow the stores', do: [
         '[Wider tunnels] appears at 12 chambers, and [Deep galleries] follows it for more living space.',
-        '[Packed walls] appears when the |food| store is nearly full, [Memory songs] when |knowledge| is.',
+        '[Packed walls] appears once you have 6 [Food store]s, [Memory songs] once you have 5 [Hall of elders].',
       ] },
       { head: 'Clear the air', do: [
         'Learn [Ventilation] and dig [Purification chamber]s.',
@@ -69,11 +69,11 @@ export const GUIDE: GuidePage[] = [
         'Open the {Surface} tab and send expeditions.',
         'They bring back |twig| and |seed|, which are hard to get any other way.',
         'Spend the trail marks they earn on the {Surface} tab.',
-        'Bigger parties bring more, up to the party cap: 10 workers, plus 5 for each [Forager\'s rest] dug.',
+        'Bigger parties bring more, up to the party cap: 5 workers, raised by each [Forager\'s rest] you dig (a little less each time).',
       ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
       { head: 'Make pheromone', do: [
         'After a few expeditions, learn [Trail scent]. Put a few workers on Scout.',
-        'Scouts make |pheromone|. The Map costs a lot of it, so start early.',
+        'Scouts make |pheromone|. [Mapping] costs 125 of it, so you need 6 [Scent chamber]s to hold enough. Start early.',
       ] },
       { head: 'Set up queues', do: [
         'Learn [Digging plans] for a building queue.',
@@ -85,17 +85,17 @@ export const GUIDE: GuidePage[] = [
         'Learn [Sanitation] and dig a [Midden]. It lowers how much the colony eats.',
       ] },
     ],
-    next: 'Learn [Seed lore] and [Digging plans]. [Mapping] becomes available and the Age of Conquest begins.',
+    next: 'Every road in this age leads to [Mapping], its last research: it needs [Ventilation], [Digging plans] and [Sanitation]. Learn it and the Age of Conquest begins with the {Map} open.',
   },
   {
     age: 'conquest',
     goal: 'Claim the garden, beat back the rival, and build room for a much bigger colony.',
     steps: [
       { head: 'Claim land', do: [
-        'Learn [Mapping] first. It opens the {Map} tab.',
+        '[Mapping], the last research of the Age of Forage, opened the {Map} tab.',
         'On the {Map} tab, drag to look around and scroll to zoom. The minimap in the corner jumps the view. Click a tile next to your land, then claim it.',
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out.',
-        'Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
+        'This age\'s research is a chain: [Resin working] leads to housing, war and [Frontier sense], and each branch opens the next. Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
         'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
@@ -112,37 +112,37 @@ export const GUIDE: GuidePage[] = [
         'Hear 3 rumours and [Tall tales] appears: rumours come twice as often and hold one more trip.',
       ] },
       { head: 'Let the nest run itself', do: [
-        'After 300 workers are born, [Night shift] appears: the queen lays on her own while food is over half full.',
-        'With 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
+        'After [Grooming] and 300 workers born, [Night shift] appears: the queen lays on her own while food is over half full.',
+        'After [Grooming], with 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
       ] },
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',
         'Dig [Worker hall]s. Living space is the main limit this age.',
         'More chambers means more |mould|. Learn [Grooming] so each nurse scrubs 12 chambers instead of 8.',
       ] },
-      { head: 'Rework your chambers', do: [
-        'With 60 chambers, [Chamber craft] appears. Learn it to rework a chamber type you have 3 or more of, from the {Nest} tab.',
-        'A rework changes every chamber of that type for good, ones dug later too. It cannot be undone.',
-        'Each rework has three levels. Level II needs 8 of that chamber and level III needs 15, and they are paid in parts (3 for II, 8 for III), so you never need more than your stores hold. Each level makes the rework stronger, and a few add something new, like the Gatehouse shutting itself in a raid or the Seed bank claiming land. Each level also redraws the chamber bigger in the {Nest}.',
-        'Most reworks make that chamber type gather more |mould|. The cleaners\' reworks (Infirmary, Draught shaft, Mould farm, Flood channel) fight it.',
-        'Some reworks reach other tabs: the Muster hall (winter jobs), the Seed bank (sow tiles on the {Map}) and the Hall of records (keep a research through a flight).',
-      ], tip: 'Rework a cleaner for every two or three other reworks, or the mould gets ahead of you.' },
       { head: 'Take to the water', do: [
         'Learn [Leaf rafts] to open the {Waters} tab.',
         'Send boats on voyages for loot. Some islands can be settled for steady income.',
       ] },
     ],
-    next: 'Learn [Royal court]. The Age of Wings begins.',
+    next: 'Learn [Royal court], the last research of this age. It needs [Vaulted roofs] and [Campaigning]. The Age of Wings begins.',
   },
   {
     age: 'wings',
     goal: 'Breed new castes, explore the wider world, and send your first nuptial flight.',
     steps: [
       { head: 'Crown the queen', do: [
-        '[Royal court] opens the {Crowns} tab. Pick one of eight crowns for the queen.',
+        '[Royal court], learned at the end of the last age, opens the {Crowns} tab. Pick one of eight crowns for the queen.',
         'Each crown boosts a few chambers, adds a rule and has a drawback. Pick the one that fits how you play.',
         'Spend |jelly| to level crowns up to 10. Levels stay through flights.',
       ], tip: 'After a change, the queen has to wait 10 minutes before she can change crowns again.' },
+      { head: 'Rework your chambers', do: [
+        'With 90 chambers, [Chamber craft] appears. Learn it to rework a chamber type you have 3 or more of, from the {Nest} tab.',
+        'A rework changes every chamber of that type for good, ones dug later too. It cannot be undone.',
+        'Each rework has three levels. Level II needs 8 of that chamber and level III needs 15, and they are paid in parts (3 for II, 8 for III), so you never need more than your stores hold. Each level makes the rework stronger, and a few add something new, like the Gatehouse shutting itself in a raid or the Seed bank claiming land. Each level also redraws the chamber bigger in the {Nest}.',
+        'Most reworks make that chamber type gather more |mould|. The cleaners\' reworks (Infirmary, Draught shaft, Mould farm, Flood channel) fight it.',
+        'Some reworks reach other tabs: the Muster hall (winter jobs), the Seed bank (sow tiles on the {Map}) and the Hall of records (keep a research through a flight).',
+      ], tip: 'Rework a cleaner for every two or three other reworks, or the mould gets ahead of you.' },
       { head: 'Breed castes', do: [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers, then give them workers on the {Jobs} tab.',

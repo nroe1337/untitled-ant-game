@@ -1,0 +1,28 @@
+// The ? on each screen: two or three plain lines on what the screen is for and how it works.
+// Keyed by system id. Keep these short; detail belongs in the Guide (guide.ts).
+export const HELP: Record<string, string[]> = {
+  brood: ['The queen lays eggs; they become larvae, then workers. Larvae eat food while they grow.', 'Workers need living space to hatch: dig chambers on the Nest tab. Keep mould low or the brood slows.'],
+  jobs: ['Every worker can take one job. Idle workers do nothing but still eat.', 'Use − and + to move workers. The ☆ job takes new idle workers on its own.'],
+  techniques: ['Colony techniques: lasting upgrades bought with resources, kept for this colony.'],
+  crowns: ['The queen wears one crown. Each boosts some chambers, adds a rule and has a drawback.', 'Levels are bought with royal jelly and kept through flights. Changing crowns has a 10 minute wait.'],
+  castes: ['Castes are a few special ants. Breed them with royal jelly, give them workers on the Jobs tab.', 'Each caste has a home post and other posts you open. Move ants between posts to choose what is live.'],
+  garden: ['Fungus beds turn leaves into fungus. Mould spreads through untended beds.'],
+  research: ['Spend knowledge to learn research. Each age ends in one research that opens the next age.', 'A ? is an idea the colony hasn\'t had yet: hover it for a hint.'],
+  nest: ['Dig chambers for living space, storage and work. Each one costs more than the last.', 'Every chamber gathers a little mould. Click chambers in the picture to see them, or two in turn to swap them.'],
+  expeditions: ['Send parties to bring home food, twigs, seeds and resin. They are away from their jobs until they return.', 'Every trip earns trail marks. Marks open new, richer places and buy trail upgrades.'],
+  map: ['The garden around the nest. Select a tile next to your land and send scouts to claim it.', 'Held tiles give resources. Outposts push your reach further out.'],
+  war: ['The rival raids the nest every so often. Soldiers, majors and fortifications hold the entrance.', 'Repelled raids pay chitin, war honours and chests. Campaigns take enemy tiles on the Map.'],
+  waters: ['Build boats and send them on voyages for loot. Some islands can be settled for steady income.'],
+  kin: ['Friendly colonies found by sky scouts. Finish their quests and send gifts to earn trust.'],
+  husbandry: ['Herd aphids and other animals for honeydew and wax. Herders tend them and drive off predators.'],
+  champion: ['Your champion hunts on its own. Wins give experience; bosses give trophies.'],
+  wonders: ['One wonder per colony: a way of life with a lasting price. Find blueprints, choose one, and it rises as you play.', 'Each crowned wonder gains a level for good. One wonder at level 5 is needed to migrate.'],
+  lineage: ['Build the Swarm Spire, then send the nuptial flight. The colony ends and you earn lineage.', 'Lineage buys perks that every later colony keeps.'],
+  archive: ['The archive counts what all your colonies have done. Each tier gives a small lasting bonus and memory to spend on accords.'],
+  genome: ['Genes carried through flights. A gene carried enough times is fixed and works in every colony.'],
+  migration: ['Move your whole line into the human town. The tab lists everything still needed.'],
+  stats: ['Records of your line and this colony.'],
+  achievements: ['Feats earned once and kept forever. They give no bonus.'],
+  town: ['The human town: open its sites and work them with town foragers.'],
+  supercolony: ['The continent: become one colony across many regions.'],
+};

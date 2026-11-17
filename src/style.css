@@ -552,7 +552,7 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .lean.loath { color: var(--warn); }
 
 /* the chamber name under the nest view */
-.roomname { margin: -6px 0 6px; min-height: 1.3em; color: var(--fg); font-size: 13px; }
+.roomname { margin: 0 0 0 12px; min-height: 1.3em; color: var(--fg); font-size: 13px; }
 /* Castes: one card per caste, a row per post (see the mockup in the project files) */
 .castes { display: grid; gap: 14px; max-width: 720px; margin: 10px 0 18px; }
 .caste { background: var(--panel); border: 1px solid var(--line); }
@@ -617,3 +617,14 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .wn-act:disabled { border-color: var(--line, #3a332c); opacity: .6; cursor: default; }
 @media (max-width: 620px) { .wn-picks { grid-template-columns: repeat(2, minmax(0, 1fr)); } .wn-card .stages { grid-template-columns: 1fr; } }
 .capnote.bad, span.muted.bad { color: var(--accent); }
+.nextplace { display: grid; gap: 4px; padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--raise); }
+.mapkeys { text-align: right; margin: 2px 0 0; font-size: 12px; }
+.mapact { align-items: center; gap: 12px; }
+.mapact .grow { flex: 1; }
+.helpbtn { margin-left: 8px; width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--raise); color: var(--muted); font: 600 12px/1 var(--ui, sans-serif); font-style: normal; cursor: pointer; vertical-align: middle; }
+.helpbtn:hover { color: var(--fg); border-color: var(--warn); }
+.helprow { display: flex; justify-content: flex-end; }
+.helpbox { grid-column: 1 / -1; flex-basis: 100%; width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--raise); display: grid; gap: 6px; justify-items: start; }
+.helpbox p { margin: 0; }
+.helpbox .ghost { white-space: nowrap; }
+.helpbox[hidden] { display: none; }

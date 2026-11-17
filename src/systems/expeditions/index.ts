@@ -55,7 +55,7 @@ const marksFor = (time: number) => Math.max(1, Math.round(time / X.secondsPerMar
 const UPGRADES = fromBalance(U, (ctx, needs) =>
   !needs || (needs.startsWith('marks:') ? earned(ctx) >= Number(needs.slice(6)) : ctx.flags.has(needs)));
 /** Soft cap on party size: a base plus some for each Forager's rest dug. */
-const partyCap = (ctx: Context) => X.partyCap.base + X.partyCap.perRest * (ctx.state.nest?.built?.rest ?? 0);
+const partyCap = (ctx: Context) => X.partyCap.base + Math.round(X.partyCap.perRest * Math.sqrt(ctx.state.nest?.built?.rest ?? 0));
 /** Loot multiplier from party size: each worker past the minimum adds lootPerAnt, and past the cap only a share of that. */
 const partyMult = (ctx: Context, n: number) => {
   const cap = partyCap(ctx);
@@ -310,6 +310,7 @@ export const expeditions: GameSystem = {
     let markBox: HTMLInputElement, markWrap: HTMLElement;
     let reserveBox: HTMLInputElement, reserveWrap: HTMLElement, reserveCount: HTMLElement;
     let rumourList: HTMLElement, rumourBox: HTMLElement, mulesEl: HTMLElement, mulesRow: HTMLElement;
+    let nextBox: HTMLElement, nextTxt: HTMLElement; const nextBar = progressBar();
     let lootEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
     const bars: ReturnType<typeof progressBar>[] = [];
@@ -364,12 +365,15 @@ export const expeditions: GameSystem = {
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
         lootEl = el('p.muted');
+        nextTxt = el('span');
+        nextBox = el('div.nextplace', { title: 'Every trip earns trail marks. Marks are how your scouts find new, richer places to send parties.' }, nextTxt, nextBar.root);
         partyHint = el('p.muted');
         idleEl = el('strong');
         upsHead = el('h3', {}, 'Trail upgrades');
         root.append(
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
           rumourBox,
+          nextBox,
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           lootEl,
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
@@ -420,15 +424,23 @@ export const expeditions: GameSystem = {
         idleEl.textContent = String(Math.max(0, idle(ctx)));
         const dest = destOf(s.dest);
         const m = partyMult(ctx, s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+        {
+          const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)), prev = [...X.destinations].reverse().find((d) => d.unlockMarks <= earned(ctx));
+          nextBox.hidden = !n;
+          if (n) {
+            nextTxt.replaceChildren('New place: ', el('strong', {}, n.name), ` in ${n.unlockMarks - earned(ctx)} more trail mark${n.unlockMarks - earned(ctx) === 1 ? '' : 's'} (${earned(ctx)} of ${n.unlockMarks}). Every trip earns marks.`);
+            nextBar.set((earned(ctx) - (prev?.unlockMarks ?? 0)) / (n.unlockMarks - (prev?.unlockMarks ?? 0)));
+          }
+        }
         lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
           `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}.` + (isRumour(dest.id) ? ' A rumoured place: only a few trips before it is picked clean.' : ' Trips can be repeated as often as you like.');
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
           `(this party: +${Math.round((partyMult(ctx, s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
           (s.party > partyCap(ctx)
-            ? ` Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap (+${X.partyCap.perRest} each).`
+            ? ` Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap.`
             : s.party < partyCap(ctx) && 'twig' in dest.loot
-              ? ` Short on twigs? Bigger parties bring home far more. Each Forager's rest raises the cap by ${X.partyCap.perRest}.`
+              ? ` Short on twigs? Bigger parties bring home far more. Each Forager's rest raises the cap, a little less each time.`
               : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
@@ -564,7 +576,7 @@ function drawTrail(cv: HTMLCanvasElement, parties: Party[], lastDest?: string, r
     for (let i = 0; i < shown; i++) {
       const row = i % rows, col = Math.floor(i / rows);
       const x = base - (out ? 1 : -1) * (col * 7 + row * 3);
-      const y = y0 + LANE - 11 - (rows - 1 - row) * 3;
+      const y = y0 + GROUND - 3 + row * 3; // back row on the ground line, nearer rows lower down the ground band, so none float
       const bob = Math.floor(t * 8 + i) % 2;
       if (raft && row === rows - 1) { // a leaf under each ant of the bottom row; at III the lead leaf has a sail
         rect(c, x - 1, y + 2, 6 + raft, 1, '#6f9a3a');

@@ -18,10 +18,14 @@ new standing rule in a thread, add it here in the same pull request.
 - Avoid micromanagement: automated systems (war, expeditions) stay automated. Don't force over-preparation.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
-- Expedition party size has a soft cap tied to a building: 10 plus 5 per Forager's rest (Nate, Nov 17: 40 felt too high early on). Past the cap workers still
+- Expedition party size has a soft cap tied to a building: 5 plus 5 x the square root of Forager's rests,
+  so each rest adds less (Nate, Nov 17: put it on a curve). Past the cap workers still
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
 - Pacing (Nate, Nov 17): things should take longer but stay achievable. There is a lot of content, so prefer
   spreading it out (and locking some of it behind nuptial flights) over letting it all open in the first colony.
+- Each early age converges on one gate research (`RESEARCH.gates`: Upward tunnels, Mapping, Royal court). Nothing of the
+  next age shows until it is learned, so the player starts each age with its key feature open (Nate, Nov 17).
+  Optional side research is fine. Milestones should count buildings or deeds, not full stores.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 - Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
 - Effect and UI text (what a crown, chamber or button does) stays short and plain: say what it does.
@@ -84,7 +88,7 @@ new standing rule in a thread, add it here in the same pull request.
 - Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
   queen boss, rumours and pack mules, tile wonders (PR #203), and the Swarm Spire batch (PR #204: stage gates,
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
-- Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks, 3 levels each (Infirmary,
+- Chamber reworks (Nov 17): Chamber craft is a Wings research shown at 90 chambers (moved from Conquest, Nate Nov 17). 10 reworks, 3 levels each (Infirmary,
   Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
 - Brood temperament (`BROOD.temperaments` in balance.ts): each colony after the first rolls one at random. Keen job +15%,
   reluctant job -10%. Shown in a box on the Queen tab, a banner at the first worker, and tags on Jobs.
