@@ -16,7 +16,7 @@ interface CasteState {
   /** Posts opened with royal jelly. */
   open: Record<string, boolean>;
   /** Kin colonies a replete hangs in; Map tiles held by a living bridge or a leaf nest. */
-  gift: string[]; bridges: number[]; nests: number[];
+  gift: string[]; bridges: number[]; nests: number[]; forts: number[];
   /** Units still walking to a post. They have left home but don't count at the post yet. */
   walk: Walk[];
 }
@@ -30,8 +30,8 @@ const UPS = fromBalance(CASTES.upgrades, (ctx) => ctx.flags.has('tech:castes'));
 type PostDef = (typeof CASTES.posts)[string]['posts'][number];
 const POSTS: Record<string, PostDef & { caste: string }> = {};
 for (const [caste, c] of Object.entries(CASTES.posts)) for (const p of c.posts) POSTS[p.id] = { ...p, caste };
-const PLACED = ['gift', 'bridge', 'nest'];
-const placedList = (s: CasteState, id: string): (string | number)[] => (id === 'gift' ? s.gift : id === 'bridge' ? s.bridges : s.nests);
+const PLACED = ['gift', 'bridge', 'nest', 'fort'];
+const placedList = (s: CasteState, id: string): (string | number)[] => (id === 'gift' ? s.gift : id === 'bridge' ? s.bridges : id === 'fort' ? (s.forts ??= []) : s.nests);
 /** Units standing at a post now. */
 export const postCount = (ctx: Context, id: string) => {
   const s = ctx.state.castes as CasteState | undefined;
@@ -81,7 +81,7 @@ export const giftAt = (ctx: Context, kin: string) => {
   return s?.gift?.includes(kin) ? 'there' : s?.walk?.some((w) => w.post === 'gift' && w.arg === kin) ? 'walking' : '';
 };
 /** Is this Map tile held by a bridge or a leaf nest, or about to be? */
-export const tilePost = (ctx: Context, id: 'bridge' | 'nest', i: number) => {
+export const tilePost = (ctx: Context, id: 'bridge' | 'nest' | 'fort', i: number) => {
   const s = ctx.state.castes as CasteState | undefined;
   if (!s?.walk) return '';
   return placedList(s, id).includes(i) ? 'there' : s.walk.some((w) => w.post === id && w.arg === i) ? 'walking' : '';
@@ -124,14 +124,14 @@ export const castes: GameSystem = {
     ctx.res.define({ id: 'jelly', name: 'Royal jelly', cap: CASTES.jellyCap, order: 12, group: 'Brood' });
     ctx.res.define({ id: 'reserve', name: 'Reserve', cap: 0, order: 1.5 });
     ctx.res.define({ id: 'silk', name: 'Silk', cap: NEST.baseMaterialCap.silk, order: 23, integer: true, group: 'Surface' });
-    ctx.state.castes = { ups: {}, chewed: 0, posts: {}, open: {}, gift: [], bridges: [], nests: [], walk: [] } satisfies CasteState;
+    ctx.state.castes = { ups: {}, chewed: 0, posts: {}, open: {}, gift: [], bridges: [], nests: [], forts: [], walk: [] } satisfies CasteState;
   },
 
   isUnlocked: (ctx) => ctx.flags.has('tech:castes'),
 
   tick(ctx, dt) {
     const s = S(ctx);
-    s.posts ??= {}; s.open ??= {}; s.gift ??= []; s.bridges ??= []; s.nests ??= []; s.walk ??= []; // older saves
+    s.posts ??= {}; s.open ??= {}; s.gift ??= []; s.bridges ??= []; s.nests ??= []; s.forts ??= []; s.walk ??= []; // older saves
     refundTracks(ctx);
     // walkers arrive
     for (const w of s.walk) w.left -= dt;
@@ -142,10 +142,11 @@ export const castes: GameSystem = {
     s.walk = s.walk.filter((x) => x.left > 0);
     // posts that no longer make sense come home: a boat sank, the kin joined you, the tile changed hands
     while ((s.posts.deck ?? 0) > postMax(ctx, POSTS.deck)) s.posts.deck--;
-    const tiles = ctx.state.map?.tiles as { t: string; o: string | null }[] | undefined;
+    const tiles = ctx.state.map?.tiles as { t: string; o: string | null; sh?: string }[] | undefined;
     if (tiles) {
       s.bridges = s.bridges.filter((i) => tiles[i]?.t === 'water' && tiles[i].o !== 'you');
       s.nests = s.nests.filter((i) => tiles[i]?.t === 'grass' && tiles[i].o === 'you');
+      s.forts = s.forts.filter((i) => !!tiles[i]?.sh && tiles[i].o === 'you');
     }
     s.gift = s.gift.filter((id) => !ctx.state.kin?.rel?.[id]?.merged);
     // fewer ants of a caste than are posted (they died, or were moved on the Jobs tab): the last posted come home
@@ -207,6 +208,7 @@ export const castes: GameSystem = {
         case 'pots': return `+${POSTS.pots.per! * n} jelly room`;
         case 'gift': return `Hanging in ${n} kin ${n > 1 ? 'colonies' : 'colony'}`;
         case 'deck': return `${n} of ${postMax(ctx, POSTS.deck)} boats guarded`;
+        case 'fort': return `${n} ${n > 1 ? 'strongholds' : 'stronghold'} manned`;
         case 'bridge': return `${n} ${n > 1 ? 'bridges' : 'bridge'} held`;
         case 'nest': return `${n} ${n > 1 ? 'nests' : 'nest'}, +${POSTS.nest.per! * n} living space`;
         case 'mules': return `${n} with each party`;

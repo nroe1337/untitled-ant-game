@@ -165,7 +165,7 @@ function send(ctx: Context) {
   // The trip's luck is decided as it sets out; the loss itself happens somewhere along the trail.
   // majors walking with the party guard it: each one makes losses less likely
   const guard = Math.max(0, 1 - X.packMules.guard * mules);
-  const wipe = Math.random() < wipeOf(ctx, d) * guard;
+  const wipe = !ctx.mods.get('noWipe') && Math.random() < wipeOf(ctx, d) * guard; // a manned wasp nest: wasps fly escort
   const lost = !wipe && Math.random() < lossOf(ctx, d) * guard ? Math.min(st.party, 1 + Math.floor(Math.random() * maxLost(st.party))) : 0;
   const fate: Fate = { at: 0.25 + Math.random() * 0.5, lost, wipe };
   st.parties.push({ dest: d.id, mules, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked, mules), told: 0, fate });

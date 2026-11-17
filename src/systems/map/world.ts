@@ -229,7 +229,8 @@ export function finishSortie(ctx: Context) {
   w.sortie = null;
   ctx.ping('map');
   if (Math.random() < s.risk) {
-    const lost = Math.ceil(s.ants / 2);
+    // a manned wasp nest: the escort drives the birds off before they take more than one
+    const lost = ctx.mods.get('noWipe') ? 1 : Math.ceil(s.ants / 2);
     ctx.res.add('ant', -lost);
     const jobs = ctx.state.jobs?.assigned; if (jobs) jobs.scout = Math.max(0, (jobs.scout ?? 0) - lost);
     w.lost += lost;
