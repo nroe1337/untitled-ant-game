@@ -18,9 +18,14 @@ new standing rule in a thread, add it here in the same pull request.
 - Avoid micromanagement: automated systems (war, expeditions) stay automated. Don't force over-preparation.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
+- Expedition party size has a soft cap tied to a building: 20 plus 10 per Forager's rest. Past the cap workers still
+  go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
-- Think outside the box: no upgrade that is just another way to make food or births easier. Several ideas that do the
-  same thing in different coats make the game feel sloppy. Each one should change a rule or a decision, not a rate.
+- Think outside the box: don't propose yet another way to make food easier or births faster. Upgrades that are
+  just different routes to the same numbers make the game feel sloppy. A new mechanic should open a new decision
+  or change how the colony behaves.
+- Some variety should come from luck, not choice: the brood temperament is rolled for every colony (never the
+  same twice running) and nudges the best worker mix. Run-to-run variance like this must stay mild and never brick a run.
 
 ## Chamber reworks (Chamber craft)
 - A rework is one-way and applies to every chamber of that type at once (ones dug later too). Never per chamber.
@@ -40,6 +45,7 @@ new standing rule in a thread, add it here in the same pull request.
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
 - Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks (Infirmary,
   Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
+- Brood temperament (`BROOD.temperaments` in balance.ts): each colony rolls one at random. Keen job +15%, reluctant job -10%.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
   like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
   feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc
