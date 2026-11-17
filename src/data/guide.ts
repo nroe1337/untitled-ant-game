@@ -13,7 +13,7 @@ export interface GuidePage { age: string; title?: string; opens?: string[]; goal
 export const GUIDE: GuidePage[] = [
   {
     age: 'dirt',
-    goal: 'Grow from one queen to a nest of 10 chambers, then break through to the surface.',
+    goal: 'Grow from one queen to a nest of 25 chambers, then break through to the surface.',
     steps: [
       { head: 'Get your first workers', do: [
         'The queen lays eggs on her own. Watch them hatch on the {Queen} tab.',
@@ -45,7 +45,7 @@ export const GUIDE: GuidePage[] = [
         '[Famine law] appears after a worker first starves. From then on, the nurses give up eggs and larvae before any worker dies.',
       ] },
     ],
-    next: 'Learn [Upward tunnels] and reach 10 chambers. The Age of Forage begins.',
+    next: 'Learn [Upward tunnels] and reach 25 chambers. The Age of Forage begins.',
   },
   {
     age: 'forage',
@@ -69,7 +69,7 @@ export const GUIDE: GuidePage[] = [
         'Open the {Surface} tab and send expeditions.',
         'They bring back |twig| and |seed|, which are hard to get any other way.',
         'Spend the trail marks they earn on the {Surface} tab.',
-        'Bigger parties bring more, up to the party cap: 20 workers, plus 10 for each [Forager\'s rest] dug.',
+        'Bigger parties bring more, up to the party cap: 10 workers, plus 5 for each [Forager\'s rest] dug.',
       ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
       { head: 'Make pheromone', do: [
         'After a few expeditions, learn [Trail scent]. Put a few workers on Scout.',

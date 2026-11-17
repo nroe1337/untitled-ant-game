@@ -23,6 +23,8 @@ interface BroodState {
   rot?: number;
   sick?: number;
   mouldWarned?: boolean;
+  /** Mould warnings: the highest line crossed, and seconds before each line can warn again. */
+  mouldLine?: number; mouldCd?: number[];
   mouldIntro?: boolean;
   /** Infirmary: seconds left for each sick worker. */
   infirm?: number[];
@@ -68,6 +70,39 @@ const RB = BROOD.royal;
 const larvaRoom = (ctx: Context) => ctx.res.cap('ant') - Math.floor(ctx.res.amt('ant')) - Math.floor(ctx.res.amt('larva'));
 // mods: 'brood' (lineage perks) speeds both; 'larvaGrowth' (fungus feeding) speeds larvae
 const hatchTime = (ctx: Context) => BROOD.eggHatchTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood'));
+/** A Chronicle warning when mould climbs past each line. It must drop 10% below a line to re-arm it,
+ *  and each line waits a few minutes before it can warn again, so mould hovering at a line doesn't spam. */
+const MOULD_LINES: [number, string][] = [
+  [BROOD.mould.half, `Mould has reached ${BROOD.mould.half}: the brood grows at half speed.`],
+  [BROOD.mould.rot, `Mould has reached ${BROOD.mould.rot}: eggs rot and food spoils.`],
+  [BROOD.mould.weak, `Mould has reached ${BROOD.mould.weak}: workers fall sick and slow down.`],
+  [BROOD.mould.sick, `Mould has reached ${BROOD.mould.sick}: sick workers are dying.`],
+];
+function mouldAlarm(ctx: Context, m: number, dt: number) {
+  const s = S(ctx), cd = (s.mouldCd ??= MOULD_LINES.map(() => 0));
+  for (let i = 0; i < cd.length; i++) cd[i] = Math.max(0, cd[i] - dt);
+  let line = s.mouldLine ?? 0;
+  while (line > 0 && m < MOULD_LINES[line - 1][0] * 0.9) line--;
+  while (line < MOULD_LINES.length && m >= MOULD_LINES[line][0]) {
+    if (cd[line] <= 0) { ctx.log(MOULD_LINES[line][1] + ' Scrub it away: nurses, purification chambers.', 'warn'); cd[line] = 180; }
+    line++;
+  }
+  s.mouldLine = line;
+}
+/** 8x8 pixel icons for the three brood rhythms: a plump larva, a larva with speed lines, a thin larva. */
+const PACE_ART: Record<string, string[]> = {
+  steady: ['........', '..cccc..', '.cCccCc.', 'cCcccccc', 'cccccCcc', '.cCcccc.', '..cccc..', '........'],
+  quick:  ['........', '....ccc.', 'r..cCccc', '.r.ccccC', 'r..cCccc', '.r.ccccc', '....ccc.', '........'],
+  lean:   ['........', '........', '...cc...', '..cCcc..', '..ccCc..', '...cc...', '........', '........'],
+};
+const PACE_PAL: Record<string, string> = { c: '#e8dcc0', C: '#b8a888', r: '#e07040' };
+function paceIcon(id: string) {
+  const cv = document.createElement('canvas');
+  cv.width = 8; cv.height = 8; cv.className = 'paceicon';
+  const g = cv.getContext('2d');
+  (PACE_ART[id] ?? []).forEach((row, y) => [...row].forEach((ch, x) => { if (g && PACE_PAL[ch]) { g.fillStyle = PACE_PAL[ch]; g.fillRect(x, y, 1, 1); } }));
+  return cv;
+}
 /** The brood's pace (Brood rhythm research). Steady without it. */
 const rhythm = (ctx: Context) => BROOD.rhythm[(ctx.flags.has('tech:broodrhythm') && S(ctx).rhythm) || 'steady'] ?? BROOD.rhythm.steady;
 const growTime = (ctx: Context) => BROOD.larvaGrowTime / (1 + RB.quicken.per * R(ctx, 'quicken') + ctx.mods.get('brood') + ctx.mods.get('larvaGrowth')) / rhythm(ctx).grow;
@@ -283,6 +318,7 @@ export const brood: GameSystem = {
       if (ctx.flags.has('tech:compost') && middens) { res.source = 'Midden compost'; res.add('soil', (before - res.amt('mould')) * BROOD.compost.share * middens * BROOD.compost.soil); }
       res.source = 'Brood';
       const m = res.amt('mould');
+      mouldAlarm(ctx, m, dt);
       if (m >= MO.rot && !ctx.flags.has('mould:scrub')) { ctx.flags.add('mould:scrub'); ctx.log('The mould is out of hand. Workers can scrub it by hand now (Queen tab).', 'warn'); }
       if (m >= MO.rot && res.amt('egg') >= 1) {
         s.rot = (s.rot ?? 0) + dt / MO.rotEvery;
@@ -353,16 +389,16 @@ export const brood: GameSystem = {
         eggTxt = el('span'); larvaTxt = el('span'); pupaTxt = el('span'); hint = el('p.muted');
         ledger = el('div.ledger');
         paceNote = el('span.muted');
-        paceBox = el('div.pace', { hidden: true }, el('strong', {}, 'Brood rhythm '),
-          ...Object.entries(BROOD.rhythm).map(([id, r]) => {
+        paceBox = el('div.pace.temper', { hidden: true }, el('div.kicker', {}, 'Brood rhythm'),
+          el('div.pacebtns', {}, ...Object.entries(BROOD.rhythm).map(([id, r]) => {
             const b = el('button.ghost', { type: 'button', title: r.desc, onclick: () => {
               const s = S(ctx);
               if ((s.rhythmCd ?? 0) > 0 || (s.rhythm ?? 'steady') === id) return;
               s.rhythm = id; s.rhythmCd = BROOD.rhythmCooldown;
-            } }, r.name) as HTMLButtonElement;
+            } }, paceIcon(id), r.name) as HTMLButtonElement;
             paceBtns.set(id, b);
             return b;
-          }), paceNote);
+          })), paceNote);
         royalHead = el('h3', {}, 'Royal care');
         royal = upgradeList(ctx, () => S(ctx).royal, ROYAL);
         forageWrap = el('div', {}, forage.root);
@@ -430,7 +466,7 @@ export const brood: GameSystem = {
         if (!paceBox.hidden) {
           const cur = s.rhythm ?? 'steady', cd = s.rhythmCd ?? 0;
           for (const [id, b] of paceBtns) { b.classList.toggle('on', id === cur); b.disabled = cd > 0 && id !== cur; }
-          paceNote.textContent = ' ' + BROOD.rhythm[cur].desc + (cd > 0 ? ` Can change again in ${Math.ceil(cd)}s.` : '');
+          paceNote.textContent = BROOD.rhythm[cur].desc + (cd > 0 ? ` Can change again in ${Math.ceil(cd)}s.` : '');
         }
         royal.update(ctx);
         royalHead.hidden = true; royal.root.hidden = true; // replaced by the Crowns tab; levels already bought keep working

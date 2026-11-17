@@ -103,10 +103,10 @@ export const JOBS = {
   /** With Deep diggers, each digger also brings up this much clay a second. */
   diggerClay: 0.012,
   /** Buried finds research: each digger strikes something about once per this many seconds (Deep finds: 3x as often). */
-  findEvery: 1000, deepFindMult: 3,
+  findEvery: 2500, deepFindMult: 3,
   finds: [
-    { weight: 5, res: 'food', amt: [12, 25], text: 'A digger strikes a fat root. The colony eats.' },
-    { weight: 3, res: 'soil', amt: [20, 40], text: 'A tunnel wall gives way into a loose pocket of soil.' },
+    { weight: 5, res: 'food', amt: [4, 9], text: 'A digger strikes a fat root. The colony eats.' },
+    { weight: 3, res: 'soil', amt: [8, 16], text: 'A tunnel wall gives way into a loose pocket of soil.' },
     { weight: 2, res: 'seed', amt: [1, 3], text: 'A digger turns up a buried seed.' },
     { weight: 4, res: 'clay', amt: [10, 25], deep: true, text: 'Deep down, a digger breaks into a seam of soft clay.' },
     { weight: 2, res: 'chitin', amt: [2, 5], deep: true, text: 'A digger uncovers the shell of a long-dead beetle.' },
@@ -175,7 +175,7 @@ export const NEST = {
   /** Research that adds a share to all living space from chambers (a colony of thousands needs these). */
   wideTunnels: 1,           // extra living space per tunnel once Wider tunnels is researched
   housingTechs: { deepgalleries: 0.25, vaults: 0.25, partitions: 0.5 } as Record<string, number>,
-  surfaceAtChambers: 10,
+  surfaceAtChambers: 25,
   /** Terrain specialist research: what each adds per chamber. */
   terrain: { meadowgranary: 0.01, soilmasons: 2, dewwells: 0.3, warmslabs: 2 },
   baseFoodCap: 40,
@@ -202,7 +202,7 @@ export const NEST = {
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 6 } }, needs: 'tech:surface' },
-    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: "Foragers +4% food, +10 to the expedition party cap", mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
+    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: "Foragers +4% food, +5 to the expedition party cap", mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
     airshaft:  { name: 'Purification chamber', base: { soil: 30, food: 10 }, growth: 1.36,           desc: 'Fresh air purifies 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 25, later: { at: 7, cost: { resin: 3 } }, needs: 'tech:ventilation' },
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
@@ -241,7 +241,7 @@ export const EXPEDITIONS = {
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** Soft cap on party size: workers past it still go, but each adds only pastCap of the usual loot bonus.
    *  The cap is base plus perRest for each Forager's rest. */
-  partyCap: { base: 20, perRest: 10, pastCap: 1 / 3 },
+  partyCap: { base: 10, perRest: 5, pastCap: 1 / 3 },
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
   rareChance: 0.05,         // chance of a rare find (amber)
@@ -512,8 +512,8 @@ export const RESEARCH = {
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Warming chamber, the Nurses\' den and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
     royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
-    elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
-    surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
+    elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge and houses more elders.' },
+    surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 25 chambers.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['routine', 'shelving'], desc: 'Unlocks the Purification chamber, which scrubs a slow trickle of mould.' },

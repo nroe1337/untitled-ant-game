@@ -18,7 +18,7 @@ new standing rule in a thread, add it here in the same pull request.
 - Avoid micromanagement: automated systems (war, expeditions) stay automated. Don't force over-preparation.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
-- Expedition party size has a soft cap tied to a building: 20 plus 10 per Forager's rest. Past the cap workers still
+- Expedition party size has a soft cap tied to a building: 10 plus 5 per Forager's rest (Nate, Nov 17: 40 felt too high early on). Past the cap workers still
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
 - Pacing (Nate, Nov 17): things should take longer but stay achievable. There is a lot of content, so prefer
   spreading it out (and locking some of it behind nuptial flights) over letting it all open in the first colony.

@@ -305,7 +305,7 @@ export const expeditions: GameSystem = {
   },
 
   panel: (() => {
-    let sendBtn: ActionButton, markBtn: ActionButton, partyEl: HTMLElement, destSel: HTMLSelectElement, statusEl: HTMLElement;
+    let sendBtn: ActionButton, markBtn: ActionButton, partyEl: HTMLElement, capEl: HTMLElement, destSel: HTMLSelectElement, statusEl: HTMLElement;
     let viewer: HTMLCanvasElement, captions: HTMLElement, autoBox: HTMLInputElement, autoWrap: HTMLElement, ledger: HTMLElement;
     let markBox: HTMLInputElement, markWrap: HTMLElement;
     let reserveBox: HTMLInputElement, reserveWrap: HTMLElement, reserveCount: HTMLElement;
@@ -319,6 +319,7 @@ export const expeditions: GameSystem = {
       mount(root, ctx) {
         const s = S(ctx);
         partyEl = el('span.count');
+        capEl = el('span.muted', { title: "The soft cap: past it, each worker carries only a third as much. Each Forager's rest raises it." });
         destSel = el('select', { id: 'exp-dest' }) as HTMLSelectElement;
         destSel.addEventListener('change', () => { s.dest = destSel.value; if (!isRumour(s.dest)) s.homeDest = s.dest; });
         rumourList = el('div.rumours');
@@ -371,7 +372,7 @@ export const expeditions: GameSystem = {
           rumourBox,
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           lootEl,
-          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
+          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
           mulesRow,
           el('div.row', {}, sendBtn.root, markBtn.root, markWrap),
           partyHint,
@@ -414,6 +415,8 @@ export const expeditions: GameSystem = {
         mulesRow.hidden = !ctx.flags.has('tech:packmules');
         mulesEl.textContent = String(s.mules ?? 0);
         partyEl.textContent = String(s.party);
+        capEl.textContent = `of ${partyCap(ctx)}`;
+        capEl.classList.toggle('bad', s.party > partyCap(ctx));
         idleEl.textContent = String(Math.max(0, idle(ctx)));
         const dest = destOf(s.dest);
         const m = partyMult(ctx, s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
@@ -424,8 +427,8 @@ export const expeditions: GameSystem = {
           `(this party: +${Math.round((partyMult(ctx, s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
           (s.party > partyCap(ctx)
             ? ` Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap (+${X.partyCap.perRest} each).`
-            : s.party < 30 && 'twig' in dest.loot
-              ? ` Short on twigs? Big parties of 30 to 50 bring home far more.${partyCap(ctx) < 50 ? ` Each Forager's rest lets the party grow by ${X.partyCap.perRest} more before the loot thins out (cap now ${partyCap(ctx)}).` : ''}`
+            : s.party < partyCap(ctx) && 'twig' in dest.loot
+              ? ` Short on twigs? Bigger parties bring home far more. Each Forager's rest raises the cap by ${X.partyCap.perRest}.`
               : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
