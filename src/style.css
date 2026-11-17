@@ -533,7 +533,9 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 }
 
 /* Brood temperament: the Queen tab line and the keen / reluctant marks on the Jobs tab */
-.temper { margin: 6px 0 10px; }
+.temper { margin: 8px 0 12px; padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--raise); line-height: 1.6; }
+.temper .kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.temper .lean { margin: 0 4px 0 0; }
 .lean { font-size: 12px; font-weight: 400; margin-left: 6px; }
 .lean.keen { color: var(--good); }
 .lean.loath { color: var(--warn); }

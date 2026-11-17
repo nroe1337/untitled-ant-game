@@ -26,8 +26,10 @@ new standing rule in a thread, add it here in the same pull request.
 - Think outside the box: don't propose yet another way to make food easier or births faster. Upgrades that are
   just different routes to the same numbers make the game feel sloppy. A new mechanic should open a new decision
   or change how the colony behaves.
-- Some variety should come from luck, not choice: the brood temperament is rolled for every colony (never the
-  same twice running) and nudges the best worker mix. Run-to-run variance like this must stay mild and never brick a run.
+- Some variety should come from luck, not choice: the brood temperament is rolled for every colony after the first
+  (never the same twice running) and nudges the best worker mix. Run-to-run variance like this must stay mild and never brick a run.
+- Keep the first colony the same every time: run-to-run randomness (like temperament) starts after the first flight, so the
+  early unfolding always feels good.
 
 ## Chamber reworks (Chamber craft)
 - A rework is one-way and applies to every chamber of that type at once (ones dug later too). Never per chamber.
@@ -48,7 +50,8 @@ new standing rule in a thread, add it here in the same pull request.
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
 - Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks (Infirmary,
   Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
-- Brood temperament (`BROOD.temperaments` in balance.ts): each colony rolls one at random. Keen job +15%, reluctant job -10%.
+- Brood temperament (`BROOD.temperaments` in balance.ts): each colony after the first rolls one at random. Keen job +15%,
+  reluctant job -10%. Shown in a box on the Queen tab, a banner at the first worker, and tags on Jobs.
 - Crowns (PR #208): Royal court opens the Crowns tab. The queen wears one of 8 crowns (chamber boosts, a rule, a drawback),
   levels 1-10 bought with jelly and kept through flights, 10 minute cooldown on changing. Placeholder art until Nate's sprites.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
