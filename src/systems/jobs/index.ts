@@ -36,7 +36,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
   { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
-  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire and the wonders.', produces: {}, requires: 'tech:flight|tech:wonderlore' },
+  { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire.', produces: {}, requires: 'tech:flight' },
   { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats. More posts on the Castes tab.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 
@@ -463,7 +463,7 @@ export const jobs: GameSystem = {
         const busy = busySum(ctx);
         const hungry = (s.hunger ?? 0) > 0 ? 'Workers are starving and will die one by one until food comes in.' : '';
         upkeepEl.textContent = (hungry ? hungry + ' ' : '') + `The colony eats ${fmt(totalAnts(ctx) * COLONY.antFoodPerSecond * upkeepMult(ctx))} food/s.`;
-        const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'job:scout' ? 'Scouts away' : k === 'campaign' ? 'On campaign' : k, String(n)]);
+        const away = Object.entries(ctx.busy).filter(([, n]) => n > 0).map(([k, n]) => [k === 'expeditions' ? 'On expeditions' : k === 'job:scout' ? 'Scouts away' : k === 'campaign' ? 'On campaign' : k === 'bivouac' ? 'Holding the camp together' : k, String(n)]);
         census.replaceChildren(...[['Total workers', String(totalAnts(ctx))], ...away].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         census.hidden = !busy;
       },

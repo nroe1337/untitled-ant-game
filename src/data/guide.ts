@@ -1,4 +1,6 @@
 // The Guide: one page per age, opened the first time the line reaches that age. Step-by-step advice.
+// Topic pages (War, Castes, Wonders, Flights) come after the ages: each has a title and opens when any of its
+// `opens` flags is set. They hold the detail, so the age pages stay short.
 // Markup inside strings (rendered in colour by the Guide panel):
 //   {Jobs}            a tab                     (blue)
 //   [Daily routine]   research, chamber, button  (gold)
@@ -6,7 +8,7 @@
 //   !Careful!         a warning                  (red)
 
 export interface GuideStep { head: string; do: string[]; tip?: string }
-export interface GuidePage { age: string; goal: string; steps: GuideStep[]; next: string }
+export interface GuidePage { age: string; title?: string; opens?: string[]; goal: string; steps: GuideStep[]; next?: string }
 
 export const GUIDE: GuidePage[] = [
   {
@@ -98,34 +100,15 @@ export const GUIDE: GuidePage[] = [
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
         'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
       ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },
-      { head: 'Prepare for raids', do: [
+      { head: 'Go to war', do: [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
-        'Put workers on Soldier and dig Guard posts.',
-      ], tip: '!Raids will come.! Have soldiers ready before the first wave.' },
-      { head: 'Use the chitin', do: [
-        'Dead raiders drop |chitin|.',
-        '[Fortification] appears after the first raid. Spend |chitin| on fortifications on the {War} tab.',
-        'With 15 |chitin| in store, learn [Husk masonry] and dig [Hall of husks] for room and defence.',
-        'War research keeps appearing as you fight more raids.',
-        'After [Husk masonry], build the [Husk barricade]: a wall that takes the first bites of every raid and regrows.',
-        'Every wave cleared without losses leaves a chest. Open them all at once on the {War} tab.',
-        'Hover any group on the battle screen to see its health, bite and what changes them.',
-      ] },
-      { head: 'Take the fight to them', do: [
-        'Learn [Campaigning]. It appears once you reach wave 3.',
-        'Pick an enemy tile on the {Map}, then launch from the {War} tab.',
-        'Every tile you take makes the rival army smaller.',
-        'Their home tile is a boss fight with the rival queen: she hatches guards, spits acid, turns your soldiers and goes berserk when hurt. Bring more strength than hers. Kill her and the raids stop for good.',
-        'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
-      ] },
-      { head: 'Take the strongholds', do: [
-        'Three strongholds lie far out on the {Map}: a termite mound, a wasp nest and antlion pits. Select one to see its catch.',
-        'The termite mound falls to a siege of several campaigns. The wasps follow your army home after every assault. The antlion pits swallow soldiers unless a living bridge stands beside them.',
-        'A stronghold you hold does nothing until 2 majors man it. Open the Garrison post on the {Castes} tab, then man it from the {Map}.',
-      ], tip: 'You can take all three, but majors are scarce. Man the ones you need now.' },
+        'Put workers on Soldier and dig Guard posts before you provoke the first raid.',
+        'Raids give |chitin| and war honours. Campaigns take enemy tiles, and three strongholds wait far out on the {Map}.',
+      ], tip: 'A War page opens in this Guide (the tabs above). It covers raids, campaigns, the rival queen and the strongholds.' },
       { head: 'Chase rumours', do: [
         'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',
         'Each rumour lasts a while and a few trips. Only these places give |sugar| and |ivory|.',
+        'Every rumoured place your parties pick clean is also a search for the Honey Vault blueprint (see the Wonders page).',
         'Hear 3 rumours and [Tall tales] appears: rumours come twice as often and hold one more trip.',
       ] },
       { head: 'Let the nest run itself', do: [
@@ -162,13 +145,9 @@ export const GUIDE: GuidePage[] = [
       ], tip: 'After a change, the queen has to wait 10 minutes before she can change crowns again.' },
       { head: 'Breed castes', do: [
         'Learn [Caste lore] to open the {Castes} tab.',
-        'Use |jelly| to breed minims, repletes, majors or weavers.',
-        'Give a caste workers on the {Jobs} tab. On the {Castes} tab, choose where they stand: each caste has a home post and others you open with |jelly|.',
-        'Minims: the garden, the rival\'s walls (smaller raids, less chitin) or the trail (more rumours). Repletes: the larder, jelly pots, or a gift hung in a kin colony.',
-        'Majors: the gate, or a boat\'s deck. Weavers: the loom, a living bridge on a stream tile, or a leaf nest on grass you hold (both placed from the {Map}).',
-        'You never have enough for every post. Moved ants walk for half a minute before the new post counts.',
-        'With majors and 80 expeditions behind you, [Pack mules] appears: up to 3 majors guard each trip and carry its rare finds.',
-      ] },
+        'Use |jelly| to breed minims, repletes, majors or weavers, then give them workers on the {Jobs} tab.',
+        'A caste is a few scarce ants. On the {Castes} tab you choose where they stand.',
+      ], tip: 'A Castes page opens in this Guide. It lists every post and what it does.' },
       { head: 'Dig into the clay', do: [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',
         'Dig [Clay hall]s for lots of living space.',
@@ -183,13 +162,11 @@ export const GUIDE: GuidePage[] = [
         'Send sorties to uncover nearby cells, landmarks and other colonies.',
         'Help friendly colonies on the {Kin} tab. Finish their quests to earn trust.',
       ] },
-      { head: 'Raise wonders', do: [
-        'Hold 25 tiles and [Wonder lore] shows. Learn it.',
-        'Hold enough of one kind of ground and its wonder shows on the {Wonders} tab: grass for the Great Mound, bare soil for the Undercroft, stone for the War Cairn, stream for the Dew Ford, patio slabs for the Signal Stones.',
-        'On the {Map}, select a tile of that ground you hold and click [Raise]. Build the Footings, the Body and the Crown. The Body and Crown need |royal sugar| and |beetle ivory| from rumoured places.',
-        'Builders carry to wonders when the Spire doesn\'t need them. A bar above the tabs shows how far along each one is.',
-        'A finished wonder rises one level for good. Each can be raised once a colony, up to level 10, which unlocks its epic.',
-      ], tip: 'Every level adds something: the Mound gives living space, the others take turns adding one of three traits to battles, the nest, expeditions or the map.' },
+      { head: 'Choose a wonder', do: [
+        'The {Wonder} tab (under Legacy) opens once you hold a stronghold, kill the rival queen or fly.',
+        'A wonder is one way of life for a colony. Find its blueprint, choose it, and it rises as the colony plays.',
+        'Each colony that crowns its wonder earns one level of it for good.',
+      ], tip: '!Wonder levels matter more than anything else you carry over.! You cannot migrate until one wonder reaches level 5. The Wonders page in this Guide explains it all.' },
       { head: 'Build the Swarm Spire', do: [
         'Learn [Winged queens]. The {Lineage} tab opens.',
         'Build the Spire\'s 5 stages. Each stage needs its own research first ([Packed earth], [Resin vaulting], [Royal court], [Wing lore], [Evening winds]); each shows as the Spire rises.',
@@ -210,7 +187,7 @@ export const GUIDE: GuidePage[] = [
         'Fly again. A second flight opens the {Genome} tab.',
       ] },
     ],
-    next: 'Reach the far shore with a galleon, fly 3 times and settle 3 places across the water. Then you can migrate.',
+    next: 'Reach the far shore with a galleon, fly 3 times and settle 3 places across the water. You also need one wonder at level 5, all four blueprints and the three strongholds. Then you can migrate.',
   },
   {
     age: 'settlement',
@@ -219,6 +196,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Migrate', do: [
         'Open the {Migration} tab once a galleon reaches the far shore.',
         'Check that you have 3 flights since your last migration and 3 settlements across the water.',
+        'You also need one wonder at level 5, every wonder blueprint, and all three strongholds held on the {Map}. The {Migration} tab lists what is still missing.',
         'Migrate. You earn |heritage| and buy perks with it.',
       ], tip: 'You keep |lineage|, its perks, your captured land, champion, Archive and Genome.' },
       { head: 'Work the town', do: [
@@ -241,5 +219,133 @@ export const GUIDE: GuidePage[] = [
       ] },
     ],
     next: 'Open all 6 town sites, build 6 satellite nests and earn 25 |heritage| in all. Then become a supercolony on the {Continent} tab and earn |unity|.',
+  },
+  {
+    age: 'war', title: 'War', opens: ['tech:martial'],
+    goal: 'Win raids for chitin and honours, take the rival\'s land, and hold the three strongholds.',
+    steps: [
+      { head: 'Raids', do: [
+        'Raids come only when you click [Provoke a raid] on the {War} tab. Have soldiers and Guard posts ready first.',
+        'Every ant fights at once. Raiders bite your majors first, then soldiers, then workers who rally.',
+        'Clear a wave with nobody getting in and you earn war honours, a chest and the next, harder wave.',
+        'If raiders get in they steal |food|, and the wave must be fought again.',
+        'Hover any group on the battle screen to see its health, bite and what changes them.',
+      ], tip: '[War cry] makes every fighter bite harder for a few seconds. Save it for the brutes.' },
+      { head: 'Chitin and honours', do: [
+        'Dead raiders drop |chitin|. [Fortification] appears after the first raid: spend chitin on fortifications on the {War} tab.',
+        'With 15 |chitin|, learn [Husk masonry]. Dig [Hall of husks] and build the [Husk barricade], a wall that takes the first bites and regrows.',
+        'War honours buy honour upgrades. Deeper waves reach war milestones, each a lasting reward for this colony.',
+      ] },
+      { head: 'Campaigns', do: [
+        'Learn [Campaigning]. It appears once you reach wave 3.',
+        'Select an enemy tile next to your land on the {Map}, then launch from the {War} tab. All your soldiers march.',
+        'Every tile you take makes the rival army smaller.',
+      ] },
+      { head: 'The rival queen', do: [
+        'The rival\'s home tile is a boss fight. She hatches guards, spits acid, turns your soldiers and goes berserk when hurt.',
+        'Bring more strength than hers. Kill her and the raids stop for good.',
+        'Her chamber holds the Bivouac blueprint (see the Wonders page).',
+        'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
+      ] },
+      { head: 'The strongholds', do: [
+        'Three strongholds lie far out on the {Map}. Select one to see its catch.',
+        'Termite mound: its walls fall to a siege of several campaigns. Each one cracks them further.',
+        'Wasp nest: the wasps follow your army home after every assault. Keep fighters at the nest.',
+        'Antlion pits: they swallow 6 soldiers on every assault, unless a living bridge (weavers) stands on the next tile.',
+        'A stronghold you hold does nothing until 2 majors man it. Open the Garrison post on the {Castes} tab, then man it from the {Map}.',
+        'Majors manning the termite mound or the wasp nest also search it every 10 minutes for a wonder blueprint.',
+      ], tip: 'You can take all three, and you need all three to migrate. But majors are scarce: man the ones you need now.' },
+    ],
+  },
+  {
+    age: 'castes', title: 'Castes', opens: ['tech:castes'],
+    goal: 'Breed a few special ants and decide where each of them stands.',
+    steps: [
+      { head: 'How posts work', do: [
+        'Each caste is a job on the {Jobs} tab. The workers you give it are its pool.',
+        'On the {Castes} tab, every caste has a home post, where its ants stand by default, and other posts you open once with |jelly|.',
+        'Use − and + to move ants between posts. They walk for half a minute before the new post counts.',
+        'You never have enough ants for every post. That is the point: choose what is live right now.',
+      ] },
+      { head: 'Minims', do: [
+        'Home: the garden. Each keeps 2 fungus beds free of mould.',
+        'Rival\'s walls: raids are smaller, so they also give less chitin.',
+        'The trail: rumours come more often.',
+      ] },
+      { head: 'Repletes', do: [
+        'Home: the larder, as living food stores.',
+        'Jelly pots: more room for |jelly|.',
+        'A gift: hang a replete in a kin colony on the {Kin} tab. Trust grows by itself, up to a limit, and that kin will not feud with you.',
+      ] },
+      { head: 'Majors', do: [
+        'Home: the gate. They fight in every raid and march on campaigns.',
+        'A boat\'s deck: a major guards a voyage on the {Waters} tab and can deal with what the crew meets.',
+        'Garrison: 2 majors man a stronghold you hold (from the {Map}). Its rule works only while they stand there.',
+        'With 80 expeditions behind you, [Pack mules] appears: up to 3 majors guard each trip and carry its rare finds.',
+      ] },
+      { head: 'Weavers', do: [
+        'Home: the loom, making |silk|.',
+        'Living bridge: 2 weavers hold a bridge on a stream tile next to your land (from the {Map}). Scouts and soldiers cross there, and claims reach out from it.',
+        'Leaf nest: 3 weavers hold a nest over a grass tile you hold. +6 living space that adds no mould.',
+      ] },
+    ],
+  },
+  {
+    age: 'wonders', title: 'Wonders', opens: ['wonders:open'],
+    goal: 'Give every colony a wonder, crown it, and raise one wonder to level 5.',
+    steps: [
+      { head: 'Why wonders matter', do: [
+        'A wonder is the biggest thing a colony hands on to the next. Every level changes a rule for good, for every colony after.',
+        '!The line cannot migrate to the town until one wonder reaches level 5.! You also need all four blueprints.',
+        'A wonder gains one level in each colony that crowns it, so a full wonder takes five colonies. Start early.',
+      ], tip: 'Pick one wonder to push to level 5 first. Raise the others when their rules suit the colony you want to play.' },
+      { head: 'Find the blueprints', do: [
+        'The {Wonder} tab (under Legacy) shows where each blueprint is hidden.',
+        'Thatch Mound: the termite mound. Canopy: the wasp nest. Take the stronghold and man it with 2 majors, and they search it every 10 minutes.',
+        'Honey Vault: rumoured places. Every one your parties pick clean is a search.',
+        'Bivouac: the rival queen\'s chamber. It is found when she falls.',
+        'A search that fails gives a sign. After 4 signs the next search is sure to find it. Blueprints are kept for good.',
+      ] },
+      { head: 'Choose one for the colony', do: [
+        'On the {Wonder} tab, select a wonder you have found and click [Choose for this colony].',
+        'Each colony gets one wonder. It cannot be changed until the next flight.',
+        'Every wonder has a price that never goes away, so choose the one whose price you can live with.',
+      ], tip: 'Choose early. The wonder only counts what the colony does after you choose it.' },
+      { head: 'Raise it', do: [
+        'A wonder rises by doing its activity. A bar above the tabs shows how far along it is.',
+        'Footings: the wonder switches on, at the levels your line already owns.',
+        'Body: from here on its price is paid.',
+        'Crown: the wonder gains a level for good. The new level works at once.',
+      ], tip: 'The first time you raise a wonder your line owns no levels, so you pay its price for nothing until the Crown. After that every colony gets the levels from the Footings on.' },
+      { head: 'The four wonders', do: [
+        'Thatch Mound: rises by chambers dug (60, 120, 180). It takes the sting out of winter. Price: chambers gather half again as much |mould|.',
+        'Bivouac: rises by fights won, raids and campaigns (6, 15, 27). A camp you move around the {Map} lets the army and scouts strike far from your land. Price: one worker in ten holds the camp and cannot take a job.',
+        'Honey Vault: rises by minutes with full |food| stores (30, 90, 180). Overflow is kept in a vault with no limit. Price: raids are a quarter bigger and steal twice as much.',
+        'Canopy: rises by tiles claimed (45, 90, 150). The colony lives in the grass it holds. Price: chambers cost twice the |soil|.',
+      ], tip: 'The {Wonder} tab lists all five levels of each wonder.' },
+    ],
+  },
+  {
+    age: 'flights', title: 'Flights', opens: ['legacy:flown'],
+    goal: 'Know what a flight keeps, what it loses, and what to build up from colony to colony.',
+    steps: [
+      { head: 'What a flight keeps', do: [
+        '|lineage| and its perks, wonder levels and blueprints, crown levels, princess traits, and every tile you hold on the {Map}.',
+        'The {Archive}, {Records} and {Genome} keep filling from colony to colony.',
+      ] },
+      { head: 'What starts over', do: [
+        'Workers, chambers, stores, research, castes and their posts, outposts, and the wonder you chose.',
+        'Strongholds stay yours, but they need 2 majors again before their rules work.',
+      ] },
+      { head: 'Every new colony', do: [
+        'Its brood has a temperament, rolled at random and shown on the {Queen} tab: keen on one job (+15%), reluctant at another (−10%). Shift your workers to suit it.',
+        'Choose its wonder as soon as you can.',
+        'Research that appeared before stays in sight, so the early ages go faster.',
+      ] },
+      { head: 'Toward the town', do: [
+        'Migration is the next big step. It needs a galleon at the far shore, 3 flights, 3 settlements, one wonder at level 5, all four blueprints and the three strongholds.',
+        'The {Migration} tab lists what is still missing.',
+      ] },
+    ],
   },
 ];

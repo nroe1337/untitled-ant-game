@@ -146,7 +146,7 @@ export const NEST = {
       ii: 'The gates shut by themselves while raiders are at the entrance, and open after.', iii: 'Shut gates triple nest defence instead of doubling it.' },
     storeroom: { name: 'Spoil walls',    mould: 1,  desc: 'While the soil pits are full, diggers pile the extra soil up at the entrance as walls: nest defence that slowly crumbles.',
       ii: 'Walls pile up twice as fast.', iii: 'In a raid the walls stand in front of the soldiers and take the first bites.' },
-    granary:   { name: 'Seed bank',      mould: 1,  desc: 'Plant seeds on a held bare-soil tile on the Map to turn it into grass. Shape the ground your wonders need.',
+    granary:   { name: 'Seed bank',      mould: 1,  desc: 'Plant seeds on a held bare-soil tile on the Map to turn it into grass.',
       ii: 'Sowing costs half the seeds.', iii: 'Sow an open tile next to your land and it becomes yours.' },
     library:   { name: 'Hall of records', mould: 1, desc: 'On the Lineage tab, pick one research. The next colony starts with it already learned.',
       ii: 'Keep a second research.', iii: 'Also keep one chamber rework, at the level it had.' },
@@ -551,10 +551,10 @@ export const RESEARCH = {
     fortify: ['raids', 1, 'Your soldiers'], rivalscent: ['raids', 2, 'Your soldiers'], alarmscent: ['raids', 3, 'Your soldiers'],
     fielddressing: ['raids', 4, 'Your nurses'], columnbreak: ['raids', 6, 'Your soldiers'], counterraid: ['raids', 10, 'Your soldiers'],
     husks: ['chitin', 15, 'Your diggers'], rendering: ['chitin', 40, 'Your diggers'],
-    campaigns: ['wave', 3, 'Your soldiers'], broodraiding: ['wave', 4, 'Your soldiers'],
+    campaigns: ['wave', 3, 'Your soldiers'],
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
-    packmules: ['runs', 80, 'The expedition leaders'], wonderlore: ['tiles', 25, 'Your scouts'], talltales: ['rumours', 3, 'The expedition leaders'],
+    packmules: ['runs', 80, 'The expedition leaders'], talltales: ['rumours', 3, 'The expedition leaders'],
     nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'], renovation: ['rooms', 60, 'Your diggers'],
     // Age of Wings: the Swarm Spire. Each stage needs its own research, which shows as the Spire rises.
     packedearth: ['spire', 0, 'Your diggers'], resinvault: ['spire', 1, 'Your builders'], winglore: ['spire', 3, 'Your nurses'], eveningwinds: ['spire', 4, 'Your builders'],
@@ -722,57 +722,79 @@ export const LINEAGE = {
 };
 
 /**
- * Tile wonders (Nov 14, Nate): one per terrain, raised on a tile you hold. Finishing one raises it a
- * level for good (one level per colony, up to 10). The Great Mound grows living space; the other four
- * rotate through three traits (tiers I/II/III at levels 1-3, 4-6, 7-9) and unlock an epic at 10.
- * Numbers start small (CLAUDE.md): buff later if it feels weak.
+ * Wonders (Nov 17, Nate): a wonder is a way of life, not a buff. Each colony picks one, and it changes
+ * how that colony plays: it has one price, paid at every level, and five levels the line keeps for good.
+ * - Blueprints are found in special places, with bad luck protection: each search that fails leaves a sign, and
+ *   the search after `pity - 1` signs is sure to find it.
+ * - A wonder rises by doing its activity, counted from the moment it is chosen, in three stages:
+ *   Footings switch it on at the levels the line owns, the price starts at the Body, the Crown earns the next level.
+ * - Level goals are 3x the first draft on purpose (Nate): a level is a whole colony's work.
+ * - Migration needs one wonder at level 5 (see MIGRATION.needs in town.ts).
  */
 export const WONDERS = {
-  max: 10,
-  growth: 1.35,          // each level costs this much more than the last
-  loreAt: 25,            // tiles held in one colony before Wonder lore shows
-  settle: 1200,          // the Crown's settling time, seconds
-  haul: 10, haulCooldown: 3,
-  stages: [
-    { id: 'footings', name: 'Footings', cost: { soil: 1500, twig: 120 } },
-    { id: 'body',     name: 'Body',     cost: { resin: 40, seed: 60 }, rare: 0.6 },
-    { id: 'crown',    name: 'Crown',    cost: {}, rare: 0.4 },
-  ] as { id: string; name: string; cost: Record<string, number>; rare?: number }[],
+  max: 5,
+  pity: 5,                 // the search after 4 signs is sure to find the blueprint
+  stages: ['Footings', 'Body', 'Crown'],
   list: {
-    mound:      { name: 'The Great Mound',   terrain: 'grass', tiles: 20, rare: { sugar: 7, ivory: 3 }, what: 'Living space from chambers +10% a level.',
-                  epic: { name: 'Daughter mounds', desc: 'When the colony is full, a swarm of 10 workers leaves every 3 minutes to raise a daughter mound on a grass tile you hold. It works as a free outpost. Up to 6 a colony.' } },
-    undercroft: { name: 'The Undercroft',    terrain: 'soil',  tiles: 16, rare: { sugar: 5, ivory: 5 }, what: 'Upgrades the nest.',
-                  traits: [
-                    { id: 'tunnels', name: 'Wide tunnels', tiers: [0.05, 0.1, 0.15], desc: 'Chambers cost {v} less soil.' },
-                    { id: 'props',   name: 'Root props',   tiers: [1, 2, 3], flat: true, desc: 'The first {v} of each chamber cost no soil.' },
-                    { id: 'stores',  name: 'Deep stores',  tiers: [0.1, 0.2, 0.3], desc: '{v} of the food that spills past the stores goes into a deep reserve, which feeds the colony when food runs out.' },
-                  ],
-                  epic: { name: 'Daughter queen', desc: 'A second queen lays eggs on her own, at half the queen\'s pace, while there is food and brood room.' } },
-    cairn:      { name: 'The War Cairn',     terrain: 'stone', tiles: 12, rare: { sugar: 2, ivory: 8 }, what: 'Upgrades your fighters.',
-                  traits: [
-                    { id: 'jaws',   name: 'Serrated mandibles', tiers: [0.05, 0.1, 0.15], desc: '{v} of bites strike twice.' },
-                    { id: 'plates', name: 'Chitin plates',      tiers: [0.06, 0.12, 0.18], desc: 'Fighters take {v} less damage.' },
-                    { id: 'acid',   name: 'Acid glands',        tiers: [0.1, 0.2, 0.3], desc: '{v} of damage splashes onto the enemy group behind.' },
-                  ],
-                  epic: { name: 'Last stand', desc: 'Once a fight, when your line would break, half of the fighters who fell in it get back up.' } },
-    ford:       { name: 'The Dew Ford',      terrain: 'water', tiles: 8,  rare: { sugar: 8, ivory: 2 }, what: 'Upgrades expeditions.',
-                  traits: [
-                    { id: 'rafts',  name: 'Leaf rafts',     tiers: [0.05, 0.1, 0.15], desc: 'Parties travel {v} faster.' },
-                    { id: 'scouts', name: 'Keen scouts',    tiers: [0.005, 0.01, 0.015], desc: 'Rumours are {v} more likely after each run.' },
-                    { id: 'safe',   name: 'Safe crossings', tiers: [0.1, 0.2, 0.3], desc: 'Parties are wiped {v} less often.' },
-                  ],
-                  epic: { name: 'Flotilla', desc: 'One more expedition column.' } },
-    stones:     { name: 'The Signal Stones', terrain: 'paved', tiles: 6,  rare: { sugar: 4, ivory: 6 }, what: 'Upgrades the map.',
-                  traits: [
-                    { id: 'fires', name: 'Beacon fires', tiers: [0.1, 0.2, 0.3], desc: 'Outposts cost {v} less (at III they also reach one tile further).' },
-                    { id: 'watch', name: 'Watch posts',  tiers: [1, 2, 3], flat: true, desc: 'Lookouts clear fog {v} tiles further.' },
-                    { id: 'roads', name: 'Paved roads',  tiers: [0.05, 0.1, 0.15], desc: 'Held tiles within 4 tiles of the nest yield {v} more.' },
-                  ],
-                  epic: { name: 'Beacon chain', desc: 'Every outpost counts as linked to the nest, as if by Linked trails, however far apart they stand.' } },
-  } as Record<string, { name: string; terrain: string; tiles: number; rare: Record<string, number>; what: string;
-    traits?: { id: string; name: string; tiers: number[]; flat?: boolean; desc: string }[]; epic: { name: string; desc: string } }>,
-  mound: { per: 0.1, swarm: 10, every: 180, maxDaughters: 6 },
-  roadsWithin: 4,
+    thatch: {
+      name: 'The Thatch Mound', real: 'Wood ants pile a heap of needles that holds the sun\'s heat.',
+      from: 'termite', where: 'the Termite mound', how: 'While 2 majors man it, they search it every 10 minutes.', every: 600, chance: 0.25,
+      act: 'chambers dug', goals: [60, 120, 180],
+      cost: 'The heap rots. Chambers gather half again as much mould.',
+      levels: [
+        'The heap stays warm. Winter slows foragers, leafcutters and the brood half as much.',
+        'Winter does not slow foragers, leafcutters or the brood at all.',
+        'The heap warms the brood. Eggs and larvae nobody is tending grow at full speed.',
+        'Expeditions and sky sorties go out in winter too.',
+        'The heap holds its heat. Every winter is a third shorter.',
+      ],
+    },
+    bivouac: {
+      name: 'The Bivouac', real: 'Army ants have no nest. They camp, in a ball made of their own bodies.',
+      from: 'rival', where: 'the rival queen\'s chamber', how: 'It is found when the rival queen falls.', every: 0, chance: 1,
+      act: 'fights won', goals: [6, 15, 27],
+      cost: 'The camp is made of ants. One worker in ten holds it together and cannot take a job.',
+      levels: [
+        'Pitch a camp on any tile you hold (Map). Campaigns can march on any enemy tile within 3 tiles of it. It can move every 5 minutes.',
+        'Scouts claim from the camp too: any open tile within its reach, even one not next to your land.',
+        'The army lives at the front. Campaigns take half as long.',
+        'The camp reaches 6 tiles and can move twice as often.',
+        'Each time the camp moves, it overruns one enemy tile beside it without a fight.',
+      ],
+    },
+    vault: {
+      name: 'The Honey Vault', real: 'Honeypot ants hang living jars of nectar from the roof.',
+      from: 'rumour', where: 'rumoured places', how: 'Each rumoured place your parties pick clean is a search.', every: 0, chance: 0.25,
+      act: 'minutes with the food stores full', goals: [30, 90, 180],
+      cost: 'Everyone smells it. Raids are a quarter bigger and steal twice as much when they get in.',
+      levels: [
+        'Food never overflows. The extra goes into the vault, which has no limit and feeds the colony when the stores run dry.',
+        'Vault food can pay for anything that costs food.',
+        'The vault slowly turns into royal jelly.',
+        'Soil and seeds overflow into the vault too, and it can pay those costs.',
+        'A flight carries a quarter of the vault to the next colony.',
+      ],
+    },
+    canopy: {
+      name: 'The Canopy', real: 'Weaver ants stitch living leaves into nests high above the ground.',
+      from: 'wasp', where: 'the Wasp nest', how: 'While 2 majors man it, they search it every 10 minutes.', every: 600, chance: 0.25,
+      act: 'tiles claimed', goals: [45, 90, 150],
+      cost: 'Digging is foreign to you. Chambers cost twice the soil.',
+      levels: [
+        'Every grass tile you hold is 2 living space.',
+        'A leaf nest needs 1 weaver to hold it, not 3.',
+        'Tree roads. Scouts can claim any grass tile in reach, even one not next to your land.',
+        'Every grass tile you hold is 4 living space.',
+        'The queen moves up into the leaves. Raiders that get in find nothing to steal.',
+      ],
+    },
+  } as Record<string, { name: string; real: string; from: string; where: string; how: string; every: number; chance: number; act: string; goals: number[]; cost: string; levels: string[] }>,
+  thatch: { mould: 0.5 },
+  bivouac: { share: 0.1, reach: 3, farReach: 6, move: 300, campaign: -0.5 },
+  vault: { raid: 0.25, steal: 1, feedAt: 0.05, jellyFood: 400, jellyRate: 2, carry: 0.25 },   // jellyRate: vault food turned per second; jellyFood: food per jelly
+  canopy: { soil: 1, living: [2, 4] },
+  /** Saves from the old tile wonders: every `oldPerSign` old levels is one sign toward a blueprint. */
+  oldPerSign: 2,
 };
 
 /** Boats and voyages. */
