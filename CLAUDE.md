@@ -21,6 +21,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Expedition party size has a soft cap tied to a building: 20 plus 10 per Forager's rest. Past the cap workers still
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
+- Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
+- Keep in-game text short and plain: say what it does, without flowery or wordy phrasing.
 - Think outside the box: don't propose yet another way to make food easier or births faster. Upgrades that are
   just different routes to the same numbers make the game feel sloppy. A new mechanic should open a new decision
   or change how the colony behaves.
@@ -37,6 +39,7 @@ new standing rule in a thread, add it here in the same pull request.
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
 - `src/data/techs2.ts`: the wider tech tree, one row list per age.
+- `src/systems/crowns`: the queen's eight crowns (Royal court). Crown data is `CROWNS` in balance.ts. They replaced the Royal care list.
 - `src/systems/<name>/index.ts`: one system per tab or mechanic. `npm run build` type-checks and builds.
 
 ## Where things stand (Nov 14)
@@ -46,6 +49,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks (Infirmary,
   Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
 - Brood temperament (`BROOD.temperaments` in balance.ts): each colony rolls one at random. Keen job +15%, reluctant job -10%.
+- Crowns (PR #208): Royal court opens the Crowns tab. The queen wears one of 8 crowns (chamber boosts, a rule, a drawback),
+  levels 1-10 bought with jelly and kept through flights, 10 minute cooldown on changing. Placeholder art until Nate's sprites.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
   like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
   feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc
