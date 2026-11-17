@@ -6,6 +6,8 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, CASTES, COLONY, JOBS, NEST, WAR } from '../../data/balance';
 import { drawReserve } from '../castes';
+import { reworkLevel } from '../nest';
+import { seasonId } from '../seasons';
 import { roomCount, nurseClean, mouldClean, mouldMade, mouldSpeed, mouldWork, broodFoodOutlook, nurseEggsEach, nurseTends, temperLean, temperOf } from '../brood';
 
 interface JobDef {
@@ -53,6 +55,8 @@ interface JobsState {
   decree?: Record<string, number>; decreeOn?: boolean;
   /** Muster hall: the job layout for winter, the one it replaced, and whether last tick was winter. */
   winterLayout?: Record<string, number>; springLayout?: Record<string, number>; wasWinter?: boolean;
+  /** Muster hall layouts by posture (winter; raid from II; every season from III), the layout they replaced, and the posture now. */
+  layouts?: Record<string, Record<string, number>>; baseLayout?: Record<string, number>; posture?: string;
   /** Daily routine: idle workers go to this job. Kept across colonies. */
   defaultJob?: string;
   /** Workers last tick: only a rise (new hatchlings) is sent to the default job. */
@@ -85,7 +89,9 @@ const offDutyFighters = (ctx: Context) => {
 };
 export const idleAnts = (ctx: Context) => totalAnts(ctx) - assignedSum(ctx) - busySum(ctx);
 const upkeepMult = (ctx: Context) => Math.max(0.2, 1 + ctx.mods.get('upkeep'));
-const jobMult = (ctx: Context, id: string) => (1 + ctx.mods.get('job:' + id)) * mouldWork(ctx);
+/** Muster hall III: workers on muster posts work harder. */
+const musterBoost = (ctx: Context) => (S(ctx)?.posture && reworkLevel(ctx, 'hall') >= 3 ? NEST.rw.musterWork : 0);
+const jobMult = (ctx: Context, id: string) => (1 + ctx.mods.get('job:' + id) + musterBoost(ctx)) * mouldWork(ctx);
 /** requires may list several flags as "a|b": any one opens the job. */
 const reqOk = (ctx: Context, r?: string) => !r || r.split('|').some((f) => ctx.flags.has(f));
 const jobOpen = (ctx: Context, j: JobDef) => reqOk(ctx, j.requires);
@@ -115,18 +121,29 @@ function applyLayout(ctx: Context, layout: Record<string, number>) {
     s.assigned[j.id] = Math.max(0, Math.min(layout[j.id] ?? 0, jobMax(ctx, j.id), idleAnts(ctx)));
   }
 }
-/** Muster hall: switch to the winter layout as winter comes, and back to the old one in spring. */
+/** Muster hall: the layout that should be in force now ('' for the player's own). */
+function postureOf(ctx: Context): string {
+  const s = S(ctx), L = reworkLevel(ctx, 'hall'), lay = s.layouts ?? {};
+  if (!L) return '';
+  if (L >= 2 && lay.raid && (ctx.state.war as { battle?: unknown } | undefined)?.battle) return 'raid';
+  const se = seasonId(ctx) ?? (ctx.mods.get('winter') > 0 ? 'winter' : null);
+  if (se === 'winter' && lay.winter) return se;
+  return '';
+}
+/** Muster hall: switch layouts as the posture changes (winter, a raid, each season), and back to the player's own after. */
 function muster(ctx: Context) {
-  const s = S(ctx), winter = ctx.mods.get('winter') > 0;
-  if (winter === !!s.wasWinter) return;
-  s.wasWinter = winter;
-  if (!rw(ctx, 'hall') || !s.winterLayout) return;
-  if (winter) { s.springLayout = { ...s.assigned }; applyLayout(ctx, s.winterLayout); ctx.log('Winter. The muster halls send every worker to their winter post.', 'info'); }
-  else if (s.springLayout) { applyLayout(ctx, s.springLayout); s.springLayout = undefined; ctx.log('Spring. The workers go back to their old jobs.', 'info'); }
+  const s = S(ctx);
+  if (s.winterLayout) { (s.layouts ??= {}).winter ??= s.winterLayout; s.winterLayout = undefined; } // saves from before levels
+  const now = postureOf(ctx), was = s.posture ?? '';
+  if (now === was) return;
+  if (!was) s.baseLayout = { ...s.assigned };
+  s.posture = now;
+  if (now) { applyLayout(ctx, s.layouts![now]); ctx.log(`The muster halls call the ${now} posts.`, 'info'); }
+  else if (s.baseLayout) { applyLayout(ctx, s.baseLayout); s.baseLayout = undefined; ctx.log('The workers go back to their usual jobs.', 'info'); }
 }
 /** Alarm scent: idle workers turn out as nurses past the mould line, and as soldiers while raiders are in. */
 function alarm(ctx: Context) {
-  if (!rw(ctx, 'gland')) return;
+  if (!reworkLevel(ctx, 'gland')) return;
   const s = S(ctx), line = (ctx.state.nest as { alarmAt?: number } | undefined)?.alarmAt ?? NEST.rw.alarmLines[1];
   const turnOut = (id: string) => { const n = Math.min(idleAnts(ctx), jobMax(ctx, id) - (s.assigned[id] ?? 0)); if (n > 0) s.assigned[id] = (s.assigned[id] ?? 0) + n; };
   if ((ctx.state.war as { battle?: unknown } | undefined)?.battle && ctx.flags.has('tech:martial')) turnOut('soldier');
@@ -336,11 +353,16 @@ export const jobs: GameSystem = {
         decreeToggle = el('button.small', { type: 'button', onclick: () => { const s = S(ctx); s.decreeOn = !s.decreeOn; } }) as HTMLButtonElement;
         decreeBox = el('div.decree', { hidden: true }, el('strong', {}, 'The queen\'s decree'), decreeText, el('div.row', {}, decreeSet, decreeToggle));
         musterText = el('span.muted');
-        const musterSet = el('button.small', { type: 'button', title: 'When winter comes, workers switch to this layout. In spring they go back.', onclick: () => {
-          S(ctx).winterLayout = Object.fromEntries(Object.entries(S(ctx).assigned).filter(([k, n]) => n > 0 && k !== 'major'));
-          ctx.log('The muster halls learn the winter posts.', 'info');
-        } }, 'Save as winter layout') as HTMLButtonElement;
-        musterBox = el('div.decree', { hidden: true }, el('strong', {}, 'Muster halls'), musterText, el('div.row', {}, musterSet));
+        const musterBtns = el('div.row');
+        for (const key of ['winter', 'raid']) {
+          const b = el('button.small', { type: 'button', title: `Save the jobs as they are now as the ${key} posts.`, onclick: () => {
+            (S(ctx).layouts ??= {})[key] = Object.fromEntries(Object.entries(S(ctx).assigned).filter(([k, n]) => n > 0 && k !== 'major'));
+            ctx.log(`The muster halls learn the ${key} posts.`, 'info');
+          } }, `Save as ${key} posts`) as HTMLButtonElement;
+          b.dataset.key = key;
+          musterBtns.append(b);
+        }
+        musterBox = el('div.decree', { hidden: true }, el('strong', {}, 'Muster halls'), musterText, musterBtns);
         root.append(
           el('p.flavor', {}, 'Every worker waits for a purpose. Idle ants still eat.'),
           el('p', {}, 'Idle workers: ', idleEl, reservedEl = el('span.muted')),
@@ -365,8 +387,12 @@ export const jobs: GameSystem = {
           reservedEl.textContent = e?.reserve ? `  ·  Reserved for expeditions: ${e.reserved ?? 0}` : ''; }
         musterBox.hidden = !rw(ctx, 'hall');
         if (!musterBox.hidden) {
-          const w = s.winterLayout, mix = w ? Object.entries(w).map(([k, n]) => `${n} ${JOB_DEFS.find((j) => j.id === k)?.name.toLowerCase() ?? k}`).join(', ') : '';
-          musterText.textContent = mix ? ` Winter posts: ${mix}.${s.springLayout ? ' In force now.' : ''}` : ' Set the jobs the way you want them in winter, then save.';
+          const L = reworkLevel(ctx, 'hall'), open = (key: string) => key === 'winter' || (key === 'raid' && L >= 2);
+          musterBox.querySelectorAll<HTMLButtonElement>('button[data-key]').forEach((b) => { b.hidden = !open(b.dataset.key!); });
+          const lay = s.layouts ?? {}, show = (w: Record<string, number>) => Object.entries(w).map(([k, n]) => `${n} ${JOB_DEFS.find((j) => j.id === k)?.name.toLowerCase() ?? k}`).join(', ');
+          const saved = Object.keys(lay).filter(open);
+          musterText.textContent = saved.length ? ' ' + saved.map((k) => `${k[0].toUpperCase() + k.slice(1)}: ${show(lay[k])}${s.posture === k ? ' (in force now)' : ''}.`).join(' ')
+            : ' Set the jobs the way you want them, then save them as posts.';
         }
         decreeBox.hidden = !ctx.flags.has('accord:decree');
         if (!decreeBox.hidden) {

@@ -8,6 +8,7 @@ import { actionButton, el, progressBar, type ActionButton } from '../../core/ui'
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP, NEST, WAR, WONDERS } from '../../data/balance';
+import { reworkLevel, openNeighbour } from '../nest';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { terrainAt, gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
 import { WORLD } from '../../data/balance';
@@ -153,8 +154,18 @@ const bases = (ctx: Context) => {
 };
 /** Forget the cached bases (an outpost was built or abandoned). */
 const basesChanged = () => { baseCache.at = -1; };
-/** Seed bank rework: a held bare-soil tile with no wonder on it can be sown with grass. */
-const canSow = (ctx: Context, t: Tile) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.granary && t.o === 'you' && t.t === 'soil' && !t.w && !t.core;
+/** Seed bank rework: I sows held bare soil with grass, II halves the seed cost, III claims an open tile next to our land. */
+type Sow = 'grass' | 'claim';
+function sowKind(ctx: Context, i: number | null): Sow | null {
+  const L = reworkLevel(ctx, 'granary'), t = i == null ? null : S(ctx).tiles[i];
+  if (!L || !t || t.w || t.core) return null;
+  if (t.o === 'you') return t.t === 'soil' ? 'grass' : null;
+  return L >= 3 && openNeighbour(ctx, i!) != null ? 'claim' : null;
+}
+const SOW: Record<Sow, { label: string; cost: () => Record<string, number>; desc: string }> = {
+  grass: { label: 'Sow it with grass', cost: () => ({ seed: NEST.rw.meadowSeed }), desc: 'The seed bank sows this bare soil. It becomes grass for good: grass yields, and grass ground for wonders.' },
+  claim: { label: 'Sow it to claim it', cost: () => ({ seed: NEST.rw.claimSeed }), desc: 'The seed bank sows this open tile next to our land. What grows there smells of us: the tile becomes ours.' },
+};
 /** Steps (diagonals count as one) from tile i to the nearest nest or outpost. */
 const homeDist = (ctx: Context, i: number) => { const [x, y] = xy(i); return Math.min(...bases(ctx).map((b) => { const [bx, by] = xy(b); return Math.max(Math.abs(x - bx), Math.abs(y - by)); })); };
 const reachOf = (ctx: Context) => MAP.reach + ctx.mods.get('reach');
@@ -436,11 +447,17 @@ abandonWrap = el('div.row', {}, abandon);
           }), lookText);
         buildWrap = el('div.row', {}, build.root);
         // Seed bank (a chamber rework): sow a held bare-soil tile and it turns to grass
+        const kind = () => sowKind(ctx, S(ctx).selected) ?? 'grass';
         plant = actionButton({
-          ctx, label: 'Sow it with grass', costs: () => ({ seed: NEST.rw.meadowSeed }),
-          desc: 'The seed bank sows this bare soil. It becomes grass for good: grass yields, and grass ground for wonders.',
-          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && canSow(c, t); },
-          onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.t = 'grass'; basesChanged(); c.log('Seeds from the seed bank take root. The bare soil turns green.', 'info'); },
+          ctx, label: () => SOW[kind()].label, costs: () => Object.fromEntries(Object.entries(SOW[kind()].cost()).map(([r, n]) => [r, Math.ceil(n * NEST.rw.sowCostBy[reworkLevel(ctx, 'granary')])])),
+          desc: () => SOW[kind()].desc,
+          enabled: (c) => sowKind(c, S(c).selected) != null,
+          onBuy: (c) => {
+            const k = sowKind(c, S(c).selected), t = S(c).tiles[S(c).selected!];
+            if (k === 'grass') { t.t = 'grass'; c.log('Seeds from the seed bank take root. The bare soil turns green.', 'info'); }
+            else if (k === 'claim') { t.o = 'you'; c.log('The seed bank sows the ground past the border. It smells of us now: the tile is ours.', 'info'); }
+            basesChanged();
+          },
         });
         plantWrap = el('div.row', {}, plant.root);
         autoBox = el('input', { type: 'checkbox', id: 'map-auto' }) as HTMLInputElement;
@@ -591,7 +608,7 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
         buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
         wbox.update(i);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
-        plantWrap.hidden = !canSow(ctx, t); plant.update(ctx);
+        plantWrap.hidden = sowKind(ctx, i) == null; plant.update(ctx);
         claim.update(ctx); build.update(ctx);
         for (const id of ['bridge', 'nest', 'fort'] as const) {
           const b = postBtns[id], at = tilePost(ctx, id, i);

@@ -7,7 +7,8 @@ import { actionButton, el, hoverTip, progressBar, type ActionButton } from '../.
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, setup } from '../../core/pixel';
-import { WAR, MAP, CASTES } from '../../data/balance';
+import { WAR, MAP, CASTES, NEST } from '../../data/balance';
+import { reworkLevel } from '../nest';
 import { idleAnts } from '../jobs';
 import { queenGuard } from '../brood';
 import { awayOf, tilePost } from '../castes';
@@ -23,6 +24,8 @@ interface Battle {
   us: Stack[];
   /** theirs, in the order we bite them: raiders, then brutes */
   them: Stack[];
+  /** Spoil walls III: wall hit points added in front of the barricade, and the barricade's own at the start. */
+  spoil?: number; barricade0?: number;
   chitin?: number; kills: number; breaches: number; soldiersLost: number; majorsLost?: number; workersLost: number; rallied: number; soldiersAtStart: number;
   rescued?: number;
   /** seconds left of the war cry */
@@ -240,6 +243,11 @@ function startBattle(ctx: Context) {
   const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
   const us: Stack[] = [];
   if (wallHp(ctx) > 0) { const w = stack('wall', 1, wallMax(ctx), 0); w.hp = wallHp(ctx); us.push(w); }
+  // Spoil walls III: the soil walls stand in front and take the first bites (they share the barricade's stack)
+  const nest = ctx.state.nest as { walls?: number } | undefined;
+  const spoil = reworkLevel(ctx, 'storeroom') >= 3 ? Math.floor((nest?.walls ?? 0) * NEST.rw.wallHp) : 0;
+  const barricade0 = us[0]?.kind === 'wall' ? us[0].hp : 0;
+  if (spoil > 0) { if (us[0]?.kind === 'wall') { us[0].hp += spoil; us[0].max += spoil; } else us.push(stack('wall', 1, spoil, 0)); }
   // a manned termite mound stands in front of everything: fresh walls every raid, and the garrison bites from them
   if (manned(ctx, 'termite')) us.unshift(stack('mound', 1, SK.termite.moundHp, SK.termite.moundAtk));
   us.push(...army(ctx));
@@ -248,7 +256,7 @@ function startBattle(ctx: Context) {
   if (nurses > 0) us.push(stack('worker', nurses, B.worker.hp, B.worker.atk));
   const them: Stack[] = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
-  s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0 };
+  s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0, spoil, barricade0 };
   ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${comp.raiders + comp.brutes} of them pour toward the entrance.`, 'warn');
   if (autoCry(ctx) || ctx.mods.get('fierceGuards') > 0) warCry(ctx);
 }
@@ -387,7 +395,12 @@ function endBattle(ctx: Context) {
   if (b.wasps) { endWasps(ctx, b); return; }
   s.raids++;
   const wall = b.us.find((x) => x.kind === 'wall');
-  if (wall) s.wall = wall.n > 0 ? wall.hp : 0;
+  if (b.spoil) { // the spoil walls took the first bites: whatever is left of them goes back to the nest
+    const left = wall && wall.n > 0 ? wall.hp : 0, lost = (b.spoil + (b.barricade0 ?? 0)) - left, spoilLeft = Math.max(0, b.spoil - lost);
+    const nest = ctx.state.nest as { walls?: number } | undefined;
+    if (nest) nest.walls = spoilLeft / NEST.rw.wallHp;
+    if (wall && b.barricade0) s.wall = Math.max(0, left - spoilLeft);
+  } else if (wall) s.wall = wall.n > 0 ? wall.hp : 0;
   // losses are capped so a raid hurts but never ruins you
   // soldiers being carried in when the fight ends make it home too
   const fell = b.soldiersLost + (b.majorsLost ?? 0);

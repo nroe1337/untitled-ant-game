@@ -5,7 +5,7 @@ import { el, tileButton, actionButton } from '../../core/ui';
 import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
-import { BROOD, COLONY, NEST, RESEARCH } from '../../data/balance';
+import { BROOD, COLONY, MAP, NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, rect, setup } from '../../core/pixel';
 import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
@@ -39,7 +39,8 @@ const IDS = Object.keys(DEFS) as ChamberId[];
 interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[]; swappedBrood?: boolean;
   /** Chamber craft levels from before Nov 17, refunded on load. */
   ups?: Record<string, number>;
-  reworks?: Record<string, boolean>;
+  /** Chamber reworks: level 1-3 per chamber type (true in saves from before levels). */
+  reworks?: Record<string, number | boolean>;
   /** Gatehouse: gates shut. Spoil walls: wall height. Alarm scent: mould line. Flood channel: cooldown. */
   gates?: boolean; walls?: number; alarmAt?: number; floodCd?: number }
 const S = (ctx: Context) => ctx.state.nest as NestState;
@@ -109,36 +110,57 @@ function runQueue(ctx: Context) {
 /** Chamber reworks (Chamber craft): one per chamber type, bought once, for every chamber of that type
  *  (also ones dug later), and never undone. Most make that type gather more mould. See NEST.reworks. */
 const RW = NEST.rework, RX = NEST.rw;
-type ReworkDef = { name: string; desc: string; mould: number };
+type ReworkDef = { name: string; desc: string; mould: number; ii: string; iii: string };
 const REWORKS = NEST.reworks as Partial<Record<ChamberId, ReworkDef>>;
-export const reworked = (ctx: Context, id: string) => !!S(ctx).reworks?.[id];
-/** A rework costs knowledge plus a big batch of what one chamber of that type costs to dig. */
-const reworkCost = (id: ChamberId): Costs => {
-  const out: Costs = { knowledge: RW.knowledge };
-  for (const [r, v] of Object.entries(DEFS[id].base)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * RW.baseMult);
+const ROMAN = ['', 'I', 'II', 'III'];
+/** A chamber type's rework level, 0 to 3 (saves from before levels stored true for level I). */
+export const reworkLevel = (ctx: Context, id: string) => { const v = (ctx.state.nest as NestState | undefined)?.reworks?.[id]; return v === true ? 1 : Number(v) || 0; };
+export const reworked = (ctx: Context, id: string) => reworkLevel(ctx, id) > 0;
+/** A rework level costs knowledge plus a big batch of what one chamber of that type costs to dig; II and III cost more. */
+const reworkCost = (id: ChamberId, L: number): Costs => {
+  const m = RW.levelMult[Math.min(L, 2)];
+  const out: Costs = { knowledge: Math.ceil(RW.knowledge * m) };
+  for (const [r, v] of Object.entries(DEFS[id].base)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * RW.baseMult * m);
   return out;
 };
-const reworkReady = (ctx: Context, id: ChamberId) => ctx.flags.has('tech:renovation') && count(ctx, id) >= RW.minBuilt;
+/** Chambers of the type needed for the next level (3, 8, 15). */
+const nextNeeds = (ctx: Context, id: ChamberId) => RW.levelBuilt[Math.min(2, reworkLevel(ctx, id))];
+const reworkReady = (ctx: Context, id: ChamberId) => ctx.flags.has('tech:renovation') && count(ctx, id) >= RW.levelBuilt[0];
 const mouldNote = (m: number) => (m > 0 ? `Each one gathers mould like ${m + 1} chambers.` : m < 0 ? 'Gathers no mould.' : 'Gathers mould as before.');
 /** Extra chambers' worth of mould from reworks (brood reads it through the mouldRooms mod). */
 const reworkMould = (ctx: Context) => (Object.keys(REWORKS) as ChamberId[]).reduce((t, id) => t + (reworked(ctx, id) ? REWORKS[id]!.mould * count(ctx, id) : 0), 0);
 /** Alarm scent: the mould line past which idle workers turn out as nurses. */
 export const alarmLine = (ctx: Context) => S(ctx).alarmAt ?? RX.alarmLines[1];
-export const gatesShut = (ctx: Context) => !!S(ctx).gates && reworked(ctx, 'barracks');
+/** The alarm is up while raiders are at the entrance or mould is past the line. */
+const alarmUp = (ctx: Context) => !!(ctx.state.war as { battle?: unknown } | undefined)?.battle || (ctx.res.has('mould') && ctx.res.amt('mould') >= alarmLine(ctx));
+/** Gatehouse: shut by the switch, or (level II) by itself while raiders are at the entrance. */
+export const gatesShut = (ctx: Context) => reworked(ctx, 'barracks') && (!!S(ctx).gates || (reworkLevel(ctx, 'barracks') >= 2 && !!(ctx.state.war as { battle?: unknown } | undefined)?.battle));
+/** An open, seen, dry tile next to land we hold (for the Draught shaft III and the Seed bank III). */
+export function openNeighbour(ctx: Context, i?: number): number | null {
+  const tiles = (ctx.state.map?.tiles ?? []) as { o: string | null; t: string; seen: boolean; w?: string }[], C = MAP.cols;
+  const nextToUs = (j: number) => [j - 1, j + 1, j - C, j + C].some((n) => n >= 0 && n < tiles.length && Math.abs((n % C) - (j % C)) <= 1 && tiles[n].o === 'you');
+  const ok = (j: number) => !!tiles[j] && tiles[j].seen && tiles[j].o === null && tiles[j].t !== 'water' && nextToUs(j);
+  if (i != null) return ok(i) ? i : null;
+  for (let j = 0; j < tiles.length; j++) if (ok(j)) return j;
+  return null;
+}
 const heldTiles = (ctx: Context) => ((ctx.state.map?.tiles ?? []) as { o: string | null }[]).filter((t) => t.o === 'you').length;
 /** Rework effects that run every tick: blown mould settling as soil, the mould farm, spoil walls. */
 function tickReworks(ctx: Context, dt: number) {
   const s = S(ctx), res = ctx.res, mouldy = res.has('mould') && res.amt('mould') >= 1, prev = res.source;
-  if (reworked(ctx, 'airshaft') && mouldy) {
-    const blown = (DEFS.airshaft.mods?.mouldClean ?? 0) * RX.draught * count(ctx, 'airshaft');
-    res.source = 'Blown mould settling'; res.add('soil', blown * Math.min(1, heldTiles(ctx) / RX.draughtSoilTiles) * dt);
+  const LA = reworkLevel(ctx, 'airshaft'), LM = reworkLevel(ctx, 'midden');
+  if (LA && mouldy) {
+    const blown = (DEFS.airshaft.mods?.mouldClean ?? 0) * RX.draughtBy[LA] * count(ctx, 'airshaft');
+    res.source = 'Blown mould settling'; res.add('soil', blown * Math.min(1, heldTiles(ctx) / RX.draughtTilesBy[LA]) * dt);
   }
-  if (reworked(ctx, 'midden') && mouldy && res.has('fungus')) { res.source = 'Mould farm'; res.add('fungus', RX.farmClean * count(ctx, 'midden') * RX.farmFungus * dt); }
+  if (LM && mouldy && res.has('fungus')) { res.source = 'Mould farm'; res.add('fungus', RX.farmClean * RX.farmBy[LM] * count(ctx, 'midden') * RX.farmFungus * dt); }
   if (reworked(ctx, 'storeroom')) {
     const diggers = (ctx.state.jobs?.assigned?.digger ?? 0) as number;
     const full = res.amt('soil') >= res.cap('soil') - 0.5;
-    s.walls = Math.max(0, (s.walls ?? 0) * (1 - RX.wallDecay * dt) + (full ? diggers * RX.wallPerDigger * dt : 0));
+    s.walls = Math.max(0, (s.walls ?? 0) * (1 - RX.wallDecay * dt) + (full ? diggers * RX.wallPerDigger * RX.wallRateBy[reworkLevel(ctx, 'storeroom')] * dt : 0));
   }
+  // Flood channel III: the channels open by themselves past the alarm line
+  if (reworkLevel(ctx, 'cistern') >= 3 && !s.floodCd && res.has('mould') && res.amt('mould') >= alarmLine(ctx)) flood(ctx);
   if (s.floodCd) s.floodCd = Math.max(0, s.floodCd - dt);
   res.source = prev;
 }
@@ -146,14 +168,16 @@ function tickReworks(ctx: Context, dt: number) {
 function flood(ctx: Context) {
   const r = ctx.res;
   r.lump('mould', -r.amt('mould'));
+  const L = reworkLevel(ctx, 'cistern');
   if (r.amt('egg') >= 1) r.lump('egg', -Math.floor(r.amt('egg')));
-  r.lump('food', -r.amt('food') * RX.floodFood);
-  S(ctx).floodCd = RX.floodCooldown;
+  r.lump('food', -r.amt('food') * RX.floodFoodBy[L]);
+  S(ctx).floodCd = RX.floodCooldown * RX.floodCdBy[L];
   ctx.log('The cisterns are opened. Water roars down the tunnels and carries the mould away, and the eggs with it.', 'warn');
 }
 function rework(ctx: Context, id: ChamberId) {
-  (S(ctx).reworks ??= {})[id] = true;
-  ctx.log(`Every ${DEFS[id].name.toLowerCase()} is rebuilt: ${REWORKS[id]!.name}.`, 'info');
+  const L = reworkLevel(ctx, id) + 1;
+  (S(ctx).reworks ??= {})[id] = L;
+  ctx.log(L === 1 ? `Every ${DEFS[id].name.toLowerCase()} is rebuilt: ${REWORKS[id]!.name}.` : `${REWORKS[id]!.name} ${ROMAN[L]}: ${L === 2 ? REWORKS[id]!.ii : REWORKS[id]!.iii}`, 'info');
   applyEffects(ctx);
 }
 /** Saves from before Nov 17 had Chamber craft levels (+15% each). Those are gone: give back what they cost. */
@@ -227,8 +251,12 @@ function applyEffects(ctx: Context) {
   // Gatehouse: shut gates double the nest's own defence (chambers and walls); foragers and expeditions read gatesShut
   const shut = gatesShut(ctx);
   ctx.mods.set('gatesShut', 'nest', shut ? 1 : 0);
-  ctx.mods.set('defence', 'gates', shut ? defence : 0);
-  ctx.mods.set('mouldClean', 'farm', reworked(ctx, 'midden') ? RX.farmClean * count(ctx, 'midden') : 0);
+  ctx.mods.set('defence', 'gates', shut ? defence * (RX.gateMult[reworkLevel(ctx, 'barracks')] - 1) : 0);
+  ctx.mods.set('mouldClean', 'farm', RX.farmClean * RX.farmBy[reworkLevel(ctx, 'midden')] * count(ctx, 'midden'));
+  // Alarm scent II and III: while the alarm is up, soldiers fight harder and nurses scrub more
+  const LG = reworkLevel(ctx, 'gland'), up = LG > 0 && alarmUp(ctx);
+  ctx.mods.set('soldierPower', 'alarm', up && LG >= 2 ? RX.alarmSoldier : 0);
+  ctx.mods.set('alarmNurse', 'alarm', up && LG >= 3 ? RX.alarmNurse : 0);
   ctx.mods.set('mouldClean', 'dewwells', has('dewwells') ? T.dewwells * count(ctx, 'cistern') : 0);
   ctx.mods.set('upkeep', 'nest', -sum('upkeep'));
   ctx.mods.set('mouldRooms', 'reworks', reworkMould(ctx));
@@ -240,7 +268,7 @@ function applyEffects(ctx: Context) {
   if (ctx.res.has('jelly')) ctx.res.setCapBonus('jelly', 'nest', sum('jellyCap'));
   ctx.mods.set('boatSlots', 'nest', sum('boats'));
   const m: Record<string, number> = {};
-  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * power(ctx, id) * (id === 'airshaft' && reworked(ctx, id) ? RX.draught : 1);
+  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * power(ctx, id) * (id === 'airshaft' && reworked(ctx, id) ? RX.draughtBy[reworkLevel(ctx, id)] : 1);
   for (const id of IDS) for (const k of Object.keys(DEFS[id].mods ?? {})) ctx.mods.set(k, 'nest:mods', m[k] ?? 0);
 }
 
@@ -282,7 +310,7 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, upBox: HTMLElement;
+    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, upBox: HTMLElement, roomName: HTMLElement;
     let floodBtn: ReturnType<typeof actionButton>, floodWrap: HTMLElement, gateWrap: HTMLElement, gateBox: HTMLInputElement, alarmWrap: HTMLElement, alarmSel: HTMLSelectElement;
     const rwButtons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     return {
@@ -321,11 +349,13 @@ export const nest: GameSystem = {
           const x = (ev.clientX - r.left) * (canvas.width / r.width), y = (ev.clientY - r.top) * (canvas.height / r.height);
           const i = hitSpots.findIndex((p) => Math.abs(p.x - x) <= 20 && Math.abs(p.y - y) <= 8);
           const order = S(ctx).order;
+          selected = i < 0 ? null : order[i]; // the name line shows the last chamber clicked
           if (i < 0 || i === picked) { picked = null; return; }
           if (picked === null) { picked = i; return; }
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
           picked = null;
         });
+        roomName = el('p.roomname', {}, ' ');
         const scroller = el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas);
         let whole = false;
         try { whole = localStorage.getItem('formicarium-whole-nest') === '1'; } catch { /* storage blocked */ }
@@ -341,11 +371,16 @@ export const nest: GameSystem = {
           const r = REWORKS[id]!;
           const btn = tileButton({
             ctx, label: r.name,
-            effect: () => (reworked(ctx, id) ? `Every ${DEFS[id].name.toLowerCase()} is now a ${r.name.toLowerCase()}. ${r.desc} ${mouldNote(r.mould)}`
-              : `Rebuild every ${DEFS[id].name.toLowerCase()}, now and later, as a ${r.name.toLowerCase()}. ${r.desc} ${mouldNote(r.mould)} Can't be undone.`),
-            count: () => (reworked(ctx, id) ? 'done' : ''),
-            costs: () => reworkCost(id),
-            enabled: (c) => !reworked(c, id),
+            effect: () => {
+              const L = reworkLevel(ctx, id), lines = [r.desc, r.ii, r.iii];
+              const have = lines.slice(0, L).map((d, i) => `${ROMAN[i + 1]}: ${d}`).join(' ');
+              const next = L < 3 ? `Next, ${r.name} ${ROMAN[L + 1]} (needs ${nextNeeds(ctx, id)} ${DEFS[id].name.toLowerCase()}s): ${lines[L]}` : '';
+              return L ? `${have} ${mouldNote(r.mould)}${next ? ' ' + next : ''}`
+                : `Rebuild every ${DEFS[id].name.toLowerCase()}, now and later, as a ${r.name.toLowerCase()}. ${r.desc} ${mouldNote(r.mould)} Can't be undone. Two more levels follow.`;
+            },
+            count: () => ROMAN[reworkLevel(ctx, id)] || '',
+            costs: () => reworkCost(id, reworkLevel(ctx, id)),
+            enabled: (c) => reworkLevel(c, id) < 3 && count(c, id) >= nextNeeds(c, id),
             onBuy: (c) => rework(c, id),
           });
           btn.root.hidden = true;
@@ -355,14 +390,14 @@ export const nest: GameSystem = {
         // controls some reworks open: the flood, the gates, the alarm line
         floodBtn = actionButton({
           ctx, label: () => (S(ctx).floodCd ? `Flood the nest (${Math.ceil(S(ctx).floodCd!)}s)` : 'Flood the nest'),
-          desc: `Wash all the mould out at once. Every egg drowns and ${Math.round(RX.floodFood * 100)}% of the food is soaked. Then the channels refill (${RX.floodCooldown}s).`,
+          desc: () => `Wash all the mould out at once. Every egg drowns and ${Math.round(RX.floodFoodBy[reworkLevel(ctx, 'cistern')] * 100)}% of the food is soaked. Then the channels refill (${RX.floodCooldown * RX.floodCdBy[reworkLevel(ctx, 'cistern')]}s).`,
           enabled: (c) => !S(c).floodCd && c.res.has('mould') && c.res.amt('mould') >= 1,
           onBuy: (c) => flood(c),
         });
         floodWrap = el('div.row', { hidden: true }, floodBtn.root);
         gateBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
         gateBox.addEventListener('change', () => { S(ctx).gates = gateBox.checked; applyEffects(ctx); ctx.log(gateBox.checked ? 'The gates are sealed. Nothing goes out.' : 'The gates open again.', 'info'); });
-        gateWrap = el('div.row', { hidden: true }, el('label', {}, gateBox, ' Shut the gates (defence x2, no foraging or expeditions)'));
+        gateWrap = el('div.row', { hidden: true }, el('label', {}, gateBox, ' Shut the gates (more defence; no foraging and no expeditions)'));
         alarmSel = el('select', {}, ...RX.alarmLines.map((n) => el('option', { value: String(n) }, String(n)))) as HTMLSelectElement;
         alarmSel.addEventListener('change', () => { S(ctx).alarmAt = Number(alarmSel.value); });
         alarmWrap = el('div.row', { hidden: true }, el('label', {}, 'Alarm scent: idle workers turn out as nurses when mould passes ', alarmSel));
@@ -370,7 +405,7 @@ export const nest: GameSystem = {
         const rwCtl = el('div.reworkctl', {}, floodWrap, gateWrap, alarmWrap);
         root.classList.add('nestpanel');
         root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox, rwCtl,
-          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), scroller);
+          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), roomName, scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
@@ -399,6 +434,8 @@ export const nest: GameSystem = {
         if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0)).toFixed(2)} food/s`);
         progress.textContent = bits.join(' · ');
         drawNest(canvas, ctx);
+        // name the chamber last clicked, with its rework and level
+        roomName.textContent = selected ? roomLabel(ctx, selected) + (picked != null ? ' (click another chamber to swap)' : '') : 'Click a chamber to see what it is.';
       },
     };
   })(),
@@ -436,6 +473,12 @@ let animT = 0, animLast = performance.now();
 /** Where each chamber was last drawn (by build-order index), for clicking; and the one picked to swap. */
 let hitSpots: { x: number; y: number }[] = [];
 let picked: number | null = null;
+let selected: ChamberId | null = null;
+/** A chamber's name for the line under the nest view: its rework and level when it has one. */
+function roomLabel(ctx: Context, id: ChamberId) {
+  const L = reworkLevel(ctx, id), r = REWORKS[id];
+  return r && L ? `${r.name} ${ROMAN[L]} (a reworked ${DEFS[id].name.toLowerCase()})` : DEFS[id].name;
+}
 
 /** How far the queen has come: she fattens as this colony grows, and changes for good with each
  *  flight and, from the Age of Settlement on, each new age (Orbit is the last form). */
@@ -447,6 +490,211 @@ function queenLook(ctx: Context): QueenLook {
   const tier = Math.min(6, Math.max(flights >= 3 ? 2 : flights >= 1 ? 1 : 0, ageIdx >= SETTLE ? ageIdx - SETTLE + 3 : 0));
   return { tier, fat: Math.min(1, ctx.res.amt('ant') / 120) };
 }
+const MOULD = '#8a8a80', MOULD_GREEN = '#7c8a5e', ALARM = '#d8613a', ALARM_HOT = '#f2a03a', HEAL = '#9fd69a';
+const STONE = '#5d5b57', STONE_HI = '#7a7872', LAMP = '#f2c14e', GOLD = '#e8c45a', GLOW = '#6fe0c8';
+/** The Gatehouse gate eases up and down instead of jumping (0 open, 1 shut). */
+let gateDrop = 0;
+/** A worker standing, facing right (dir 1) or left: 4x2 body with a head and two legs. */
+function antAt(c: CanvasRenderingContext2D, x: number, y: number, col: string, dir = 1, step = 0) {
+  rect(c, x, y, 4, 2, col); rect(c, dir > 0 ? x + 4 : x - 1, y - 1, 1, 2, col);
+  rect(c, x + (step ? 0 : 1), y + 2, 1, 1, col); rect(c, x + (step ? 3 : 2), y + 2, 1, 1, col);
+}
+/** A pennant on a pole that flaps. */
+function pennant(c: CanvasRenderingContext2D, x: number, y: number, col: string, t: number, ph = 0) {
+  rect(c, x, y - 7, 1, 8, TWIG);
+  const f = Math.floor(t * 3 + ph) % 2;
+  rect(c, x + 1, y - 7, 3, 2, col); rect(c, x + 4, y - 7 + f, 1, 1, col);
+}
+/** Chamber reworks: a reworked chamber type is drawn whole. Each level (I, II, III) is bigger and busier
+ *  than the last, the way an upgraded building grows in a strategy game: I rebuilds it, II fills it out,
+ *  III adds a crown of colour and motion. */
+function drawRework(c: CanvasRenderingContext2D, ctx: Context, id: string, cx: number, y: number, lane: number, k: number, t: number, L: number) {
+  const side = lane > 0 ? -1 : 1; // -1: the shaft is on this chamber's left
+  switch (id) {
+    case 'brood': { // Infirmary: a lit ward of leaf cots; II adds cots, a nurse and dew; III a healing glow and a second nurse
+      dome(c, cx, y, L >= 2 ? 21 : 17, PAL.hole);
+      for (let r = 0; r < 3; r++) rect(c, cx - 16 + r * 2, y + 5 - r, 32 - r * 4, 1, mix(PAL.hole, L >= 3 ? HEAL : LAMP, (L >= 3 ? 0.25 : 0.15) - r * 0.05));
+      const sick = (ctx.state.brood as { infirm?: number[] } | undefined)?.infirm?.length ?? 0, cots = L >= 2 ? 3 : 1;
+      for (let e = 0; e < cots; e++) {
+        const bx = cots === 1 ? cx - 4 : cx - 16 + e * 12;
+        rect(c, bx, y + 3, 9, 2, LEAF); rect(c, bx + 1, y + 2, 7, 1, LEAF_RIB);
+        if (e < Math.max(1, Math.min(cots, sick))) { rect(c, bx + 2, y + 1, 4, 1, MOULD); rect(c, bx + 6, y + 1, 1, 1, mix(MOULD, PAL.bone, 0.5)); }
+        if (L >= 2) { const p = wave(t, 2.6, e * 0.8 + k); rect(c, bx + 4, y - 1 - Math.round(p * 4), 1, 1, mix(PAL.hole, HEAL, 1 - p)); }
+      }
+      if (L >= 2) { const nx = cx - 14 + Math.round(wave(t, 9, k * 0.5) * 26); antAt(c, nx, y - 3, ANT_TINT, Math.sin((t + k * 4.5) * Math.PI * 2 / 9) > 0 ? 1 : -1, Math.floor(t * 4) % 2); }
+      if (L >= 3) {
+        const nx = cx + 12 - Math.round(wave(t, 7, k * 0.5 + 2) * 24); antAt(c, nx, y - 3, mix(ANT_TINT, HEAL, 0.3), -1, Math.floor(t * 4 + 1) % 2);
+        for (let e = 0; e < 7; e++) rect(c, cx - 14 + e * 4, y - 6 + (e % 2), 2, 1, mix(PAL.hole, HEAL, 0.25 + 0.4 * wave(t, 2, e * 0.4 + k))); // a shimmer of healing along the roof
+      }
+      rect(c, cx - 1, y - 6, 3, 2, mix(PAL.hole, LAMP, 0.45 + 0.3 * wave(t, 1.7, k) + (L >= 3 ? 0.2 : 0)));
+      break;
+    }
+    case 'airshaft': { // Draught shaft: a chimney; II a spinning fan and mould spiralling up; III a stone-capped stack with a glowing filter
+      dome(c, cx, y, L >= 2 ? 21 : 18, PAL.hole);
+      const top = L >= 3 ? 16 : L >= 2 ? 14 : 11;
+      rect(c, cx - 3, y - top, 6, top - 5, PAL.hole); rect(c, cx - 5, y - top - 1, 10, 2, PAL.hole);
+      if (L >= 2) { rect(c, cx - 4, y - top + 1, 1, top - 6, STONE); rect(c, cx + 3, y - top + 1, 1, top - 6, STONE); }
+      if (L >= 3) { rect(c, cx - 6, y - top - 2, 12, 1, STONE_HI); for (let e = 0; e < 3; e++) rect(c, cx - 3 + e * 2, y - top + 2, 1, 1, mix(PAL.hole, GLOW, 0.4 + 0.6 * wave(t, 1.2, e * 0.3 + k))); }
+      if (L >= 2) {
+        const f = Math.floor(t * (L >= 3 ? 14 : 8) + k) % 3;
+        for (const [dx, dy] of [[[-4, 0], [3, 0]], [[-3, -2], [2, 2]], [[-3, 2], [2, -2]]][f]) rect(c, cx + dx, y - 5 + dy, 2, 1, TWIG);
+        rect(c, cx - 1, y - 6, 2, 2, PAL.amber);
+      }
+      const specks = L >= 3 ? 12 : L >= 2 ? 8 : 4;
+      for (let e = 0; e < specks; e++) {
+        const r = (t * (L >= 3 ? 1.3 : 0.9) + e / specks + k * 0.23) % 1, sx = cx - 1 + (L >= 2 ? Math.round(Math.sin((r * 3 + e) * Math.PI) * 2) : 0);
+        rect(c, sx, y - 4 - Math.floor(r * (top - 3)), 1, 1, mix(PAL.hole, e % 3 ? MOULD_GREEN : MOULD, 1 - r * 0.7));
+      }
+      if (L >= 2) for (let e = 0; e < (L >= 3 ? 6 : 4); e++) { const r = (t * 0.6 + e / 4 + k * 0.4) % 1, dx = Math.round((1 - r) * 18) * (e % 2 ? 1 : -1); rect(c, cx + dx, y + 3, 3, 1, mix(PAL.hole, DEW, 0.6 * (1 - r))); }
+      break;
+    }
+    case 'midden': { // Mould farm: beds of mould; II terraces, mushrooms and a gardener; III glowing mushrooms and drifting spores
+      dome(c, cx, y, L >= 2 ? 21 : 18, PAL.hole);
+      for (let r = 0; r < (L >= 2 ? 3 : 1); r++) {
+        const w = 30 - r * 9, yy = y + 4 - r * 3;
+        rect(c, cx - w / 2, yy, w, 2, r % 2 ? WASTE_DARK : PAL.waste);
+        for (let e = 0; e < w / 3; e++) rect(c, cx - w / 2 + e * 3, yy - 1, 2, 1, mix(MOULD_GREEN, PAL.food, 0.25 * wave(t, 2.2, e * 0.3 + r)));
+      }
+      const caps: [number, number, number][] = L >= 2 ? [[-10, 2, 0], [8, 3, 1.4], [1, 2, 2.3]] : [[6, 2, 0]];
+      for (const [dx, sz, ph] of caps) {
+        const g = Math.round(sz * (0.6 + 0.4 * wave(t, 6, ph + k))), mx = cx + dx;
+        const cap = L >= 3 ? mix(CAP, GLOW, 0.3 + 0.5 * wave(t, 2.5, ph)) : CAP;
+        rect(c, mx, y - 2 - g, 1, g + 1, PAL.bone); rect(c, mx - g, y - 3 - g, g * 2 + 1, 1, cap); rect(c, mx - g + 1, y - 4 - g, g * 2 - 1, 1, mix(cap, PAL.bone, 0.3));
+      }
+      if (L >= 2) antAt(c, cx + 12 - Math.round(wave(t, 7, k) * 6), y + 1, ANT_TINT, -1, Math.floor(t * 3) % 2);
+      if (L >= 3) for (let e = 0; e < 6; e++) { const r = (t * 0.35 + e / 6 + k * 0.2) % 1; rect(c, cx - 10 + e * 4, y - 3 - Math.floor(r * 9), 1, 1, mix(PAL.hole, GLOW, 0.8 * (1 - r))); }
+      break;
+    }
+    case 'cistern': { // Flood channel: a basin and sluice; II a stone basin and channel; III a waterwheel turning in the channel and mist
+      blob(c, cx, y, L >= 2 ? 18 : 14, 7, PAL.hole);
+      const hw = L >= 2 ? 14 : 10;
+      if (L >= 2) { rect(c, cx - hw - 1, y - 1, hw * 2 + 2, 7, STONE); rect(c, cx - hw, y - 1, hw * 2, 6, PAL.hole); }
+      const cd = S(ctx).floodCd ?? 0, full = 1 - Math.min(1, cd / (NEST.rw.floodCooldown * NEST.rw.floodCdBy[L])), lvl = Math.max(1, Math.round(5 * full));
+      rect(c, cx - hw, y + 5 - lvl, hw * 2, lvl, PAL.water);
+      for (let e = 0; e < 3; e++) rect(c, cx - hw + 2 + e * (hw - 2) + Math.round(wave(t, 2, e) * 3), y + 5 - lvl, 3, 1, mix(PAL.water, DEW, 0.5));
+      const gx = side < 0 ? cx - hw - 2 : cx + hw + 1;
+      rect(c, gx - 1, y - 6, 3, 1, TWIG); rect(c, gx - 1, y - 5, 1, 11, TWIG); rect(c, gx + 1, y - 5, 1, 11, TWIG);
+      rect(c, gx, y - 5 + (cd ? 0 : 6), 1, 5, mix(TWIG, PAL.bone, 0.2));
+      if (L >= 2) {
+        const ex = side < 0 ? cx - 24 : cx + 16;
+        rect(c, ex, y + 3, 8, 2, cd ? PAL.water : mix(PAL.hole, PAL.water, 0.4));
+        if (cd) for (let e = 0; e < 3; e++) { const r = (t * 1.5 + e / 3) % 1; rect(c, ex + (side < 0 ? 7 - Math.floor(r * 8) : Math.floor(r * 8)), y + 3, 1, 1, DEW); }
+        if (L >= 3) { // a little wheel in the channel, turning faster while the water runs
+          const wx = ex + 3, f = Math.floor(t * (cd ? 10 : 2) + k) % 2;
+          rect(c, wx, y - 1, 1, 7, TWIG); rect(c, wx - 3, y + 2, 7, 1, TWIG);
+          if (f) { rect(c, wx - 2, y, 1, 1, TWIG); rect(c, wx + 2, y + 4, 1, 1, TWIG); } else { rect(c, wx + 2, y, 1, 1, TWIG); rect(c, wx - 2, y + 4, 1, 1, TWIG); }
+          for (let e = 0; e < 4; e++) rect(c, cx - 10 + e * 6, y - 3 - (e % 2), 3, 1, mix(PAL.hole, DEW, 0.15 + 0.2 * wave(t, 3, e * 0.7 + k)));
+        }
+      }
+      const p = (t * 0.3 + k * 0.41) % 1;
+      rect(c, cx + 5, y - 6 + Math.floor(p * (11 - lvl)), 1, 1, mix(PAL.hole, DEW, 0.9 - p * 0.5));
+      break;
+    }
+    case 'hall': { // Muster hall: a hall with banners; II full ranks and a drill leader; III a great standard, gold trim, a drum beat
+      const hw = L >= 2 ? 22 : 18;
+      rect(c, cx - hw, y - 5, hw * 2, 11, PAL.hole);
+      rect(c, cx - hw, y - 6, hw * 2, 1, L >= 3 ? GOLD : PAL.dirt);
+      for (const px of [cx - 12, cx + 11]) rect(c, px, y - 5, 2, 11, PAL.dirt);
+      const banners = [PAL.food, PAL.seed, PAL.bone, PAL.you, PAL.scent, DEW].slice(0, L >= 2 ? 6 : 3);
+      banners.forEach((col, i) => { const bx = cx - hw + 3 + i * 7, sw = Math.round(wave(t, 3, i * 0.5 + k)); rect(c, bx, y - 5, 3, 3, col); rect(c, bx + sw, y - 2, 2, 1, col); });
+      const step = Math.floor(t * 2 + k) % 2;
+      banners.forEach((col, i) => antAt(c, cx - hw + 3 + i * 7, y + 2, mix(ANT_TINT, col, 0.35), 1, (i + step) % 2));
+      if (L >= 2) { const sx = cx - 18 + Math.round(wave(t, 8, k) * 34); antAt(c, sx, y - 1, mix(ANT_TINT, PAL.you, 0.6), Math.sin((t + k * 4) * Math.PI / 4) > 0 ? 1 : -1, step); }
+      if (L >= 3) {
+        pennant(c, cx + 18, y + 4, GOLD, t, k);
+        const beat = wave(t, 0.8, k); rect(c, cx - 20, y + 2, 3, 3, mix(PAL.dirt, PAL.bone, 0.3 + 0.5 * beat)); // the drum
+      }
+      if (ctx.mods.get('winter') > 0) for (let e = 0; e < hw / 2; e++) rect(c, cx - hw + 1 + e * 4, y - 5, 2, 1, mix(PAL.hole, DEW, 0.7));
+      break;
+    }
+    case 'gland': { // Alarm scent: a gland sac; II rings rolling out; III twin sacs and alarm trails glowing down the tunnel
+      blob(c, cx, y, L >= 2 ? 18 : 15, 7, PAL.hole);
+      const up = alarmUp(ctx);
+      const per = up ? 0.7 : 2.6, beat = wave(t, per, k * 0.3);
+      for (let ring = 0; ring < (L >= 2 ? 3 : 1); ring++) {
+        const r = ((t / per) + ring / 3 + k * 0.1) % 1, rw = 3 + Math.round(r * 13), rh = 1 + Math.round(r * 4);
+        const col = mix(PAL.hole, up ? ALARM : PAL.scent, 0.7 * (1 - r));
+        rect(c, cx - rw, y - rh, rw * 2, 1, col); rect(c, cx - rw, y + rh, rw * 2, 1, col);
+        rect(c, cx - rw, y - rh, 1, rh * 2, col); rect(c, cx + rw - 1, y - rh, 1, rh * 2, col);
+      }
+      const sacs = L >= 3 ? [-5, 4] : [0];
+      for (const dx of sacs) { rect(c, cx + dx - 3, y - 2, 6, 4, mix(ALARM, ALARM_HOT, beat)); rect(c, cx + dx - 2, y - 3, 4, 1, mix(ALARM, ALARM_HOT, beat)); rect(c, cx + dx - 1, y - 1, 2, 1, mix(ALARM_HOT, PAL.bone, beat)); }
+      if (up && L >= 2) for (let e = 0; e < 5; e++) { const r = (t * 1.6 + e / 5) % 1; rect(c, cx + side * Math.floor(r * 22), y - 2 + (e % 3) * 2, 1, 1, mix(ALARM_HOT, PAL.hole, r)); }
+      if (L >= 3) for (let e = 0; e < 6; e++) rect(c, cx + side * (16 + e * 4), y, 2, 1, mix(PAL.hole, up ? ALARM : PAL.scent, 0.3 + 0.5 * wave(t, per, e * 0.15)));
+      break;
+    }
+    case 'barracks': { // Gatehouse: a stone keep and gate; II battlements, ranks and a torch; III towers with pennants and gold
+      const hw = L >= 2 ? 20 : 17;
+      rect(c, cx - hw, y - 6, hw * 2, 12, PAL.hole);
+      rect(c, cx - hw - 1, y - 8, hw * 2 + 2, 2, STONE); rect(c, cx - hw - 1, y + 6, hw * 2 + 2, 1, STONE);
+      if (L >= 2) for (let e = 0; e < 7; e++) rect(c, cx - hw + e * 6, y - 10, 3, 2, L >= 3 && e % 3 === 0 ? GOLD : STONE_HI);
+      const shut = gatesShut(ctx) ? 1 : 0;
+      gateDrop += (shut - gateDrop) * 0.08;
+      const gx = side < 0 ? cx - hw - 1 : cx + hw - 3, gh = Math.round(gateDrop * 11);
+      rect(c, gx, y - 6, 4, 1, STONE_HI);
+      for (let e = 0; e < 3; e++) rect(c, gx + e + (e ? 1 : 0), y - 6, 1, gh + 1, TWIG);
+      for (let e = 0; e < Math.floor(gh / 3); e++) rect(c, gx, y - 5 + e * 3, 4, 1, TWIG);
+      const soldiers = (ctx.state.jobs?.assigned?.soldier ?? 0) as number, most = L >= 2 ? 8 : 3;
+      const n = Math.max(2, Math.min(most, Math.ceil(soldiers / Math.max(1, count(ctx, 'barracks')))));
+      for (let e = 0; e < n; e++) { const row = L >= 2 ? e % 2 : 0, ex = cx - 13 + Math.floor(L >= 2 ? e / 2 : e) * 7 + row * 3; antAt(c, ex, y - 1 + row * 3, PAL.you, -side, shut && Math.floor(t * 1.5 + e) % 2 ? 1 : 0); }
+      if (L >= 2) { const tx = side < 0 ? cx + hw - 4 : cx - hw + 3; rect(c, tx, y - 3, 1, 4, TWIG); rect(c, tx, y - 5, 1, 2, mix(PAL.amber, LAMP, wave(t, 0.4, k))); rect(c, tx - 1, y - 6, 3, 1, mix(PAL.hole, LAMP, 0.4 * wave(t, 0.55, k + 0.3))); }
+      if (L >= 3) for (const tx of [cx - hw - 3, cx + hw + 1]) { rect(c, tx, y - 12, 3, 18, STONE); rect(c, tx, y - 13, 1, 1, STONE_HI); rect(c, tx + 2, y - 13, 1, 1, STONE_HI); pennant(c, tx + 1, y - 13, PAL.you, t, tx); }
+      break;
+    }
+    case 'storeroom': { // Spoil walls: a pit and a clod ridge; II a hoist hauling baskets; III a taller ridge spiked with twig stakes
+      rect(c, cx - 20, y - 5, 40, 11, PAL.hole);
+      for (let e = 0; e < 4; e++) rect(c, cx - 18, y + 4 - e * 2, 16, 1, mix(PAL.dirt, PAL.soil, e % 2 ? 0.3 : 0));
+      const most = L >= 3 ? 4 : L >= 2 ? 3 : 2, h = Math.min(most, 1 + Math.floor((S(ctx).walls ?? 0) / 4));
+      for (let r = 0; r < h; r++) for (let e = 0; e < 6 - r; e++) rect(c, cx - 14 + r * 3 + e * 5, y - 7 - r * 2, 4, 2, mix(PAL.dirt, CRUST, ((e + r + k) % 3) * 0.2));
+      if (L >= 3) for (let e = 0; e < 5; e++) { const sx = cx - 12 + e * 6, sy = y - 8 - (h - 1) * 2; rect(c, sx, sy - 3, 1, 3, TWIG); rect(c, sx, sy - 4, 1, 1, PAL.bone); }
+      if (L >= 2) {
+        rect(c, cx + 9, y - 5, 1, 10, TWIG); rect(c, cx + 4, y - 5, 10, 1, TWIG);
+        const r = (t * 0.4 + k * 0.3) % 1, by = y + 3 - Math.floor((r < 0.5 ? r * 2 : 2 - r * 2) * 8);
+        rect(c, cx + 5, y - 4, 1, by - y + 4, mix(PAL.hole, PAL.bone, 0.5)); rect(c, cx + 4, by, 3, 2, r < 0.5 ? PAL.dirt : TWIG);
+      }
+      antAt(c, cx - 1 + (L >= 2 ? 0 : Math.round(wave(t, 5, k) * 8)), y + 2, ANT_TINT, 1, Math.floor(t * 2) % 2);
+      break;
+    }
+    case 'granary': { // Seed bank: shelves of resin-sealed pods; II three glowing shelves and a seedling; III a vault ring and a flower
+      rect(c, cx - 20, y - 6, 40, 12, PAL.hole);
+      rect(c, cx - 20, y - 7, 40, 1, L >= 3 ? GOLD : STONE);
+      const shelves = L >= 2 ? 3 : 1;
+      for (let r = 0; r < shelves; r++) {
+        const sy = shelves === 1 ? y + 1 : y - 2 + r * 3;
+        rect(c, cx - 19, sy, 26, 1, TWIG);
+        for (let e = 0; e < 6; e++) {
+          const px = cx - 18 + e * 4 + (r % 2) * 2, glow = L >= 2 ? wave(t, 3.5, (e + r * 2) * 0.45 + k) : 0;
+          rect(c, px, sy - 2, 2, 2, PAL.seed); rect(c, px, sy - 3, 2, 1, mix(PAL.amber, LAMP, glow));
+        }
+      }
+      if (L >= 2) {
+        const sx = cx + 13, sw = wave(t, 2.5, k);
+        rect(c, sx - 2, y + 3, 5, 3, CLAY); rect(c, sx, y - 1, 1, 4, PAL.food);
+        rect(c, sx - 1, y - 2, 1, 1, mix(PAL.hole, PAL.food, 1 - sw)); rect(c, sx + 1, y - 2, 1, 1, mix(PAL.hole, PAL.food, sw));
+        if (L >= 3) { rect(c, sx - 1, y - 4, 3, 1, mix(PAL.you, GOLD, wave(t, 3, k))); rect(c, sx, y - 5, 1, 1, GOLD); rect(c, sx, y - 3, 1, 1, LAMP); }
+        else rect(c, sx, y - 3, 1, 1, LEAF_RIB);
+      }
+      if (L >= 3) { const r = (t * 0.2 + k * 0.3) % 1, gx = cx - 19 + Math.floor(r * 26); rect(c, gx, y - 6, 2, 1, mix(GOLD, PAL.bone, 0.5)); } // a glint running along the vault
+      break;
+    }
+    case 'library': { // Hall of records: walls of glyphs and a tablet; II a sweeping light and elders; III a gold frame and rising motes
+      rect(c, cx - 20, y - 8, 40, 14, PAL.hole);
+      rect(c, cx - 20, y - 9, 40, 1, L >= 3 ? GOLD : mix(PAL.hole, PAL.dirt, 0.6));
+      if (L >= 3) { rect(c, cx - 21, y - 9, 1, 15, GOLD); rect(c, cx + 20, y - 9, 1, 15, GOLD); }
+      const sweep = (t * 0.25 + k * 0.17) % 1, sx = cx - 19 + Math.floor(sweep * 38);
+      for (let r = 0; r < (L >= 2 ? 3 : 2); r++) for (let e = 0; e < 9; e++) {
+        const gx = cx - 18 + e * 4 + (r % 2), near = L >= 2 ? Math.max(0, 1 - Math.abs(gx - sx) / 6) : 0;
+        if ((e * 3 + r + k) % 4) rect(c, gx, y - 7 + r * 3, 2, 1, mix(r === 1 ? MEMORY : PAL.bone, LAMP, near * 0.8));
+      }
+      const kept = !!(ctx.state.lineage as { recorded?: string } | undefined)?.recorded, tg = kept ? 0.6 + 0.4 * wave(t, 2.5, k) : 0.35;
+      rect(c, cx - 3, y - 1, 7, 4, mix(PAL.hole, JELLY, tg)); rect(c, cx - 2, y, 5, 1, mix(JELLY, PAL.bone, tg * 0.6)); rect(c, cx - 2, y + 2, 5, 1, mix(JELLY, PAL.amber, 0.5));
+      if (L >= 2) for (const [ex, dir] of [[cx - 14, 1], [cx + 9, -1]] as [number, number][]) antAt(c, ex, y + 3, mix(ANT_TINT, PAL.bone, 0.3), dir, Math.floor(t * 0.7 + ex) % 2);
+      if (L >= 3) for (let e = 0; e < 4; e++) { const r = (t * 0.4 + e / 4 + k * 0.1) % 1; rect(c, cx - 2 + e * 2, y - 2 - Math.floor(r * 6), 1, 1, mix(PAL.hole, GOLD, 1 - r)); }
+      break;
+    }
+  }
+}
+
 function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const order = S(ctx).order;
   const rows = Math.ceil(order.length / LANES.length);
@@ -519,7 +767,9 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     const { y, cx } = where(i);
     spots.push({ x: cx, y });
 
-    switch (id) {
+    // a reworked chamber type is drawn whole by drawRework; the rest keep their plain look
+    if (reworked(ctx, id) && REWORKS[id as ChamberId]) drawRework(c, ctx, id, cx, y, lane, k, t, reworkLevel(ctx, id));
+    else switch (id) {
       case 'tunnel': { // a resting chamber: a low room with a few workers curled up asleep
         blob(c, cx, y, 15, 5, PAL.hole);
         for (let e = 0; e < 3; e++) { const sx = cx - 9 + e * 7 + ((k + e) % 2); rect(c, sx, y + 1, 3, 2, ANT_TINT); rect(c, sx + 3, y + 2, 1, 1, ANT_TINT); }
@@ -818,8 +1068,6 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       default:
         blob(c, cx, y, 12, 5, PAL.hole);
     }
-    // a reworked chamber type: every one of them gets a clay-lined floor with corner posts
-    if (reworked(ctx, id)) { rect(c, cx - 15, y + 6, 30, 1, CLAY); rect(c, cx - 15, y + 3, 1, 3, CLAY); rect(c, cx + 14, y + 3, 1, 3, CLAY); }
 
     // a chamber dug in the last moment fades in out of the soil
     const now = performance.now();
