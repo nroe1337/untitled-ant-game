@@ -19,10 +19,13 @@ new standing rule in a thread, add it here in the same pull request.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
+- Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
+- Keep in-game text short and plain: say what it does, without flowery or wordy phrasing.
 
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
 - `src/data/techs2.ts`: the wider tech tree, one row list per age.
+- `src/systems/crowns`: the queen's eight crowns (Royal court). Crown data is `CROWNS` in balance.ts. They replaced the Royal care list.
 - `src/systems/<name>/index.ts`: one system per tab or mechanic. `npm run build` type-checks and builds.
 
 ## Where things stand (Nov 14)

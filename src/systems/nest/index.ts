@@ -104,7 +104,8 @@ function runQueue(ctx: Context) {
 
 /** Chamber craft: each upgrade level makes every chamber of that kind give NEST.upgrade.per more. */
 const UP = NEST.upgrade;
-const power = (ctx: Context, id: ChamberId) => 1 + UP.per * (S(ctx).ups?.[id] ?? 0);
+/** A chamber's strength: chamber upgrades, plus crowns (`room:<id>` mods). */
+const power = (ctx: Context, id: ChamberId) => Math.max(0.1, 1 + UP.per * (S(ctx).ups?.[id] ?? 0) + ctx.mods.get('room:' + id));
 const upCost = (id: ChamberId) => {
   const late = DEFS[id].later?.cost ?? {};
   const [r, v] = Object.entries(late)[0] ?? [];

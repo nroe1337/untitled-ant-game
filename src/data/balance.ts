@@ -400,7 +400,7 @@ export const RESEARCH = {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Warming chamber, the Nurses\' den and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
-    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
+    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
@@ -1049,4 +1049,42 @@ export const KIN = {
       [{ kind: 'flights', n: 2, name: 'A line that has flown', text: 'Your line must have flown twice. They do not join with colonies, only with lines.' }],
     ],
   } as Record<string, KinQuest[][]>,
+};
+
+/** The queen's crowns (Royal court): she wears one at a time. Each boosts a few chambers, adds a rule and has a drawback.
+ *  Levels (1-10) are bought with royal jelly and kept through flights. Boosts rise from `boost.at1` to `boost.at10`;
+ *  the rule grows stronger at the `tiers` levels. Switching is free but needs `swapCooldown` seconds between changes. */
+export const CROWNS = {
+  maxLevel: 10,
+  swapCooldown: 600,
+  boost: { at1: 0.1, at10: 0.2 },
+  tiers: [4, 7, 10],
+  /** jelly for level 2, 3, ... 10 (level 1 comes free with the Royal court) */
+  levelCost: [8, 12, 18, 26, 38, 55, 80, 115, 165],
+  list: [
+    { id: 'chitin', name: 'Chitin crown', theme: 'War', rooms: ['barracks', 'training', 'armory'],
+      rule: 'Soldiers +{v} strength per flawless raid (max +20%).', ruleV: [0.01, 0.015, 0.02, 0.03],
+      bad: 'Hall of elders -10%.', badMods: { 'room:library': -0.1 } },
+    { id: 'clay', name: 'Clay crown', theme: 'The deep nest', rooms: ['spoil', 'clayhall', 'vent'],
+      rule: 'Only {v} raiders can attack at once.', ruleV: [10, 8, 6, 4],
+      bad: 'Expeditions 10% slower.', badMods: { expSpeed: 0.1 } },
+    { id: 'petal', name: 'Petal crown', theme: 'Wandering', rooms: ['chartroom', 'boatshed', 'rest'],
+      rule: 'Expeditions have a {v} chance to bring home a stray worker.', ruleV: [0.1, 0.15, 0.2, 0.3],
+      bad: 'Warming chamber -10%.', badMods: { 'room:warmth': -0.1 } },
+    { id: 'fungus', name: 'Fungus crown', theme: 'The garden', rooms: ['fungus', 'sporecellar', 'stable'],
+      rule: 'Converts {v} mould/s into fungus.', ruleV: [0.1, 0.15, 0.2, 0.3],
+      bad: 'Soldiers 10% weaker.', badMods: { soldierPower: -0.1 } },
+    { id: 'amber', name: 'Amber crown', theme: 'Lore', rooms: ['library', 'memory', 'chartroom'],
+      rule: '+{v} knowledge per worker lost.', ruleV: [4, 6, 8, 12],
+      bad: 'Egg laying -10%.', badMods: { layRate: -0.1 } },
+    { id: 'seed', name: 'Seed crown', theme: 'Hoarding', rooms: ['pantry', 'seedvault', 'resinvat', 'twigloft'],
+      rule: 'Each store over 90% full makes {v} jelly/s.', ruleV: [0.002, 0.003, 0.004, 0.006],
+      bad: 'Chambers cost +10% soil.', badMods: { wonderSoil: 0.1 } },
+    { id: 'silk', name: 'Silk crown', theme: 'Care', rooms: ['warmth', 'nursery', 'sporecellar'],
+      rule: '{v} of nurses fight in raids.', ruleV: [0.25, 0.35, 0.5, 0.75],
+      bad: 'Guard post -10%.', badMods: { 'room:barracks': -0.1 } },
+    { id: 'thorn', name: 'Thorn crown', theme: 'The slaver', rooms: ['husks', 'den', 'midden'],
+      rule: 'Flawless raids capture {v} workers per 5 waves (min 1).', ruleV: [1, 1.5, 2, 3],
+      bad: 'Foragers -15%.', badMods: { 'job:forager': -0.15 } },
+  ] as { id: string; name: string; theme: string; rooms: string[]; rule: string; ruleV: number[]; bad: string; badMods: Record<string, number> }[],
 };
