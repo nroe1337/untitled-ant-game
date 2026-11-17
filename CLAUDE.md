@@ -20,6 +20,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 - Expedition party size has a soft cap tied to a building: 20 plus 10 per Forager's rest. Past the cap workers still
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
+- Pacing (Nate, Nov 17): things should take longer but stay achievable. There is a lot of content, so prefer
+  spreading it out (and locking some of it behind nuptial flights) over letting it all open in the first colony.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 - Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
 - Keep in-game text short and plain: say what it does, without flowery or wordy phrasing.
