@@ -85,6 +85,8 @@ interface WarState {
   milestones?: string[];
   /** Lure the rival again as soon as it can be (after War drums). */
   autoProvoke?: boolean;
+  /** Seconds until the rival raids on its own (Nov 17: raids also come unprovoked, every so often). */
+  attackIn?: number;
   /** Husk barricade health left (it regrows between raids). */
   wall?: number;
   /** Unopened spoils chests. */
@@ -237,8 +239,10 @@ function army(ctx: Context): Stack[] {
   if (plain) us.push(stack('soldier', plain, hp, B.soldier.atk));
   return us;
 }
+const rollAttack = () => WAR.attack.every[0] + Math.random() * (WAR.attack.every[1] - WAR.attack.every[0]);
 function startBattle(ctx: Context) {
   const s = S(ctx);
+  s.attackIn = rollAttack(); // any raid, provoked or not, resets the clock to the next unprovoked one
   const comp = raidComp(ctx);
   const tough = toughness(waveOf(ctx));
   const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
@@ -724,6 +728,13 @@ export const war: GameSystem = {
         if (s.autoProvoke && hasMilestone(ctx, 'drums') && s.nextRaid <= 0 && !s.campaign && ctx.res.canAfford(WAR.provokeCost)) {
           ctx.res.spend(WAR.provokeCost);
           startBattle(ctx);
+        } else if (ctx.flags.has('tech:martial') && !s.campaign) {
+          // the rival raids on its own every so often (the first one waits a grace period after the War tab opens)
+          const before = s.attackIn ??= WAR.attack.grace;
+          s.attackIn = Math.max(0, before - dt);
+          if (before > WAR.attack.march && s.attackIn <= WAR.attack.march) ctx.log(`A rival column has left their mound and is marching on the nest. Watch it on the Map. It arrives in about ${Math.round(WAR.attack.march / 60)} minutes.`, 'warn');
+          if (before > WAR.attack.warn && s.attackIn <= WAR.attack.warn) ctx.log(`The rival column is almost at the entrance: about ${WAR.attack.warn} seconds.`, 'warn');
+          if (s.attackIn <= 0) { ctx.log('The rival raids the nest!', 'warn'); startBattle(ctx); }
         }
       }
     }
@@ -840,7 +851,8 @@ export const war: GameSystem = {
           const b = s.battle, sum = (xs: Stack[]) => xs.reduce((t, x) => t + x.n, 0);
           const fighters = sum(b.us.filter((x) => x.kind !== 'worker' && x.kind !== 'wall' && x.kind !== 'mound')), helpers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
           status.textContent = `Raid in progress: ${sum(b.them)} of them left, ${fighters} of ${b.soldiersAtStart} fighters standing` + (helpers ? `, ${helpers} workers helping` : '') + `, ${b.kills} killed` + (b.rescued ? `, ${b.rescued} wounded carried in` : '') + (b.breaches ? `, ${b.breaches} got in` : '') + '.' + (b.cry ? ` War cry: ${Math.ceil(b.cry / ctx.speed)}s left.` : s.rallyCd > 0 ? ` War cry ready in ${Math.ceil(s.rallyCd / ctx.speed)}s.` : '');
-        } else status.textContent = 'The rival only attacks when you provoke it. ' +
+        } else if (s.attackIn != null && s.attackIn <= WAR.attack.march && ctx.flags.has('tech:martial')) status.textContent = `A rival column is marching on the nest (see the Map). It reaches the entrance in about ${Math.ceil(s.attackIn / ctx.speed)}s. ` + (s.lastReport ? 'Last raid: ' + s.lastReport : '');
+        else status.textContent = `The rival raids on its own every ${Math.round(WAR.attack.every[0] / 60)} to ${Math.round(WAR.attack.every[1] / 60)} minutes${s.attackIn != null ? ` (next in about ${Math.ceil(s.attackIn / 60)} min)` : ''}, or sooner if you provoke it. ` +
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
           (s.lastReport ? 'Last raid: ' + s.lastReport : '');
         const hold = soldiers(ctx) * B.soldier.atk * power(ctx) + defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));

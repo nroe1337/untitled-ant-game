@@ -102,7 +102,7 @@ export const GUIDE: GuidePage[] = [
       ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },
       { head: 'Go to war', do: [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
-        'Put workers on Soldier and dig Guard posts before you provoke the first raid.',
+        'Put workers on Soldier and dig Guard posts: once the {War} tab opens, the rival raids every so often.',
         'Raids give |chitin| and war honours. Campaigns take enemy tiles, and three strongholds wait far out on the {Map}.',
       ], tip: 'A War page opens in this Guide (the tabs above). It covers raids, campaigns, the rival queen and the strongholds.' },
       { head: 'Chase rumours', do: [
@@ -225,7 +225,7 @@ export const GUIDE: GuidePage[] = [
     goal: 'Win raids for chitin and honours, take the rival\'s land, and hold the three strongholds.',
     steps: [
       { head: 'Raids', do: [
-        'Raids come only when you click [Provoke a raid] on the {War} tab. Have soldiers and Guard posts ready first.',
+        'The rival raids on its own every 10 to 15 minutes. Its column marches across the {Map} for 2 minutes first, then fights at the entrance like a provoked raid. Click [Provoke a raid] on the {War} tab to fight sooner. Have soldiers and Guard posts ready.',
         'Every ant fights at once. Raiders bite your majors first, then soldiers, then workers who rally.',
         'Clear a wave with nobody getting in and you earn war honours, a chest and the next, harder wave.',
         'If raiders get in they steal |food|, and the wave must be fought again.',
