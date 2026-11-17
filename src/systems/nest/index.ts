@@ -308,7 +308,7 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, upBox: HTMLElement;
+    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, upBox: HTMLElement, roomName: HTMLElement;
     let floodBtn: ReturnType<typeof actionButton>, floodWrap: HTMLElement, gateWrap: HTMLElement, gateBox: HTMLInputElement, alarmWrap: HTMLElement, alarmSel: HTMLSelectElement;
     const rwButtons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     return {
@@ -347,11 +347,13 @@ export const nest: GameSystem = {
           const x = (ev.clientX - r.left) * (canvas.width / r.width), y = (ev.clientY - r.top) * (canvas.height / r.height);
           const i = hitSpots.findIndex((p) => Math.abs(p.x - x) <= 20 && Math.abs(p.y - y) <= 8);
           const order = S(ctx).order;
+          selected = i < 0 ? null : order[i]; // the name line shows the last chamber clicked
           if (i < 0 || i === picked) { picked = null; return; }
           if (picked === null) { picked = i; return; }
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
           picked = null;
         });
+        roomName = el('p.roomname', {}, ' ');
         const scroller = el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas);
         let whole = false;
         try { whole = localStorage.getItem('formicarium-whole-nest') === '1'; } catch { /* storage blocked */ }
@@ -401,7 +403,7 @@ export const nest: GameSystem = {
         const rwCtl = el('div.reworkctl', {}, floodWrap, gateWrap, alarmWrap);
         root.classList.add('nestpanel');
         root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox, rwCtl,
-          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), scroller);
+          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), roomName, scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
@@ -430,6 +432,8 @@ export const nest: GameSystem = {
         if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0)).toFixed(2)} food/s`);
         progress.textContent = bits.join(' · ');
         drawNest(canvas, ctx);
+        // name the chamber last clicked, with its rework and level
+        roomName.textContent = selected ? roomLabel(ctx, selected) + (picked != null ? ' (click another chamber to swap)' : '') : 'Click a chamber to see what it is.';
       },
     };
   })(),
@@ -467,6 +471,12 @@ let animT = 0, animLast = performance.now();
 /** Where each chamber was last drawn (by build-order index), for clicking; and the one picked to swap. */
 let hitSpots: { x: number; y: number }[] = [];
 let picked: number | null = null;
+let selected: ChamberId | null = null;
+/** A chamber's name for the line under the nest view: its rework and level when it has one. */
+function roomLabel(ctx: Context, id: ChamberId) {
+  const L = reworkLevel(ctx, id), r = REWORKS[id];
+  return r && L ? `${r.name} ${ROMAN[L]} (a reworked ${DEFS[id].name.toLowerCase()})` : DEFS[id].name;
+}
 
 /** How far the queen has come: she fattens as this colony grows, and changes for good with each
  *  flight and, from the Age of Settlement on, each new age (Orbit is the last form). */
