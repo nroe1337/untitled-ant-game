@@ -396,7 +396,7 @@ export const map: GameSystem = {
       mount(root: HTMLElement, ctx: Context) {
         cam = makeCamera({ cols: MAP.cols, rows: MAP.rows, zooms: MAP.zooms, zoom: MAP.zoom, T: 8, label: 'Map of the garden', onPick: (i) => { S(ctx).selected = i; } });
         cam.centre(...MAP.nest);
-        cam.paintMini = (c) => paintMini(c, S(ctx));
+        cam.paintMini = (c) => { paintMini(c, S(ctx)); const m = marchOf(ctx); if (m != null) { const [x, y] = marchAt(m); c.fillStyle = PAL.rival; c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } };
         const homeBtn = el('button.ghost', { type: 'button' }, 'Back to the nest');
         homeBtn.addEventListener('click', () => cam.centre(...MAP.nest));
         hover = el('p.muted.mono');
@@ -556,7 +556,7 @@ abandonWrap = el('div.row', {}, abandon);
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         hoverI = cam.hover;
-        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx) });
+        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx), march: marchOf(ctx) });
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
@@ -764,7 +764,7 @@ function drawStronghold(c: CanvasRenderingContext2D, kind: Stronghold, X: number
   const a = SH_ART[kind];
   a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
 }
-function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null } = { bridges: [], nests: [], forts: [] }) {
+function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null; march?: number | null } = { bridges: [], nests: [], forts: [] }) {
   const c = setup(cv);
   const T = 8;
   const near = s.tiles.map((t, i) => t.seen && reach(i));
@@ -819,7 +819,32 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
   };
   if (s.claiming && s.claiming.cell == null && Math.floor(performance.now() / 400) % 2) mark(s.claiming.i, PAL.you);
   mark(s.selected, PAL.bone);
+  if (posts.march != null) drawMarch(c, posts.march);
 }
+
+/** Where a marching raid is, in tiles, at progress p (0 at the rival mound, 1 at our entrance). */
+const marchAt = (p: number): [number, number] => {
+  const [rx, ry] = MAP.rival, [nx, ny] = MAP.nest;
+  return [rx + (nx - rx) * p + 0.5, ry + (ny - ry) * p + 0.5];
+};
+/** The rival's raiding column: a file of ants walking from their mound to our nest. Drawn over the fog, so it is always seen. */
+function drawMarch(c: CanvasRenderingContext2D, p: number) {
+  const T = 8, len = Math.hypot(MAP.nest[0] - MAP.rival[0], MAP.nest[1] - MAP.rival[1]), t = performance.now() / 160;
+  for (let k = 0; k < WAR.attack.column; k++) {
+    const q = p - (k * 0.45) / len;
+    if (q < 0) break;
+    const [x, y] = marchAt(q), wob = Math.round(Math.sin(t + k * 1.7));
+    const X = Math.round(x * T) - 1 + wob, Y = Math.round(y * T) - 1 - wob;
+    rect(c, X - 1, Y - 1, 4, 4, '#1a1410');
+    rect(c, X, Y, 2, 2, PAL.rival);
+  }
+}
+/** The march's progress from the war state, or null when no raid is on its way. */
+const marchOf = (ctx: Context): number | null => {
+  const w = ctx.state.war as { attackIn?: number; rivalDefeated?: boolean; battle?: unknown } | undefined;
+  if (!w || w.rivalDefeated || w.battle || w.attackIn == null || w.attackIn > WAR.attack.march || !ctx.flags.has('tech:martial')) return null;
+  return 1 - w.attackIn / WAR.attack.march;
+};
 
 /** The whole garden at one pixel per tile, for the camera's minimap. */
 function paintMini(c: CanvasRenderingContext2D, s: MapState) {

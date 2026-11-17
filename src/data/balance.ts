@@ -337,7 +337,11 @@ export const WAR = {
   rivalGrowthPerSecond: 0.01,
   rivalArmyPerTile: 6,      // rival max army = tiles * this
   // raids on your nest
-  // raids only happen when the player provokes one
+  // raids come when the player provokes one, and on their own every so often (Nate, Nov 17)
+  /** Unprovoked raids: seconds between them (random in this range), a warning before, and a grace period after the War tab opens.
+   *  Any raid resets the clock, and it pauses during a campaign.
+   *  The raid marches across the Map for its last `march` seconds (a column of `column` ants), then fights at the entrance. */
+  attack: { every: [600, 900] as [number, number], march: 120, warn: 30, grace: 600, column: 10 },
   provokeCooldown: 60,      // seconds to regroup before you can provoke again
   provokeCost: { pheromone: 6 },
   raidShare: 0.3,           // fraction of rival army that raids
