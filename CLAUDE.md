@@ -22,7 +22,9 @@ new standing rule in a thread, add it here in the same pull request.
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 - Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
-- Keep in-game text short and plain: say what it does, without flowery or wordy phrasing.
+- Effect and UI text (what a crown, chamber or button does) stays short and plain: say what it does.
+- Flavour text (the Chronicle, italic tab lines, story logs) keeps the game's existing voice. Write new flavour in the
+  same style so the game stays consistent; Nate will revise the wording himself later.
 - Think outside the box: don't propose yet another way to make food easier or births faster. Upgrades that are
   just different routes to the same numbers make the game feel sloppy. A new mechanic should open a new decision
   or change how the colony behaves.
