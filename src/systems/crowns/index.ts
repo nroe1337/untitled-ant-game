@@ -68,11 +68,11 @@ export const crowns: GameSystem = {
 
   init(ctx) {
     ctx.state.crowns = { worn: null, lv: {}, cd: 0, trophies: 0 } satisfies CrownState;
-    ctx.bus.on('war:won', (p: { wave: number; again?: boolean }) => {
+    ctx.bus.on('war:won', (p: { wave: number }) => {
       const s = S(ctx);
       if (!s.worn) return;
       if (worn(ctx, 'chitin')) s.trophies++;
-      if (worn(ctx, 'thorn') && !p?.again) { // waves fought again bring no captives
+      if (worn(ctx, 'thorn')) {
         const got = addWorkers(ctx, Math.max(1, Math.floor((p?.wave ?? 1) / 5 * ruleV(ctx, byId('thorn')!))));
         if (got) ctx.log(`Your raiders carry home ${got} rival pupa${got > 1 ? 'e' : ''}. ${got > 1 ? 'They hatch' : 'It hatches'} as your workers.`, 'story');
       }
