@@ -123,7 +123,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Rework your chambers', do: [
         'With 60 chambers, [Chamber craft] appears. Learn it to rework a chamber type you have 3 or more of, from the {Nest} tab.',
         'A rework changes every chamber of that type for good, ones dug later too. It cannot be undone.',
-        'Each rework has three levels. Level II needs 8 of that chamber and level III needs 15. Each level makes the rework stronger, and a few add something new, like the Gatehouse shutting itself in a raid or the Seed bank claiming land. Each level also redraws the chamber bigger in the {Nest}.',
+        'Each rework has three levels. Level II needs 8 of that chamber and level III needs 15, and they are paid in parts (3 for II, 8 for III), so you never need more than your stores hold. Each level makes the rework stronger, and a few add something new, like the Gatehouse shutting itself in a raid or the Seed bank claiming land. Each level also redraws the chamber bigger in the {Nest}.',
         'Most reworks make that chamber type gather more |mould|. The cleaners\' reworks (Infirmary, Draught shaft, Mould farm, Flood channel) fight it.',
         'Some reworks reach other tabs: the Muster hall (winter jobs), the Seed bank (sow tiles on the {Map}) and the Hall of records (keep a research through a flight).',
       ], tip: 'Rework a cleaner for every two or three other reworks, or the mould gets ahead of you.' },

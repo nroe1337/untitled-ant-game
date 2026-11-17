@@ -127,6 +127,8 @@ export const NEST = {
    *  mould; the cleaners' reworks scrub enough to pay for a balanced nest. Cost: knowledge plus baseMult times
    *  one chamber's own dig cost. old: the pre-Nov 17 level costs, only to refund old saves. */
   rework: { knowledge: 250, baseMult: 15, minBuilt: 3, levelMult: [1, 3, 8] as number[], levelBuilt: [3, 8, 15] as number[],
+    /** Levels II and III are paid in this many equal parts (Nate, Nov 17), so no single part needs more than the stores hold. */
+    parts: [1, 3, 8] as number[],
     old: { growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number> } },
   /** mould: extra chambers' worth of mould each reworked chamber gathers (1 = like two chambers, -1 = none). */
   reworks: {
