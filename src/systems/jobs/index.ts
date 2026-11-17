@@ -6,7 +6,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { BROOD, CASTES, COLONY, JOBS, NEST, WAR } from '../../data/balance';
 import { drawReserve } from '../castes';
-import { roomCount, nurseClean, mouldClean, mouldMade, mouldSpeed, mouldWork, broodFoodOutlook, nurseEggsEach, nurseTends } from '../brood';
+import { roomCount, nurseClean, mouldClean, mouldMade, mouldSpeed, mouldWork, broodFoodOutlook, nurseEggsEach, nurseTends, temperLean, temperOf } from '../brood';
 
 interface JobDef {
   id: string;
@@ -274,7 +274,7 @@ export const jobs: GameSystem = {
   },
 
   panel: (() => {
-    const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement; star: HTMLButtonElement }>();
+    const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement; star: HTMLButtonElement; lean: HTMLElement }>();
     let idleEl: HTMLElement, reservedEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
@@ -311,10 +311,11 @@ export const jobs: GameSystem = {
           const count = el('span.count'), out = el('span.muted');
           const btn = (label: string, d: number) => el('button.small', { type: 'button', title: 'Shift-click to move 10 workers. Ctrl-click to move all of them.', onclick: (e: MouseEvent) => change(ctx, j.id, e.ctrlKey || e.metaKey ? d * 9999 : e.shiftKey ? d * 10 : d) }, label);
           const star = el('button.small.defjob', { type: 'button', title: '', onclick: () => { const s = S(ctx); s.defaultJob = s.defaultJob === j.id ? undefined : j.id; } }, '☆') as HTMLButtonElement;
+          const lean = el('span.lean');
           const row = el('div.job', { title: j.desc, hidden: true },
-            el('span.jname', {}, icon(j.id), j.name), btn('−', -1), count, btn('+', 1), out, star);
+            el('span.jname', {}, icon(j.id), j.name, lean), btn('−', -1), count, btn('+', 1), out, star);
           list.append(row);
-          rows.set(j.id, { row, count, out, star });
+          rows.set(j.id, { row, count, out, star, lean });
         }
       },
       update(_root, ctx) {
@@ -337,6 +338,13 @@ export const jobs: GameSystem = {
         for (const j of JOB_DEFS) {
           const r = rows.get(j.id)!;
           r.row.hidden = !reqOk(ctx, j.requires);
+          // the brood's temperament: a mark on the job it is keen on or reluctant at
+          const lean = temperLean(ctx, j.id), leanTxt = lean > 0 ? ' keen' : lean < 0 ? ' reluctant' : '';
+          if (r.lean.textContent !== leanTxt) {
+            r.lean.textContent = leanTxt;
+            r.lean.className = 'lean' + (lean > 0 ? ' keen' : lean < 0 ? ' loath' : '');
+            r.lean.dataset.tip = lean ? `This ${temperOf(ctx)!.name.toLowerCase()} brood is ${leanTxt.trim()} here: ${lean > 0 ? '+' : '−'}${Math.round(Math.abs(lean) * 100)}% ${j.id === 'soldier' ? 'fighting power' : 'output'}. Every colony's brood has its own temperament (Queen tab).` : '';
+          }
           r.star.hidden = !ctx.flags.has('tech:routine');
           r.star.textContent = s.defaultJob === j.id ? '★' : '☆';
           const tipText = s.defaultJob === j.id ? 'The default job: newly hatched workers go here.\nClick to clear.' : 'Newly hatched workers go to the default job.\nClick to make this the default.';

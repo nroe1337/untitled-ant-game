@@ -19,6 +19,11 @@ new standing rule in a thread, add it here in the same pull request.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
+- Think outside the box: don't propose yet another way to make food easier or births faster. Upgrades that are
+  just different routes to the same numbers make the game feel sloppy. A new mechanic should open a new decision
+  or change how the colony behaves.
+- Some variety should come from luck, not choice: the brood temperament is rolled for every colony (never the
+  same twice running) and nudges the best worker mix. Run-to-run variance like this must stay mild and never brick a run.
 
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
@@ -29,6 +34,7 @@ new standing rule in a thread, add it here in the same pull request.
 - Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
   queen boss, rumours and pack mules, tile wonders (PR #203), and the Swarm Spire batch (PR #204: stage gates,
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
+- Brood temperament (`BROOD.temperaments` in balance.ts): each colony rolls one at random. Keen job +15%, reluctant job -10%.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
   like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
   feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc
