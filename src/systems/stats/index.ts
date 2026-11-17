@@ -433,7 +433,7 @@ export const achievements: GameSystem = {
       mount(root) {
         head = el('h3');
         featList = el('div.feats');
-        root.append(head, featList);
+        root.append(el('p.flavor', {}, 'Deeds the old ants still tell of, one generation to the next.'), head, featList);
       },
       update(_root, ctx) {
         const s = S(ctx);
