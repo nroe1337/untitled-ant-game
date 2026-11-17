@@ -54,8 +54,13 @@ const marksFor = (time: number) => Math.max(1, Math.round(time / X.secondsPerMar
 // Trail upgrades unfold one by one as marks come in ("marks:N" = after N marks earned).
 const UPGRADES = fromBalance(U, (ctx, needs) =>
   !needs || (needs.startsWith('marks:') ? earned(ctx) >= Number(needs.slice(6)) : ctx.flags.has(needs)));
-/** Loot multiplier from party size: each worker past the minimum adds lootPerAnt. */
-const partyMult = (n: number) => 1 + (n - X.minParty) * X.lootPerAnt;
+/** Soft cap on party size: a base plus some for each Forager's rest dug. */
+const partyCap = (ctx: Context) => X.partyCap.base + X.partyCap.perRest * (ctx.state.nest?.built?.rest ?? 0);
+/** Loot multiplier from party size: each worker past the minimum adds lootPerAnt, and past the cap only a share of that. */
+const partyMult = (ctx: Context, n: number) => {
+  const cap = partyCap(ctx);
+  return 1 + (Math.min(n, cap) - X.minParty) * X.lootPerAnt + Math.max(0, n - cap) * X.lootPerAnt * X.partyCap.pastCap;
+};
 
 const EVENTS = [
   'The party skirts a beetle the size of a house.',
@@ -207,7 +212,7 @@ function finish(ctx: Context, p: Party) {
   // a party lost on the trail still holds its column until its time is up
   ctx.ping('expeditions');
   if (p.ants <= 0) { s.runs += 1; return; } // a wiped party earns no marks
-  const mult = partyMult(p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+  const mult = partyMult(ctx, p.ants) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
   // majors carry what workers can't: the rare things (amber, royal sugar, beetle ivory)
   const heavy = 1 + X.packMules.rare * (p.mules ?? 0);
   const got: string[] = [];
@@ -409,13 +414,17 @@ export const expeditions: GameSystem = {
         partyEl.textContent = String(s.party);
         idleEl.textContent = String(Math.max(0, idle(ctx)));
         const dest = destOf(s.dest);
-        const m = partyMult(s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+        const m = partyMult(ctx, s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
         lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
           .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
           `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}.` + (isRumour(dest.id) ? ' A rumoured place: only a few trips before it is picked clean.' : ' Trips can be repeated as often as you like.');
         partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
-          `(this party: +${Math.round((partyMult(s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
-          (s.party < 30 && 'twig' in dest.loot ? ' Short on twigs? Big parties of 30 to 50 bring home far more.' : '');
+          `(this party: +${Math.round((partyMult(ctx, s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
+          (s.party > partyCap(ctx)
+            ? ` Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap (+${X.partyCap.perRest} each).`
+            : s.party < 30 && 'twig' in dest.loot
+              ? ` Short on twigs? Big parties of 30 to 50 bring home far more.${partyCap(ctx) < 50 ? ` Each Forager's rest lets the party grow by ${X.partyCap.perRest} more before the loot thins out (cap now ${partyCap(ctx)}).` : ''}`
+              : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
         autoBox.checked = s.auto;
@@ -443,7 +452,8 @@ export const expeditions: GameSystem = {
           ['Expeditions so far', String(s.runs)],
           ['Workers lost on the trail', String(s.perished ?? 0)],
           ['Columns', `${s.parties.length} of ${maxParties(ctx)} out`],
-          ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * partyMult(s.party) - 1) * 100)}%`],
+          ['Party cap', `${partyCap(ctx)} (soft)`],
+          ['Loot bonus', `+${fmt(((1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot')) * partyMult(ctx, s.party) - 1) * 100)}%`],
           ['Trail marks earned', String(earned(ctx))],
           ['Next destination', (() => { const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)); return n ? `${earned(ctx)}/${n.unlockMarks} marks` : 'all found'; })()],
           ['Rare finds', String(s.rare)],

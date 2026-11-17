@@ -26,6 +26,7 @@ export const GUIDE: GuidePage[] = [
         'Open the {Jobs} tab.',
         'Put about 2 workers on Forager for every 1 on Digger.',
         'Foragers bring |food|. Diggers bring |soil|.',
+        'Each colony\'s brood has its own temperament, rolled at random and shown on the {Queen} tab. It is keen on one job (+15%) and reluctant at another (−10%), so the best mix shifts a little each colony.',
       ], tip: '!Every worker eats.! Hover |food| at the top to check it is going up, not down.' },
       { head: 'Dig chambers', do: [
         'On the {Nest} tab, dig [Resting chamber]s for living space.',
@@ -67,6 +68,7 @@ export const GUIDE: GuidePage[] = [
         'Open the {Surface} tab and send expeditions.',
         'They bring back |twig| and |seed|, which are hard to get any other way.',
         'Spend the trail marks they earn on the {Surface} tab.',
+        'Bigger parties bring more, up to the party cap: 20 workers, plus 10 for each [Forager\'s rest] dug.',
       ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
       { head: 'Make pheromone', do: [
         'After a few expeditions, learn [Trail scent]. Put a few workers on Scout.',
