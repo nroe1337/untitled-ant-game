@@ -346,6 +346,8 @@ export const WAR = {
   provokeCost: { pheromone: 6 },
   raidShare: 0.3,           // fraction of rival army that raids
   maxRaiders: 30,
+  /** Fighting a cleared wave again (Nov 17): this share of the chitin and honours, no chest, no milestones. */
+  replay: { share: 0.25 },
   // the entrance battle (an auto-battler): one stack per kind of ant on each side, every ant bites every second
   battle: {
     pace: 0.35,                      // all bites are scaled by this, so a fight lasts long enough to watch

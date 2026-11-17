@@ -229,6 +229,7 @@ export const GUIDE: GuidePage[] = [
         'Every ant fights at once. Raiders bite your majors first, then soldiers, then workers who rally.',
         'Clear a wave with nobody getting in and you earn war honours, a chest and the next, harder wave.',
         'If raiders get in they steal |food|, and the wave must be fought again.',
+        'Waves never end: each is tougher than the last. Pick a cleared wave next to [Provoke a raid] to fight it again for a quarter of the spoils and no chest. Raids that come on their own bring the deepest wave you have cleared.',
         'Hover any group on the battle screen to see its health, bite and what changes them.',
       ], tip: '[War cry] makes every fighter bite harder for a few seconds. Save it for the brutes.' },
       { head: 'Chitin and honours', do: [
