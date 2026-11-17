@@ -479,7 +479,7 @@ export class Game {
     if (!lines) return;
     const title = this.tabs.get(id)?.btn.textContent ?? '';
     const close = () => { shade.hidden = true; };
-    const link = el('button.ghost.small', { type: 'button', onclick: () => { close(); if (this.tabs.has('guide')) this.show('guide'); } }, 'More in the Guide');
+    const link = el('button.ghost', { type: 'button', onclick: () => { close(); if (this.tabs.has('guide')) this.show('guide'); } }, 'More in the Guide');
     const x = el('button.helpx', { type: 'button', 'aria-label': 'Close', title: 'Close', onclick: close }, '×');
     const box = el('div.helpbox', { role: 'dialog', 'aria-label': title }, x, el('h3', {}, title), ...lines.map((l) => el('p', {}, l)), link);
     const shade = el('div.helpshade', { hidden: true }, box);
