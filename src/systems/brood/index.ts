@@ -6,6 +6,7 @@ import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { RES_TIPS } from '../../core/resources';
 import { BROOD, COLONY, NEST } from '../../data/balance';
+import { reworkLevel } from '../nest';
 
 interface BroodState {
   eggProgress: number;
@@ -75,8 +76,8 @@ const larvaFood = (ctx: Context) => BROOD.larvaFoodPerSecond * rhythm(ctx).eat;
 const MO = BROOD.mould;
 /** Mould scrubbed away per second by the queen, nurses and Purification chambers. */
 /** Chamber reworks are kept on the nest's state; brood reads them there (Infirmary). */
-const infirmary = (ctx: Context) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.brood;
-export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (infirmary(ctx) ? 1 + NEST.rw.nurseClean : 1) * (1 + ctx.mods.get('job:nurse'));
+const infirmary = (ctx: Context) => reworkLevel(ctx, 'brood') >= 1;
+export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (1 + NEST.rw.nurseCleanBy[reworkLevel(ctx, 'brood')] + ctx.mods.get('alarmNurse')) * (1 + ctx.mods.get('job:nurse'));
 export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseClean(ctx) + ctx.mods.get('mouldClean');
 /** Mould added per second by the nest's chambers. */
 /** Chambers in the nest: every one of them gathers a little mould. */
@@ -258,7 +259,7 @@ export const brood: GameSystem = {
       }
     }
     if (s.infirm?.length) {
-      s.infirm = s.infirm.map((t) => t - dt).filter((t) => t > 0);
+      s.infirm = s.infirm.map((t) => t - dt * NEST.rw.sickSpeed[reworkLevel(ctx, 'brood')]).filter((t) => t > 0); // Infirmary III: well twice as fast
       s.infirm = s.infirm.slice(0, Math.max(0, Math.floor(res.amt('ant')) - 1));
     }
     ctx.busy.infirmary = s.infirm?.length ?? 0;

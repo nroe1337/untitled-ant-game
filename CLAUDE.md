@@ -33,6 +33,10 @@ new standing rule in a thread, add it here in the same pull request.
   must be strong enough to offset it when the player builds a balanced nest. Players design their own base, but
   can't ignore major mechanics like mould.
 - Only chambers with a real idea get a rework; there is no target count. Data: `NEST.reworks` and `NEST.rw` in balance.ts.
+- Reworks have three levels (I, II, III), gated by chambers of that type (3, 8, 15). Level I is the rule change; II and III
+  are mostly rate bonuses on it, with a few of the coolest rule changes kept (Nate, Nov 17).
+- Each level must look clearly bigger and busier in the cross-section, like an RTS building upgrade: more colour,
+  more detail, more animation at higher levels. Never a shared outline; each chamber type gets its own drawing.
 
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
@@ -43,7 +47,7 @@ new standing rule in a thread, add it here in the same pull request.
 - Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
   queen boss, rumours and pack mules, tile wonders (PR #203), and the Swarm Spire batch (PR #204: stage gates,
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
-- Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks (Infirmary,
+- Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks, 3 levels each (Infirmary,
   Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
 - Brood temperament (`BROOD.temperaments` in balance.ts): each colony rolls one at random. Keen job +15%, reluctant job -10%.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel

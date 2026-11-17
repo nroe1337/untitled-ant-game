@@ -126,30 +126,43 @@ export const NEST = {
    *  (ones dug later too) and never undone. Each changes a rule, never a flat rate. Most make the type gather more
    *  mould; the cleaners' reworks scrub enough to pay for a balanced nest. Cost: knowledge plus baseMult times
    *  one chamber's own dig cost. old: the pre-Nov 17 level costs, only to refund old saves. */
-  rework: { knowledge: 250, baseMult: 15, minBuilt: 3,
+  rework: { knowledge: 250, baseMult: 15, minBuilt: 3, levelMult: [1, 3, 8] as number[], levelBuilt: [3, 8, 15] as number[],
     old: { growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number> } },
   /** mould: extra chambers' worth of mould each reworked chamber gathers (1 = like two chambers, -1 = none). */
   reworks: {
-    brood:     { name: 'Infirmary',      mould: 0,  desc: 'Mould no longer kills workers: the sick are carried here and come back after a while. Nurses scrub 50% more.' },
-    airshaft:  { name: 'Draught shaft',  mould: -1, desc: 'Purifies 3 times as much, blowing the mould out onto your held tiles, where it settles as soil.' },
-    midden:    { name: 'Mould farm',     mould: -1, desc: 'Each one scrubs 0.4 mould/s and feeds it to the fungus: mould scrubbed here comes back as fungus.' },
-    cistern:   { name: 'Flood channel',  mould: -1, desc: 'Opens the Flood button: wash every bit of mould out of the nest at once. The flood drowns the eggs and soaks a quarter of the food.' },
-    hall:      { name: 'Muster hall',    mould: 1,  desc: 'Save a winter job layout on the Jobs tab. When winter comes the workers switch to it, and back again in spring.' },
-    gland:     { name: 'Alarm scent',    mould: 1,  desc: 'When mould passes the line you set, idle workers turn out as nurses. When raiders come, idle workers turn out as soldiers.' },
-    barracks:  { name: 'Gatehouse',      mould: 1,  desc: 'Opens the gate switch. Shut, nest defence doubles, but foragers stay in and no expeditions leave.' },
-    storeroom: { name: 'Spoil walls',    mould: 1,  desc: 'While the soil pits are full, diggers pile the extra soil up at the entrance as walls: nest defence that slowly crumbles.' },
-    granary:   { name: 'Seed bank',      mould: 1,  desc: 'Plant seeds on a held bare-soil tile on the Map to turn it into grass. Shape the ground your wonders need.' },
-    library:   { name: 'Hall of records', mould: 1, desc: 'On the Lineage tab, pick one research. The next colony starts with it already learned.' },
-  } as Record<string, { name: string; mould: number; desc: string }>,
+    brood:     { name: 'Infirmary',      mould: 0,  desc: 'Mould no longer kills workers: the sick are carried here and come back after a while. Nurses scrub 50% more.',
+      ii: 'Nurses scrub another 25% more.', iii: 'The sick get well twice as fast.' },
+    airshaft:  { name: 'Draught shaft',  mould: -1, desc: 'Purifies 3 times as much, blowing the mould out onto your held tiles, where it settles as soil.',
+      ii: 'Purifies 4 times as much.', iii: 'Purifies 5 times as much, and the blown mould settles as soil in full from 10 held tiles.' },
+    midden:    { name: 'Mould farm',     mould: -1, desc: 'Each one scrubs 0.4 mould/s and feeds it to the fungus: mould scrubbed here comes back as fungus.',
+      ii: 'Each farm scrubs and grows 50% more.', iii: 'Each farm scrubs and grows twice as much as at level I.' },
+    cistern:   { name: 'Flood channel',  mould: -1, desc: 'Opens the Flood button: wash every bit of mould out of the nest at once. The flood drowns the eggs and soaks a quarter of the food.',
+      ii: 'Only a tenth of the food is soaked, and the channels refill twice as fast.', iii: 'The channels open by themselves when mould passes the alarm line.' },
+    hall:      { name: 'Muster hall',    mould: 1,  desc: 'Save a winter job layout on the Jobs tab. When winter comes the workers switch to it, and back again after.',
+      ii: 'Save a raid layout too: workers switch to it while raiders are at the entrance.', iii: 'Workers on muster posts work 10% harder.' },
+    gland:     { name: 'Alarm scent',    mould: 1,  desc: 'When mould passes the line you set, idle workers turn out as nurses. When raiders come, idle workers turn out as soldiers.',
+      ii: 'While the alarm is up, soldiers fight 10% harder.', iii: 'While the alarm is up, nurses scrub 20% more.' },
+    barracks:  { name: 'Gatehouse',      mould: 1,  desc: 'Opens the gate switch. Shut, nest defence doubles, but foragers stay in and no expeditions leave.',
+      ii: 'The gates shut by themselves while raiders are at the entrance, and open after.', iii: 'Shut gates triple nest defence instead of doubling it.' },
+    storeroom: { name: 'Spoil walls',    mould: 1,  desc: 'While the soil pits are full, diggers pile the extra soil up at the entrance as walls: nest defence that slowly crumbles.',
+      ii: 'Walls pile up twice as fast.', iii: 'In a raid the walls stand in front of the soldiers and take the first bites.' },
+    granary:   { name: 'Seed bank',      mould: 1,  desc: 'Plant seeds on a held bare-soil tile on the Map to turn it into grass. Shape the ground your wonders need.',
+      ii: 'Sowing costs half the seeds.', iii: 'Sow an open tile next to your land and it becomes yours.' },
+    library:   { name: 'Hall of records', mould: 1, desc: 'On the Lineage tab, pick one research. The next colony starts with it already learned.',
+      ii: 'Keep a second research.', iii: 'Also keep one chamber rework, at the level it had.' },
+  } as Record<string, { name: string; mould: number; desc: string; ii: string; iii: string }>,
   /** Numbers for the reworks above. */
   rw: {
-    infirmaryTime: 90, nurseClean: 0.5,        // seconds a sick worker spends in the Infirmary; nurses scrub +50%
-    draught: 3, draughtSoilTiles: 20,          // purification x3; soil from blown mould is full at this many held tiles
+    infirmaryTime: 90,                         // seconds a sick worker spends in the Infirmary
     farmClean: 0.4, farmFungus: 1,             // mould each Mould farm scrubs a second, fungus per mould
-    floodFood: 0.25, floodCooldown: 300,
+    floodCooldown: 300,
     alarmLines: [100, 250, 500, 750],
     wallPerDigger: 0.005, wallDecay: 0.005,     // walls a second per digger while soil is full; share lost a second
-    meadowSeed: 20,
+    meadowSeed: 20, claimSeed: 60, wallHp: 4,
+    /** Level II and III rates, by level (index 1 = I). */
+    nurseCleanBy: [0, 0.5, 0.75, 0.75], sickSpeed: [0, 1, 1, 2], draughtBy: [0, 3, 4, 5], draughtTilesBy: [0, 20, 20, 10],
+    farmBy: [0, 1, 1.5, 2], floodFoodBy: [0, 0.25, 0.1, 0.1], floodCdBy: [0, 1, 0.5, 0.5], musterWork: 0.1,
+    alarmSoldier: 0.1, alarmNurse: 0.2, gateMult: [0, 2, 2, 3], wallRateBy: [0, 1, 2, 2], sowCostBy: [0, 1, 0.5, 0.5],
   },
   storeGrowth: 1.08,
   storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],

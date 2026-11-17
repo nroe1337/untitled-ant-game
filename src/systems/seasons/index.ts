@@ -14,6 +14,8 @@ const WINGS = RESEARCH.ages.findIndex((a) => a.id === 'wings');
 export const seasonsOn = (ctx: Context) => RESEARCH.ages.findIndex((a) => a.id === ctx.state.research?.age) >= WINGS;
 const seasonIdx = (ctx: Context) => Math.floor(S(ctx).t / SEASONS.length) % SEASONS.list.length;
 const season = (ctx: Context) => SEASONS.list[seasonIdx(ctx)];
+/** The season now, or null before the year starts turning. */
+export const seasonId = (ctx: Context) => (seasonsOn(ctx) && ctx.state.seasons ? season(ctx).id : null);
 const left = (ctx: Context) => SEASONS.length - (S(ctx).t % SEASONS.length);
 const starved = (ctx: Context) => ctx.state.jobs?.starved ?? 0;
 const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
