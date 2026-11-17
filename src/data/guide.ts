@@ -157,7 +157,10 @@ export const GUIDE: GuidePage[] = [
       { head: 'Breed castes', do: [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers.',
-        'Each caste has a long road of 5 stages. Push one caste first.',
+        'Give a caste workers on the {Jobs} tab. On the {Castes} tab, choose where they stand: each caste has a home post and others you open with |jelly|.',
+        'Minims: the garden, the rival\'s walls (smaller raids, less chitin) or the trail (more rumours). Repletes: the larder, jelly pots, or a gift hung in a kin colony.',
+        'Majors: the gate, or a boat\'s deck. Weavers: the loom, a living bridge on a stream tile, or a leaf nest on grass you hold (both placed from the {Map}).',
+        'You never have enough for every post. Moved ants walk for half a minute before the new post counts.',
         'With majors and 80 expeditions behind you, [Pack mules] appears: up to 3 majors guard each trip and carry its rare finds.',
       ] },
       { head: 'Dig into the clay', do: [

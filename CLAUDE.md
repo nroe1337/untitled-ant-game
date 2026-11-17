@@ -38,6 +38,11 @@ new standing rule in a thread, add it here in the same pull request.
   can't ignore major mechanics like mould.
 - Only chambers with a real idea get a rework; there is no target count. Data: `NEST.reworks` and `NEST.rw` in balance.ts.
 
+## Castes
+- Castes work by posts (`CASTES.posts`): a caste is a few scarce ants, and upgrades open new places for them to stand
+  rather than making them stronger. New castes should follow this: a small pool, a home post, and posts in other tabs.
+- Stay on theme: grounded ant-colony mechanics, not sci-fi oddities, until the far end of the game calls for them.
+
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
 - `src/data/techs2.ts`: the wider tech tree, one row list per age.
@@ -54,6 +59,8 @@ new standing rule in a thread, add it here in the same pull request.
   reluctant job -10%. Shown in a box on the Queen tab, a banner at the first worker, and tags on Jobs.
 - Crowns (PR #208): Royal court opens the Crowns tab. The queen wears one of 8 crowns (chamber boosts, a rule, a drawback),
   levels 1-10 bought with jelly and kept through flights, 10 minute cooldown on changing. Placeholder art until Nate's sprites.
+- In review: caste posts (replaces the caste upgrade tracks). Still to do from that pitch: one new caste per later age
+  (wire ants for Settlement, sun carriers for Industry, daughter queens for Network) and a siege post for majors with stronghold tiles.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
   like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
   feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc
