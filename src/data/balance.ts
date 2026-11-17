@@ -147,7 +147,7 @@ export const NEST = {
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 6 } }, needs: 'tech:surface' },
-    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
+    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: "Foragers +4% food, +10 to the expedition party cap", mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
     airshaft:  { name: 'Purification chamber', base: { soil: 30, food: 10 }, growth: 1.36,           desc: 'Fresh air purifies 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 25, later: { at: 7, cost: { resin: 3 } }, needs: 'tech:ventilation' },
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
@@ -184,6 +184,9 @@ export const EXPEDITIONS = {
     { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9], chitin: [2, 4] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
+  /** Soft cap on party size: workers past it still go, but each adds only pastCap of the usual loot bonus.
+   *  The cap is base plus perRest for each Forager's rest. */
+  partyCap: { base: 20, perRest: 10, pastCap: 1 / 3 },
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
   rareChance: 0.05,         // chance of a rare find (amber)

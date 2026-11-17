@@ -67,6 +67,7 @@ export const GUIDE: GuidePage[] = [
         'Open the {Surface} tab and send expeditions.',
         'They bring back |twig| and |seed|, which are hard to get any other way.',
         'Spend the trail marks they earn on the {Surface} tab.',
+        'Bigger parties bring more, up to the party cap: 20 workers, plus 10 for each [Forager\'s rest] dug.',
       ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
       { head: 'Make pheromone', do: [
         'After a few expeditions, learn [Trail scent]. Put a few workers on Scout.',
