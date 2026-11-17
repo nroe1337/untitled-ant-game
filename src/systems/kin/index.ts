@@ -8,6 +8,7 @@ import { actionButton, el, progressBar, type ActionButton } from '../../core/ui'
 import { fmt } from '../../core/resources';
 import { KIN, WORLD, type KinQuest } from '../../data/balance';
 import { W, layout, ring, cxy } from '../map/world';
+import { giftAt, canPost, sendToPost, recallFrom, postOpen } from '../castes';
 
 interface Rel { trust: number; q: number; base?: number | null; bases?: (number | null)[] | null; giftCd: number; merged?: boolean }
 interface KinState { rel: Record<string, Rel>; count: Record<string, number>; lastWinters?: number }
@@ -54,6 +55,7 @@ function complete(ctx: Context, id: string, q: KinQuest) {
     if (!foe || !found(ctx).includes(foe) || rel(ctx, foe).merged) continue;
     const f = rel(ctx, foe);
     if (f.trust <= 0) continue;
+    if (giftAt(ctx, foe) === 'there') { ctx.log(`${kinDef(foe).name} hears you helped ${k.name}. Your replete hangs in their larder, and they let it pass.`, 'info'); continue; }
     f.trust = Math.max(0, f.trust - KIN.feudCost);
     ctx.log(`${kinDef(foe).name} hears you helped ${k.name}, and cools toward you.`, 'warn');
   }
@@ -98,6 +100,8 @@ export const kin: GameSystem = {
       const r = rel(ctx, id), t = temper(id);
       r.giftCd = Math.max(0, r.giftCd - dt);
       if (r.merged) { mods[t.gift.mod] = (mods[t.gift.mod] ?? 0) + t.gift.per; living += KIN.merge.living; continue; }
+      // a replete hung there as a gift (a caste post): trust grows by itself, as far as gifts can take it
+      if (giftAt(ctx, id) === 'there') r.trust = Math.max(r.trust, Math.min(giftCap(r), r.trust + (KIN.repleteTrust / 60) * dt));
       const tier = tierOf(r.trust);
       if (tier >= 2) mods[t.gift.mod] = (mods[t.gift.mod] ?? 0) + t.gift.per / 2;
       if (tier >= 3) trade += KIN.tradeFood;
@@ -117,6 +121,7 @@ export const kin: GameSystem = {
   panel: (() => {
     interface Card { id: string; root: HTMLElement; bar: ReturnType<typeof progressBar>; trust: HTMLElement; tier: HTMLElement; quest: HTMLElement; paths: HTMLElement[]; prog: HTMLElement; perks: HTMLElement; buttons: ActionButton[] }
     let list: HTMLElement, cards: Card[] = [], sig = '';
+    const hangs = new Map<string, HTMLButtonElement>();
     const card = (ctx: Context, id: string): Card => {
       const k = kinDef(id), t = temper(id), r = rel(ctx, id);
       const c = ctx.state.map ? layout(ctx.state.map.seed).findIndex((x) => x.kin === id) : -1;
@@ -143,7 +148,11 @@ export const kin: GameSystem = {
           ctx, label: 'Join as one colony', desc: `${KIN.merge.workers} workers now, +${KIN.merge.living} living space and their gift for every colony of your line. Their land stays theirs to work.`,
           enabled: () => true, onBuy: (cx) => merge(cx, id),
         }));
-        row.append(...buttons.map((b) => b.root));
+row.append(...buttons.map((b) => b.root));
+        const hang = el('button.ghost', { type: 'button', title: 'A replete from your colony hangs in their larder as a living gift. Trust grows slowly while she is there, and they do not cool when you help their enemy. One replete per colony. Opened on the Castes tab.' }) as HTMLButtonElement;
+        hang.addEventListener('click', () => { if (giftAt(ctx, id)) recallFrom(ctx, 'gift', id); else sendToPost(ctx, 'gift', id); });
+        hangs.set(id, hang);
+        row.append(hang);
       }
       const head = el('div.row', {}, el('h3', {}, k.name), el('span.muted', {}, `${k.temper}, ${c >= 0 ? `cell ${cxy(c).join(',')}, ${ring(c)} from the garden` : 'far away'}`));
       const root = el('div.kin', {}, head, el('div.row', {}, bar.root, trust), tier, q, ...paths, prog, row, perks);
@@ -189,7 +198,14 @@ export const kin: GameSystem = {
           rows.push(['Likes', t.likes]);
           if (foes.length) rows.push(['Feuds with', foes.map((f) => kinDef(f).name + (found(ctx).includes(f) ? '' : ' (not yet found)')).join(', ')]);
           c.perks.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
-          c.buttons.forEach((b) => b.update(ctx));
+c.buttons.forEach((b) => b.update(ctx));
+          const hang = hangs.get(c.id);
+          if (hang) {
+            const at = giftAt(ctx, c.id);
+            hang.hidden = !!r.merged || !postOpen(ctx, 'gift');
+            hang.textContent = at === 'there' ? 'Call the replete home' : at === 'walking' ? 'A replete is on her way (call her back)' : 'Hang a replete here';
+            hang.disabled = !at && !canPost(ctx, 'gift', c.id);
+          }
         }
       },
     };
