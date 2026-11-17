@@ -216,6 +216,8 @@ export function tileButton(opts: {
     root: wrap,
     update(ctx: Context) {
       btn.update(ctx);
+      // a resource shows in the Stores as soon as something on screen asks for it, so its tooltip says where it comes from
+      if (!wrap.hidden && wrap.offsetParent !== null) for (const r of Object.keys(opts.costs())) if (ctx.res.has(r)) ctx.res.get(r).seen = true;
       if (opts.count) { badge.textContent = String(opts.count()); badge.hidden = !badge.textContent; }
       if (tipOwner === wrap) {
         if (!wrap.isConnected || wrap.offsetParent === null) hide();

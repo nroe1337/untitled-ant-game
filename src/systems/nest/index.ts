@@ -418,7 +418,7 @@ export const nest: GameSystem = {
         const rwCtl = el('div.reworkctl', {}, floodWrap, gateWrap, alarmWrap);
         root.classList.add('nestpanel');
         root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox, rwCtl,
-          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), roomName, scroller);
+          el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), roomName), scroller);
       },
       update(_root, ctx) {
         const slots = queueSlots(ctx);
@@ -448,7 +448,7 @@ export const nest: GameSystem = {
         progress.textContent = bits.join(' · ');
         drawNest(canvas, ctx);
         // name the chamber last clicked, with its rework and level
-        roomName.textContent = selected ? roomLabel(ctx, selected) + (picked != null ? ' (click another chamber to swap)' : '') : 'Click a chamber to see what it is.';
+        roomName.textContent = selected ? roomLabel(ctx, selected) + (picked != null ? ' (click another chamber to swap)' : '') : 'Click a chamber to see what it is. Click two in turn to swap them.';
       },
     };
   })(),

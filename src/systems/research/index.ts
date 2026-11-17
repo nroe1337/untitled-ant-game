@@ -2,7 +2,7 @@
 // Each tech sets the flag "tech:<id>". Other systems gate jobs, chambers, upgrades and tabs on those flags.
 import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip, tileButton } from '../../core/ui';
-import { COLONY, RESEARCH } from '../../data/balance';
+import { COLONY, NEST, RESEARCH } from '../../data/balance';
 import { dockQueue, fits, runQueue } from '../../core/queue';
 import { runUpgradeQueue, upgradeItem, upgradeName } from '../../core/upgrades';
 
@@ -12,8 +12,11 @@ const IDS = Object.keys(TECHS);
 const done = (ctx: Context, id: string) => ctx.flags.has('tech:' + id);
 const available = (ctx: Context, id: string) => {
   const t = TECHS[id];
-  return !done(ctx, id) && t.needs.every((n) => done(ctx, n)) && (!t.flag || ctx.flags.has(t.flag)) && revealed(ctx, id);
+  return !done(ctx, id) && t.needs.every((n) => done(ctx, n)) && (!t.flag || ctx.flags.has(t.flag)) && revealed(ctx, id) && gateOpen(ctx, t.age);
 };
+/** Each early age converges on one gate research (RESEARCH.gates). Nothing of the next age shows until it is learned. */
+const gateBefore = (age?: string) => { const i = RESEARCH.ages.findIndex((a) => a.id === age); return i > 0 ? RESEARCH.gates[RESEARCH.ages[i - 1].id] : undefined; };
+const gateOpen = (ctx: Context, age?: string) => { const g = gateBefore(age); return !g || done(ctx, g); };
 /** Hidden milestones: some research stays out of sight until the colony has done something. */
 const MS = RESEARCH.milestones;
 const revealed = (ctx: Context, id: string) => !MS[id] || ctx.flags.has('idea:' + id);
@@ -33,6 +36,7 @@ function counter(ctx: Context, what: string) {
     case 'starved': return st.jobs?.starved ?? 0;
     case 'techs': return IDS.filter((t) => done(ctx, t)).length;
     default:
+      if (what.startsWith('built:')) return st.nest?.built?.[what.slice(6)] ?? 0;
       if (what.startsWith('terrain:')) { const k = what.slice(8); return (st.map?.tiles as { o: string | null; t: string }[] | undefined)?.filter((t) => t.o === 'you' && t.t === k).length ?? 0; }
       if (what.startsWith('full:')) { const r = what.slice(5); return ctx.res.has(r) && ctx.res.cap(r) > 0 ? ctx.res.amt(r) / ctx.res.cap(r) * 100 : 0; } return ctx.res.has(what) ? ctx.res.amt(what) : 0;
   }
@@ -48,7 +52,7 @@ function hintOf(id: string) {
   if (!m) return 'The colony needs more workers before anyone thinks of it.';
   const [what, , who] = m;
   const how = HINTS[what] ?? (what.startsWith('terrain:') ? 'hold more of a kind of ground on the Map'
-    : what.startsWith('full:') ? `fill your ${what.slice(5)} stores` : `gather more ${what}`);
+    : what.startsWith('full:') ? `fill your ${what.slice(5)} stores` : what.startsWith('built:') ? `dig more ${(NEST.chambers as Record<string, { name: string }>)[what.slice(6)]?.name ?? 'chamber'}s` : `gather more ${what}`);
   return `${who} are mulling something over. Hint: ${how}.`;
 }
 /** Reveal research whose milestone has been reached (and whose other needs are met), with a Chronicle line. */
@@ -240,6 +244,7 @@ export const research: GameSystem = {
         const slots = researchSlots(ctx), q = RQ(ctx);
         const cur = RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id);
         const open = new Map<string, number>(); // age -> research you can see and learn now
+        const ready = new Set<string>(); // ages with research you can afford right now (the tab's dot)
         for (const id of IDS) {
           const r = rows.get(id)!, show = available(ctx, id), n = nodes.get(id)!, learned = done(ctx, id);
           const t = TECHS[id], shut = !!t.flag && !ctx.flags.has(t.flag) && !learned;
@@ -251,6 +256,7 @@ export const research: GameSystem = {
           n.root.hidden = shut || (!learned && !show && !t.needs.every((x) => done(ctx, x)));
           if (!show) continue;
           open.set(TECHS[id].age, (open.get(TECHS[id].age) ?? 0) + 1);
+          if (bigEnough(ctx, id) && ctx.res.canAfford(TECHS[id].cost as Record<string, number>)) ready.add(TECHS[id].age!);
           r.root.classList.toggle('queues', slots > q.length && bigEnough(ctx, id) && !q.includes(id));
           r.update(ctx);
         }
@@ -270,7 +276,7 @@ export const research: GameSystem = {
           const complete = left.length === 0;
           pg.tab.classList.toggle('on', picked === age.id);
           pg.tab.classList.toggle('complete', complete);
-          pg.tab.classList.toggle('new', i < cur && waiting > 0 && picked !== age.id);
+          pg.tab.classList.toggle('new', i < cur && ready.has(age.id) && picked !== age.id);
           pg.tab.title = complete ? 'Everything learned' : waiting ? `${waiting} to research` : 'Nothing to research yet';
           pg.page.hidden = picked !== age.id;
           if (pg.page.hidden) return;
@@ -300,6 +306,6 @@ export function currentAge(ctx: Context) {
   const seen = (i: number) => IDS.some((id) => TECHS[id].age === ages[i].id && (done(ctx, id) || available(ctx, id)));
   const learned = (i: number) => IDS.some((id) => TECHS[id].age === ages[i].id && done(ctx, id));
   let best = 0;
-  for (let i = 1; i < ages.length; i++) { if (seen(i) && learned(i - 1)) best = i; else break; }
+  for (let i = 1; i < ages.length; i++) { const g = gateBefore(ages[i].id); if (seen(i) && (g ? done(ctx, g) : learned(i - 1))) best = i; else break; }
   return ages[best];
 }

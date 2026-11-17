@@ -478,9 +478,11 @@ abandonWrap = el('div.row', {}, abandon);
         skyUps = upgradeList(ctx, () => (S(ctx).skyUps ??= {}), SKY_UPS);
         gardenBox = el('div.mapview', {},
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
-          el('div.row.camctl', {}, el('p.controls', {}, 'Drag the map or use the arrow keys to look around. Click a tile to inspect it. Click the small map to jump.'), homeBtn),
-          cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap), lookBox,
-          el('h3', {}, 'Selected tile'), shArt, info, claimWrap, buildWrap, plantWrap, abandonWrap, postWrap, campWrap,
+          cam.root,
+          el('p.controls.mapkeys', {}, 'Drag or use the arrow keys to look around. Click a tile to inspect it, or the small map to jump.'),
+          el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), homeBtn),
+          summary, claimLine, el('div.row', {}, autoWrap), lookBox,
+          el('h3', {}, 'Selected tile'), shArt, info, buildWrap, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
         );
         // ---- the world ----

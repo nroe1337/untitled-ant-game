@@ -103,14 +103,14 @@ export const JOBS = {
   /** With Deep diggers, each digger also brings up this much clay a second. */
   diggerClay: 0.012,
   /** Buried finds research: each digger strikes something about once per this many seconds (Deep finds: 3x as often). */
-  findEvery: 2500, deepFindMult: 3,
+  findEvery: 5000, deepFindMult: 3,
   finds: [
-    { weight: 5, res: 'food', amt: [4, 9], text: 'A digger strikes a fat root. The colony eats.' },
-    { weight: 3, res: 'soil', amt: [8, 16], text: 'A tunnel wall gives way into a loose pocket of soil.' },
-    { weight: 2, res: 'seed', amt: [1, 3], text: 'A digger turns up a buried seed.' },
-    { weight: 4, res: 'clay', amt: [10, 25], deep: true, text: 'Deep down, a digger breaks into a seam of soft clay.' },
-    { weight: 2, res: 'chitin', amt: [2, 5], deep: true, text: 'A digger uncovers the shell of a long-dead beetle.' },
-  ] as { weight: number; res: string; amt: [number, number]; deep?: boolean; text: string }[],
+    { weight: 5, res: 'food', amt: [4, 9], text: ['A digger strikes a fat root. The colony eats.', 'A digger breaks into a cache of old, dry grubs.', 'Sweet sap seeps from a cut root. The diggers lap it up.', 'A digger finds a fallen berry, half sunk in the soil.', 'A buried seed head, still soft. Food for a few.'] },
+    { weight: 3, res: 'soil', amt: [8, 16], text: ['A tunnel wall gives way into a loose pocket of soil.', 'An old worm burrow collapses. Easy digging.', 'The diggers hit a seam of soft, crumbling earth.', 'A pocket of sand pours into the tunnel.'] },
+    { weight: 2, res: 'seed', amt: [1, 3], text: ['A digger turns up a buried seed.', 'A forgotten seed store, left by some other colony.', 'Seeds dropped down a crack, long ago.'] },
+    { weight: 4, res: 'clay', amt: [10, 25], deep: true, text: ['Deep down, a digger breaks into a seam of soft clay.', 'Wet clay oozes from the tunnel floor.', 'A vein of red clay runs through the deep soil.'] },
+    { weight: 2, res: 'chitin', amt: [2, 5], deep: true, text: ['A digger uncovers the shell of a long-dead beetle.', 'An old wing case, buried and forgotten.', 'The husk of a cicada, still whole in the clay.'] },
+] as { weight: number; res: string; amt: [number, number]; deep?: boolean; text: string[] }[],
   clayCap: 200,
   scout: { pheromone: 0.02 },
   elder: { knowledge: 0.03 },
@@ -202,7 +202,7 @@ export const NEST = {
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 6 } }, needs: 'tech:surface' },
-    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: "Foragers +4% food, +5 to the expedition party cap", mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
+    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: "Foragers +4% food, raises the expedition party cap (less with each)", mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
     airshaft:  { name: 'Purification chamber', base: { soil: 30, food: 10 }, growth: 1.36,           desc: 'Fresh air purifies 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 25, later: { at: 7, cost: { resin: 3 } }, needs: 'tech:ventilation' },
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
@@ -240,8 +240,8 @@ export const EXPEDITIONS = {
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** Soft cap on party size: workers past it still go, but each adds only pastCap of the usual loot bonus.
-   *  The cap is base plus perRest for each Forager's rest. */
-  partyCap: { base: 10, perRest: 5, pastCap: 1 / 3 },
+   *  The cap is base plus perRest x the square root of Forager's rests (5, 10, 12, 14, 15... 24 at 15 rests): each rest adds less. */
+  partyCap: { base: 5, perRest: 5, pastCap: 1 / 3 },
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
   rareChance: 0.05,         // chance of a rare find (amber)
@@ -511,16 +511,16 @@ export const RESEARCH = {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Warming chamber, the Nurses\' den and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
-    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
+    royal:      { name: 'Royal court',       age: 'conquest', cost: { knowledge: 700, food: 600 },       pop: 0.25, needs: ['vaults', 'campaigns'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge and houses more elders.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 25 chambers.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['routine', 'shelving'], desc: 'Unlocks the Purification chamber, which scrubs a slow trickle of mould.' },
-    grooming:   { name: 'Grooming',          age: 'conquest', cost: { knowledge: 540, food: 450 },      needs: ['halls', 'ventilation'],             desc: 'Nurses learn to groom the walls: each scrubs 12 chambers\' worth of mould instead of 8.' },
+    grooming:   { name: 'Grooming',          age: 'conquest', cost: { knowledge: 540, food: 450 },      needs: ['lining'],             desc: 'Nurses learn to groom the walls: each scrubs 12 chambers\' worth of mould instead of 8.' },
     shelving:   { name: 'Packed walls',      age: 'forage', cost: { knowledge: 150, soil: 220 },        needs: ['widetunnels'],  desc: 'Food stores, Soil pits and Silk lofts hold 25% more.' },
     songs:      { name: 'Memory songs',      age: 'forage', cost: { knowledge: 160, food: 180 },         needs: ['elders', 'shelving'], desc: 'Halls of elders hold 25% more knowledge.' },
-    lining:     { name: 'Resin lining',      age: 'conquest', cost: { knowledge: 340, resin: 30 },        needs: ['resin', 'shelving', 'songs'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
+    lining:     { name: 'Resin lining',      age: 'conquest', cost: { knowledge: 340, resin: 30 },        needs: ['halls'], desc: 'Food stores, Soil pits, Silk lofts and Halls of elders hold another 50% more.' },
     teaching:   { name: 'Teaching',          age: 'dirt', cost: { knowledge: 50 },                    needs: ['elders'], flag: 'legacy:flown', desc: 'Opens the Techniques tab.' },
     worksongs:  { name: 'Work songs',        age: 'forage', cost: { knowledge: 140, food: 120 },          needs: ['teaching', 'scouting'], flag: 'legacy:flown', desc: 'Unlocks the Marching songs and Load bearing techniques.' },
     sharedlabour: { name: 'Shared labour',   age: 'forage', cost: { knowledge: 180, twig: 20 },           needs: ['worksongs', 'shelving'], flag: 'legacy:flown', desc: 'Unlocks the Mandible grit and Shared stomach techniques.' },
@@ -534,10 +534,10 @@ export const RESEARCH = {
     plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 200 },          needs: ['shelving'],             desc: 'A building queue with 2 slots. Queued chambers are dug as soon as you can afford them.' },
     studyplans: { name: 'Study plans',       age: 'forage', cost: { knowledge: 420, food: 300 },          needs: ['plans', 'songs'],      desc: 'A research queue with 2 slots. Queued research is learned as soon as you can afford it.' },
     ledgers:    { name: 'Work ledgers',      age: 'settlement', cost: { knowledge: 650, paper: 60 },    needs: ['papercraft', 'studyplans'], desc: 'An upgrade queue with 2 slots. Queued upgrades are bought as soon as you can afford them.' },
-    frontier:   { name: 'Frontier sense',    age: 'conquest', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['cartography'], desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
+    frontier:   { name: 'Frontier sense',    age: 'conquest', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['resin'], desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 160 },          needs: ['seeds', 'shelving'],   desc: 'Unlocks the Midden.' },
-    cartography:{ name: 'Mapping',           age: 'conquest', cost: { knowledge: 260, pheromone: 50 },    pop: 0.15, needs: ['seeds', 'plans'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
-    martial:    { name: 'Mandible drill',    age: 'conquest', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['cartography'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
+    cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 125 },   pop: 0.15, needs: ['ventilation', 'plans', 'sanitation'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
+    martial:    { name: 'Mandible drill',    age: 'conquest', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['resin'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
     fortify:    { name: 'Fortification',     age: 'conquest', cost: { knowledge: 450, twig: 90 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      age: 'conquest', cost: { knowledge: 480, chitin: 20 },        needs: ['fortify'],             desc: 'Unlocks the Hall of husks.' },
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 380, seed: 20 },           needs: ['seeds', 'sanitation'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
@@ -546,7 +546,7 @@ export const RESEARCH = {
     castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
-    renovation: { name: 'Chamber craft',     age: 'conquest', cost: { knowledge: 600, soil: 800 },   needs: ['ventilation'], desc: 'Opens chamber reworks in the Nest: rebuild every chamber of a type into something new, for good. Most reworks gather more mould; the cleaners\' reworks fight it.' },
+    renovation: { name: 'Chamber craft',     age: 'wings', cost: { knowledge: 600, soil: 800 },   needs: ['royal'], desc: 'Opens chamber reworks in the Nest: rebuild every chamber of a type into something new, for good. Most reworks gather more mould; the cleaners\' reworks fight it.' },
     deepdig:    { name: 'Deep diggers',      age: 'wings', cost: { knowledge: 420, soil: 600 },        needs: ['royal'], desc: 'Diggers tunnel down past the soil into the clay. Each digger also brings up a little clay. Unlocks the Clay hall.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 100, food: 120 },          needs: ['worksongs'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
     galleons:   { name: 'Wax hulls',         age: 'conquest', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
@@ -557,7 +557,7 @@ export const RESEARCH = {
     pavement:   { name: 'Street fighting',   age: 'settlement', cost: { knowledge: 380, crumbs: 90 },  needs: ['nightwork', 'martial'], desc: 'Soldiers can clear pavement ants from town sites.' },
     papercraft: { name: 'Paper nests',       age: 'settlement', cost: { knowledge: 450, paper: 45 },   needs: ['tasting'],            desc: 'Chewed paper makes walls. Opens the study and satellite nests.' },
     metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 700, grease: 35 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
-    campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'cartography'], desc: 'Soldiers can march on enemy tiles.' },
+    campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'frontier'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, TechDef>,
   /**
    * Hidden milestones (Nate, Nov 14): these research stay out of sight until the colony has done something,
@@ -569,11 +569,11 @@ export const RESEARCH = {
    */
   milestones: {
     // Age of Dirt
-    storage: ['rooms', 3, 'Your diggers'], brood: ['born', 5, 'The queen'], elders: ['full:knowledge', 80, 'Your elders'],
+    storage: ['rooms', 3, 'Your diggers'], brood: ['born', 5, 'The queen'], elders: ['rooms', 6, 'Your elders'],
     buriedfinds: ['rooms', 4, 'Your diggers'], broodrhythm: ['born', 15, 'Your nurses'], faminelaw: ['starved', 1, 'Your nurses'],
     // Age of Forage
     routine: ['peak', 25, 'The queen'], widetunnels: ['rooms', 12, 'Your diggers'], deepgalleries: ['rooms', 18, 'Your diggers'],
-    plans: ['rooms', 15, 'Your diggers'], shelving: ['full:food', 80, 'Your foragers'], songs: ['full:knowledge', 90, 'Your elders'],
+    plans: ['rooms', 15, 'Your diggers'], shelving: ['built:store', 6, 'Your foragers'], songs: ['built:library', 5, 'Your elders'],
     studyplans: ['techs', 12, 'Your elders'], ventilation: ['rooms', 16, 'Your nurses'], sanitation: ['born', 100, 'Your nurses'],
     scouting: ['runs', 3, 'The expedition leaders'], seeds: ['seed', 5, 'Your foragers'], worksongs: ['runs', 5, 'Your foragers'],
     // Age of Conquest
@@ -586,7 +586,7 @@ export const RESEARCH = {
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
     packmules: ['runs', 80, 'The expedition leaders'], talltales: ['rumours', 3, 'The expedition leaders'],
-    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'], renovation: ['rooms', 60, 'Your diggers'],
+    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'], renovation: ['rooms', 90, 'Your diggers'],
     // Age of Wings: the Swarm Spire. Each stage needs its own research, which shows as the Spire rises.
     packedearth: ['spire', 0, 'Your diggers'], resinvault: ['spire', 1, 'Your builders'], winglore: ['spire', 3, 'Your nurses'], eveningwinds: ['spire', 4, 'Your builders'],
     scaffolding: ['spire', 1, 'Your builders'], pulleys: ['spire', 2, 'Your builders'], weatherwatch: ['spire', 4, 'Your scouts'],
@@ -594,6 +594,8 @@ export const RESEARCH = {
     stoneposts: ['terrain:stone', 10, 'Your soldiers'], dewwells: ['terrain:water', 6, 'Your nurses'], warmslabs: ['terrain:paved', 6, 'Your nurses'],
   } as Record<string, [string, number, string]>,
   /** Ages organise the tech tree. Each prestige layer opens later ages. */
+  /** The one research each age converges on. Nothing of the next age shows until it is learned. */
+  gates: { dirt: 'surface', forage: 'cartography', conquest: 'royal' } as Record<string, string>,
   ages: [
     { id: 'dirt', name: 'Age of Dirt', note: 'One queen in the dark soil, and her first brood.' },
     { id: 'forage', name: 'Age of Forage', note: 'Up into the daylight near the entrance: trails, seeds, and the first resin.' },
@@ -612,6 +614,8 @@ export const RESEARCH = {
  */
 Object.assign(RESEARCH.techs, MORE_TECHS);
 
+/** Every research's knowledge cost is multiplied by this (Nate, Nov 17: research a little faster). */
+export const RESEARCH_DISCOUNT = 0.9;
 export const LATE_KNOWLEDGE = { from: 200, mult: 1.3 };
 /** Knowledge costs climb with each age, on top of the figures written above. */
 /** Each age's cheapest research is lifted toward this. */
@@ -628,7 +632,8 @@ for (const t of Object.values(RESEARCH.techs)) {
   k *= (AGE_KNOWLEDGE[t.age] ?? 1) * m;
   const floor = AGE_KNOWLEDGE_FLOOR[t.age] ?? 0;
   if (k < floor) k += (floor - k) * 0.75; // cheap research is pulled most of the way up to the floor, keeping its order
-  t.cost.knowledge = t.age === 'dirt' ? Math.round(k) : Math.round(k / 10) * 10;
+  k *= RESEARCH_DISCOUNT;
+  t.cost.knowledge = t.age === 'dirt' ? Math.max(1, Math.round(k)) : Math.round(k / 10) * 10;
 }
 
 /** Fungus farming. Beds come from the Fungus garden chamber. */

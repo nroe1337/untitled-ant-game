@@ -107,7 +107,7 @@ function buriedFind(ctx: Context, diggerSeconds: number) {
   if (!f) return;
   const n = Math.round(f.amt[0] + Math.random() * (f.amt[1] - f.amt[0]));
   ctx.res.lump(f.res, n);
-  ctx.log(`${f.text} (+${n} ${ctx.res.get(f.res).name.toLowerCase()})`);
+  ctx.log(`${f.text[Math.floor(Math.random() * f.text.length)]} (+${n} ${ctx.res.get(f.res).name.toLowerCase()})`);
 }
 
 /** Chamber reworks live on the nest's state (Muster hall, Alarm scent, Gatehouse). */

@@ -8,6 +8,7 @@ import { queueDock, updateDock, projectDock } from './queue';
 import { icon } from './sprites';
 import { RES_TINT, watchResourceNames } from './restint';
 import { RES_DESC } from '../data/balance';
+import { HELP } from '../data/help';
 import { saveLocal, readLocal, applySave, clearLocal, exportText, importText, writeRebirth } from './save';
 
 interface Tab {
@@ -404,7 +405,7 @@ export class Game {
         // tabs already open when the save loads stay quiet; ones that open during play get a dot
         if (!this.active) this.show(s.id); else if (!this.firstRender && !s.panel.quiet) btn.classList.add('new');
       }
-      if (tab && !tab.mounted) { s.panel.mount(tab.body, ctx); tab.mounted = true; }
+      if (tab && !tab.mounted) { s.panel.mount(tab.body, ctx); tab.mounted = true; this.addHelp(s.id, tab.body); }
       if (tab && this.active === s.id) {
         s.panel.update?.(tab.body, ctx);
         tab.known = unlockKeys(tab.body);
@@ -471,6 +472,23 @@ export class Game {
   private storesBtn!: HTMLButtonElement;
   private storesOpen = false;
   private layoutEl!: HTMLElement;
+
+  /** The ? on a screen: a small button by its italic line that opens a few plain lines, with a link to the Guide. */
+  private addHelp(id: string, body: HTMLElement) {
+    const lines = HELP[id];
+    if (!lines) return;
+    const link = el('button.ghost.small', { type: 'button', onclick: () => { if (this.tabs.has('guide')) this.show('guide'); } }, 'More in the Guide');
+    const box = el('div.helpbox', { hidden: true }, ...lines.map((l) => el('p', {}, l)), link);
+    const btn = el('button.helpbtn', { type: 'button', title: 'What is this screen?', 'aria-label': 'What is this screen?', onclick: () => { box.hidden = !box.hidden; link.hidden = !this.tabs.has('guide'); } }, '?');
+    const flavor = body.querySelector('p.flavor');
+    if (flavor) {
+      flavor.classList.add('hashelp'); flavor.append(btn);
+      let top: Element = flavor; // the box goes under the flavour line's block, never beside it in a row
+      while (top.parentElement && top.parentElement !== body) top = top.parentElement;
+      top.after(box);
+    }
+    else body.prepend(el('div.helprow', {}, btn), box);
+  }
 
   private show(id: string) {
     this.active = id;
