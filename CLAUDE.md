@@ -27,6 +27,13 @@ new standing rule in a thread, add it here in the same pull request.
 - Some variety should come from luck, not choice: the brood temperament is rolled for every colony (never the
   same twice running) and nudges the best worker mix. Run-to-run variance like this must stay mild and never brick a run.
 
+## Chamber reworks (Chamber craft)
+- A rework is one-way and applies to every chamber of that type at once (ones dug later too). Never per chamber.
+- Some reworks raise mould. The reworks of mould-fighting chambers (nurses' den, purification, midden, cistern...)
+  must be strong enough to offset it when the player builds a balanced nest. Players design their own base, but
+  can't ignore major mechanics like mould.
+- Only chambers with a real idea get a rework; there is no target count. Data: `NEST.reworks` and `NEST.rw` in balance.ts.
+
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
 - `src/data/techs2.ts`: the wider tech tree, one row list per age.
@@ -36,6 +43,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
   queen boss, rumours and pack mules, tile wonders (PR #203), and the Swarm Spire batch (PR #204: stage gates,
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
+- Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks (Infirmary,
+  Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
 - Brood temperament (`BROOD.temperaments` in balance.ts): each colony rolls one at random. Keen job +15%, reluctant job -10%.
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
   like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
