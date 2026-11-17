@@ -472,7 +472,7 @@ function endBattle(ctx: Context) {
   const chest = clean && sp >= 1 ? chestOf(w) : null; // light bait brings no chest
   if (chest) { giveChest(ctx, chest); parts.push(`A ${WAR.chests.kinds[chest].name.toLowerCase()} is carried in`); }
   // s.wave now counts raids repelled (plus one): milestones and research read it
-  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: w }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Raid repelled (${s.wave - 1} so far)`); }
+  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: w, kind: b.kind }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Raid repelled (${s.wave - 1} so far)`); }
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];
   if (honours) lines.push(`+${honours} war honour${honours > 1 ? 's' : ''}`);
@@ -546,6 +546,7 @@ function finishCampaign(ctx: Context) {
   const hon = WAR.honours.campaign * (t.core ? 3 : 1);
   giveHonours(ctx, hon);
   got.push(`${hon} war honours`);
+  ctx.bus.emit('war:taken', { owner });
   ctx.bus.emit('map:capture', { x: c.target % MAP.cols, y: Math.floor(c.target / MAP.cols) });
   ctx.log(`Victory. The tile is ours, with ${got.join(', ')}. ${lost} soldiers fell.`);
   showResult(ctx, 'The campaign', { win: true, title: 'Victory', lines: ['The tile is ours', ...got.map((g) => '+' + g), ...(lost ? [`${lost} soldiers fell`] : [])] });

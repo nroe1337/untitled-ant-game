@@ -6,7 +6,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip } from '../../core/ui';
 import { BROOD, COLONY, EXPEDITIONS, RESEARCH } from '../../data/balance';
 
-interface Run { kind: 'flight' | 'migration'; time: number; peak: number; techs?: string[] }
+interface Run { kind: 'flight' | 'migration'; time: number; peak: number; techs?: string[]; temper?: string }
 interface StatsState {
   /** Game seconds, all colonies, and this colony. */
   played: number; colonyTime: number;
@@ -42,6 +42,10 @@ const trophies = (ctx: Context): string[] => st(ctx).champion?.trophies ?? [];
 const accords = (ctx: Context): string[] => st(ctx).archive?.bought ?? [];
 const job = (ctx: Context, id: string): number => st(ctx).jobs?.assigned?.[id] ?? 0;
 const chambers = (ctx: Context, id: string) => ((st(ctx).nest?.order ?? []) as string[]).filter((x) => x === id).length;
+const reworks = (ctx: Context): number[] => Object.values((st(ctx).nest?.reworks ?? {}) as Record<string, number | boolean>).map((l) => (l === true ? 1 : Number(l) || 0)).filter((l) => l > 0);
+const strongholds = (ctx: Context) => ((st(ctx).map?.tiles ?? []) as { sh?: string; o?: string }[]).filter((t) => t.sh && t.o === 'you').length;
+const wonderBest = (ctx: Context) => Math.max(0, ...Object.values((st(ctx).wonders?.levels ?? {}) as Record<string, number>));
+const kinRel = (ctx: Context): { q?: number; trust?: number }[] => Object.values(st(ctx).kin?.rel ?? {});
 const techs = (ctx: Context) => [...ctx.flags].filter((f) => f.startsWith('tech:')).map((f) => f.slice(5));
 type TechDef = { cost: Record<string, number>; needs: string[]; pop?: number };
 const TECHS = RESEARCH.techs as unknown as Record<string, TechDef>;
@@ -132,7 +136,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'flawless', name: 'Flawless', desc: 'Repel 10 raids in a row without losses.', test: (c) => T(c).cleanInRow >= 10 },
   { id: 'husks', name: 'Shell collector', desc: 'Build a Hall of husks from raider chitin.', test: (c) => chambers(c, 'husks') >= 1 },
   { id: 'nowalls', name: 'No walls needed', desc: 'Repel a raid with no nest defence.', hidden: true, test: () => false },
-  { id: 'peace', name: 'Peace in our time', desc: 'Go 30 minutes without a raid after finding the rival.', test: (c) => T(c).quiet >= 1800 },
+  { id: 'peace', name: 'Peace in our time', desc: 'Kill the rival queen.', test: (c) => c.flags.has('rival:defeated') },
   { id: 'streak10', name: 'Ten in a row', desc: 'The champion wins 10 fights in a row.', test: (c) => (st(c).champion?.streak ?? 0) >= 10 },
   // Research, lineage and the wider world
   { id: 'bigenough', name: 'Big enough', desc: 'Learn a research that needed a large colony.', test: (c) => techs(c).some((id) => (TECHS[id]?.pop ?? 0) > 0) },
@@ -147,7 +151,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'shepherds', name: 'Shepherds', desc: 'Keep 50 herd animals at once.', test: (c) => Object.values((st(c).husbandry?.herds ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0) >= 50 },
   { id: 'seaworthy', name: 'Seaworthy', desc: 'Send boats on 10 voyages.', test: (c) => archiveTotal(c, 'tide') >= 10 },
   { id: 'crumbs', name: 'Crumbs from the table', desc: 'Bring home your first town crumb.', test: (c) => c.res.has('crumbs') && c.res.amt('crumbs') >= 1 },
-  { id: 'sweet', name: 'Sweet tooth', desc: 'Fill your sugar stores.', test: (c) => c.res.has('sugar') && c.res.amt('sugar') >= c.res.cap('sugar') },
+  { id: 'sweet', name: 'Sweet tooth', desc: 'Have 10 royal sugar at once.', test: (c) => c.res.has('sugar') && c.res.amt('sugar') >= 10 },
   { id: 'nation', name: 'A nation of ants', desc: 'Hold 10 regions of the continent.', test: (c) => ((st(c).supercolony?.regions ?? []) as { owner?: string }[]).filter((r) => r.owner === 'you').length >= 10 },
   // Odd and playful
   { id: 'antfarm', name: 'Ant farm', desc: 'Leave the colony paused for 10 minutes.', hidden: true, test: () => false },
@@ -182,6 +186,50 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'jackpot', name: 'Jackpot', desc: 'Have exactly 777 soil.', hidden: true, test: (c) => Math.floor(c.res.amt('soil')) === 777 },
   { id: 'leet', name: 'Leet', desc: 'Have exactly 1,337 knowledge.', hidden: true, test: (c) => Math.floor(c.res.amt('knowledge')) === 1337 },
   { id: 'answer', name: 'The answer', desc: 'Have exactly 42 Resting chambers.', hidden: true, test: (c) => chambers(c, 'tunnel') === 42 },
+  // Up to the first migration (Nov 17 pass): every system before the town gets at least one feat
+  { id: 'moods', name: 'Every kind of child', desc: 'Raise colonies under all six brood temperaments.', test: (c) => {
+    const seen = new Set(S(c).runs.map((r) => r.temper).concat(st(c).brood?.temper));
+    return Object.keys(BROOD.temperaments).every((k) => seen.has(k));
+  } },
+  { id: 'spotless', name: 'Spotless', desc: 'Have no mould with 40 or more chambers.', test: (c) => (st(c).nest?.order?.length ?? 0) >= 40 && c.res.amt('mould') < 1 },
+  { id: 'overgrown', name: 'Something growing in here', desc: 'Let mould reach 750.', hidden: true, test: (c) => c.res.amt('mould') >= 750 },
+  { id: 'winter', name: 'Through the frost', desc: 'Come through a winter without a worker starving.', test: (c) => (st(c).seasons?.winters ?? 0) >= 1 },
+  { id: 'winter5', name: 'Hard winters', desc: 'Come through 5 winters whole in one colony.', test: (c) => (st(c).seasons?.winters ?? 0) >= 5 },
+  { id: 'rework', name: 'Chamber craft', desc: 'Rework a chamber type.', test: (c) => reworks(c).length >= 1 },
+  { id: 'rework3', name: 'Master builder', desc: 'Raise a chamber rework to level III.', test: (c) => reworks(c).some((l) => l >= 3) },
+  { id: 'rework5', name: 'Five trades', desc: 'Rework 5 chamber types in one colony.', test: (c) => reworks(c).length >= 5 },
+  { id: 'crown', name: 'Crowned', desc: 'Put a crown on the queen.', test: (c) => !!st(c).crowns?.worn },
+  { id: 'crown10', name: 'Heavy is the head', desc: 'Raise a crown to level 10.', test: (c) => Object.values((st(c).crowns?.lv ?? {}) as Record<string, number>).some((l) => l >= 10) },
+  { id: 'posts', name: 'Every ant in its place', desc: 'Open 4 caste posts.', test: (c) => Object.values((st(c).castes?.open ?? {}) as Record<string, boolean>).filter(Boolean).length >= 4 },
+  { id: 'bridge', name: 'Living bridge', desc: 'Hold a stream with a bridge of weavers.', test: (c) => (st(c).castes?.bridges?.length ?? 0) >= 1 },
+  { id: 'rumour', name: 'Just a rumour', desc: 'Pick a rumoured place clean.', test: () => false },
+  { id: 'rumour10', name: 'Tall tales', desc: 'Hear 10 rumours in one colony.', test: (c) => (st(c).expeditions?.heard ?? 0) >= 10 },
+  { id: 'ivory', name: 'Beetle ivory', desc: 'Bring home beetle ivory.', test: (c) => c.res.has('ivory') && c.res.amt('ivory') >= 1 },
+  { id: 'grounds', name: 'Lay of the land', desc: 'Hold every kind of ground on the map at once.', test: (c) => {
+    const mine = ((st(c).map?.tiles ?? []) as { t: string; o?: string }[]).filter((t) => t.o === 'you');
+    return ['grass', 'soil', 'stone', 'water', 'paved'].every((k) => mine.some((t) => t.t === k));
+  } },
+  { id: 'campaign', name: 'Marching orders', desc: 'Take a tile in a campaign.', test: () => false },
+  { id: 'spider', name: 'Eight legs fewer', desc: 'Kill the spider.', test: (c) => c.flags.has('spider:defeated') },
+  { id: 'warband', name: 'They shall not pass', desc: 'Repel a great warband with nobody getting in.', test: () => false },
+  { id: 'night', name: 'Night watch', desc: 'Repel a night raid with nobody getting in.', test: () => false },
+  { id: 'skulls', name: 'Skulls on the wall', desc: 'Take 3 skulls.', test: (c) => (st(c).war?.skulls?.length ?? 0) >= 3 },
+  { id: 'hold1', name: 'A foothold', desc: 'Take a stronghold.', test: (c) => strongholds(c) >= 1 },
+  { id: 'hold3', name: 'Three fortresses', desc: 'Hold all three strongholds.', test: (c) => strongholds(c) >= 3 },
+  { id: 'garrison', name: 'Manning the walls', desc: 'Man a stronghold with majors.', test: (c) => (st(c).castes?.forts?.length ?? 0) >= 1 },
+  { id: 'blueprint', name: 'Plans in the dust', desc: 'Find a wonder blueprint.', test: (c) => (st(c).wonders?.found?.length ?? 0) >= 1 },
+  { id: 'blueprints', name: 'Every plan', desc: 'Find all four wonder blueprints.', test: (c) => (st(c).wonders?.found?.length ?? 0) >= 4 },
+  { id: 'wonder1', name: 'A wonder of the garden', desc: 'Crown a wonder.', test: (c) => wonderBest(c) >= 1 },
+  { id: 'wonder5', name: 'A way of life', desc: 'Raise a wonder to level 5.', test: (c) => wonderBest(c) >= 5 },
+  { id: 'fine', name: 'A fine evening', desc: 'Send a nuptial flight on a fine evening.', test: () => false },
+  { id: 'traits3', name: 'Her mother\'s daughters', desc: 'Give your line 3 princess traits.', test: (c) => (st(c).lineage?.traits?.length ?? 0) >= 3 },
+  { id: 'gene', name: 'Bred true', desc: 'Fix a gene in the Genome.', test: (c) => Object.values((st(c).genome?.expr ?? {}) as Record<string, number>).some((n) => n >= 4) },
+  { id: 'sky10', name: 'Above the garden', desc: 'Uncover 10 cells of the world.', test: (c) => (st(c).map?.world?.seen?.length ?? 0) >= 10 },
+  { id: 'kinquest', name: 'A favour done', desc: 'Finish a quest for a kin colony.', test: (c) => kinRel(c).some((r) => (r.q ?? 0) >= 1) },
+  { id: 'sworn', name: 'Sworn kin', desc: 'Reach 80 trust with a kin colony.', test: (c) => kinRel(c).some((r) => (r.trust ?? 0) >= 80) },
+  { id: 'settle3', name: 'Across the water', desc: 'Found 3 settlements across the water.', test: (c) => (st(c).waters?.founded ?? 0) >= 3 },
+  { id: 'shoo', name: 'Shoo', desc: 'Your herders drive off a predator.', test: (c) => (st(c).husbandry?.driven ?? 0) >= 1 },
+  { id: 'perks10', name: 'Old blood', desc: 'Buy 10 levels of lineage perks.', test: (c) => Object.values((st(c).lineage?.perks ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0) >= 10 },
 ];
 
 function earn(ctx: Context, id: string) {
@@ -216,6 +264,12 @@ function listen(ctx: Context) {
     if (e.lvl !== undefined && e.level !== undefined && e.lvl >= e.level + 10) earn(ctx, 'goliath');
   });
   ctx.bus.on('queen:lay', () => { T(ctx).laid++; });
+  ctx.bus.on('rumour:done', () => earn(ctx, 'rumour'));
+  ctx.bus.on('war:taken', () => earn(ctx, 'campaign'));
+  ctx.bus.on('war:won', (e: { kind?: string }) => {
+    if (e.kind === 'warband') earn(ctx, 'warband');
+    if (e.kind === 'night') earn(ctx, 'night');
+  });
   ctx.bus.on('jobs:change', () => { T(ctx).jobChanges++; });
   // Real time, since the game clock stops while paused.
   if (typeof window !== 'undefined') {
@@ -271,7 +325,7 @@ export const stats: GameSystem = {
   keep(ctx) {
     const s = S(ctx);
     const kind: Run['kind'] = st(ctx).migration?.migrating ? 'migration' : 'flight';
-    const run: Run = { kind, time: s.colonyTime, peak: s.colonyPeak, techs: techs(ctx) };
+    const run: Run = { kind, time: s.colonyTime, peak: s.colonyPeak, techs: techs(ctx), temper: st(ctx).brood?.temper };
     const runs = [...s.runs, run];
     const feats = { ...s.feats };
     if (kind === 'flight' && starvedNow(ctx) === 0 && !feats.fed) feats.fed = s.played;
@@ -280,6 +334,8 @@ export const stats: GameSystem = {
       if (!ctx.flags.has('tech:royal') && feats.shortreign === undefined) feats.shortreign = s.played;
       if (s.colonyTime >= 10 * 3600 && feats.longreign === undefined) feats.longreign = s.played;
       if (t.laid === 0 && feats.patient === undefined) feats.patient = s.played;
+      const lin = st(ctx).lineage;
+      if (feats.fine === undefined && (lin?.eveLeft ?? 0) > 0 && (lin?.fine || lin?.traits?.includes('sky'))) feats.fine = s.played;
     }
     return { ...s, runs, feats, t: freshTrack(t), starved: s.starved + starvedNow(ctx), colonyTime: 0, colonyPeak: 0 } satisfies StatsState;
   },
