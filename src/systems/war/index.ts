@@ -17,7 +17,7 @@ const B = WAR.battle;
 const F = WAR.fortifications;
 
 /** One stack per kind of ant on each side: a count, and the hit points left on the ant at the front of it. */
-type Kind = 'major' | 'soldier' | 'worker' | 'queen' | 'wall' | 'raider' | 'brute' | 'rqueen' | 'thrall';
+type Kind = 'major' | 'soldier' | 'worker' | 'queen' | 'wall' | 'mound' | 'raider' | 'brute' | 'rqueen' | 'thrall' | 'wasp';
 interface Stack { kind: Kind; n: number; hp: number; max: number; atk: number; start: number; hit?: number; fell?: number }
 interface Battle {
   /** ours, in the order the raiders bite them: majors, then soldiers, then rallied workers */
@@ -32,6 +32,8 @@ interface Battle {
   cry?: number;
   /** A fight at the rival's home tile against their queen (a campaign), not a raid at our entrance. */
   boss?: Boss;
+  /** Wasps that followed the army home from their nest (a stronghold): not a wave, and they fly over the barricade. */
+  wasps?: boolean;
   /** seconds until the next raider slips in, once nobody holds the entrance */
   slip?: number;
   t?: number;
@@ -55,6 +57,7 @@ interface Boss {
 }
 type Move = 'brood' | 'acid' | 'scent' | 'cry' | 'burrow';
 interface Campaign { target: number; army: number; elapsed: number; duration: number }
+type ShKind = keyof typeof WAR.strongholds.kinds;
 interface WarState {
   rivalArmy: number;
   nextRaid: number;           // seconds until raiders arrive
@@ -63,6 +66,8 @@ interface WarState {
   rallyCd: number;
   forts: Record<string, number>;
   campaign: Campaign | null;
+  /** Strongholds: walls left on a termite mound under siege (by tile), and how far the antlions have undermined enemy ground (0 to sapMax). */
+  siege?: Record<number, number>; sap?: number;
   raids: number;
   /** The next wave you can provoke. Each wave is harder; a clean win moves you up. */
   wave: number;
@@ -174,7 +179,7 @@ const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + ma
 const power = (ctx: Context) => 1 + ctx.mods.get('soldierPower');
 const defence = (ctx: Context) => ctx.mods.get('defence');
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
-const tiles = (ctx: Context) => (ctx.state.map?.tiles ?? []) as { t: string; o: string | null; seen: boolean; core?: boolean }[];
+const tiles = (ctx: Context) => (ctx.state.map?.tiles ?? []) as { t: string; o: string | null; seen: boolean; core?: boolean; sh?: ShKind }[];
 const rivalTiles = (ctx: Context) => Math.max(1, tiles(ctx).filter((t) => t.o === 'rival').length);
 const waveOf = (ctx: Context) => S(ctx).wave ?? 1;
 const waveComp = (w: number) => ({
@@ -243,6 +248,8 @@ function startBattle(ctx: Context) {
   const spoil = reworkLevel(ctx, 'storeroom') >= 3 ? Math.floor((nest?.walls ?? 0) * NEST.rw.wallHp) : 0;
   const barricade0 = us[0]?.kind === 'wall' ? us[0].hp : 0;
   if (spoil > 0) { if (us[0]?.kind === 'wall') { us[0].hp += spoil; us[0].max += spoil; } else us.push(stack('wall', 1, spoil, 0)); }
+  // a manned termite mound stands in front of everything: fresh walls every raid, and the garrison bites from them
+  if (manned(ctx, 'termite')) us.unshift(stack('mound', 1, SK.termite.moundHp, SK.termite.moundAtk));
   us.push(...army(ctx));
   // Silk crown: some nurses come to the entrance and fight as workers
   const nurses = Math.floor((ctx.state.jobs?.assigned?.nurse ?? 0) * ctx.mods.get('nurseGuard'));
@@ -308,7 +315,7 @@ function stepBattle(ctx: Context, dt: number) {
   const dbl = ctx.mods.get('cairnDouble'), acid = ctx.mods.get('cairnAcid');
   const fighters = (x: Stack) => x.kind === 'major' || x.kind === 'soldier';
   const fightDmg = ours.reduce((t, x) => t + (fighters(x) ? x.n * x.atk * power(ctx) * cry * (1 + dbl) : 0), 0);
-  const outDmg = ours.reduce((t, x) => t + (fighters(x) ? 0 : x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)) * (x.kind === 'wall' ? 1 : cry)), 0) + fightDmg + towers;
+  const outDmg = ours.reduce((t, x) => t + (fighters(x) ? 0 : x.n * x.atk * (x.kind === 'worker' ? 1 : power(ctx)) * (x.kind === 'wall' || x.kind === 'mound' ? 1 : cry)), 0) + fightDmg + towers;
   if ((dbl || acid) && fightDmg > 0) {
     b.cfxT = (b.cfxT ?? 1) - dt;
     if (b.cfxT <= 0) { b.cfxT = 1.2 + Math.random(); b.cfx = acid && (!dbl || Math.random() < 0.5) ? 'acid' : 'double'; b.cfxN = (b.cfxN ?? 0) + 1; }
@@ -341,6 +348,7 @@ function stepBattle(ctx: Context, dt: number) {
     const carriers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
     const save = Math.min(B.rescueMax, carriers * B.rescuePerWorker);
     biteSide(b.us, inDmg * P, (x, n) => {
+      if (x.kind === 'mound') { ctx.log('The raiders break through the termite mound.', 'warn'); return; }
       if (x.kind === 'wall') { ctx.log('The husk barricade gives way.', 'warn'); return; }
       if (x.kind === 'worker') { b.workersLost += n; return; }
       if (x.kind === 'queen') { ctx.log('The queen is driven back into the royal chamber, hurt but alive.', 'warn'); return; }
@@ -384,6 +392,7 @@ function stepBattle(ctx: Context, dt: number) {
 function endBattle(ctx: Context) {
   const s = S(ctx), b = s.battle!;
   s.battle = null;
+  if (b.wasps) { endWasps(ctx, b); return; }
   s.raids++;
   const wall = b.us.find((x) => x.kind === 'wall');
   if (b.spoil) { // the spoil walls took the first bites: whatever is left of them goes back to the nest
@@ -442,10 +451,24 @@ function endBattle(ctx: Context) {
 }
 
 // ---- campaigns ----
+// ---- strongholds: three rare fortress tiles, each with its own catch (see WAR.strongholds) ----
+const SK = WAR.strongholds.kinds;
+/** An untaken stronghold on this tile, if any. */
+const strongholdAt = (ctx: Context, i: number): ShKind | undefined => { const t = tiles(ctx)[i]; return t?.sh && t.o !== 'you' ? t.sh : undefined; };
+/** Is the stronghold of this kind ours and manned by majors (the Garrison post)? */
+const manned = (ctx: Context, kind: ShKind) => ((ctx.state.castes?.forts ?? []) as number[]).some((i) => tiles(ctx)[i]?.sh === kind && tiles(ctx)[i].o === 'you');
+const bridgeBeside = (ctx: Context, i: number) => {
+  const x = i % MAP.cols, y = Math.floor(i / MAP.cols);
+  return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < MAP.cols && y + dy < MAP.rows && tilePost(ctx, 'bridge', (y + dy) * MAP.cols + x + dx) === 'there');
+};
+const wallsLeft = (ctx: Context, i: number) => S(ctx).siege?.[i] ?? SK.termite.walls;
 function enemyStrength(ctx: Context, i: number) {
   const t = tiles(ctx)[i];
-  if (t.o === 'spider') return WAR.spiderPower * (t.core ? 1.5 : 0.6);
-  if (t.o === 'rival') return (S(ctx).rivalArmy / rivalTiles(ctx)) * (t.core ? 3 : 1) * WAR.tileDefence.rival + 4;
+  const sh = strongholdAt(ctx, i);
+  if (sh) return sh === 'termite' ? wallsLeft(ctx, i) : SK[sh].power;
+  const sap = 1 - (S(ctx).sap ?? 0); // manned antlion pits undermine enemy ground
+  if (t.o === 'spider') return WAR.spiderPower * (t.core ? 1.5 : 0.6) * sap;
+  if (t.o === 'rival') return ((S(ctx).rivalArmy / rivalTiles(ctx)) * (t.core ? 3 : 1) * WAR.tileDefence.rival + 4) * sap;
   return Infinity;
 }
 const adjacentToYou = (ctx: Context, i: number) => {
@@ -458,7 +481,7 @@ const adjacentToYou = (ctx: Context, i: number) => {
 const validTarget = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = tiles(ctx)[i];
-  return !!t && t.seen && (t.o === 'rival' || t.o === 'spider') && adjacentToYou(ctx, i);
+  return !!t && t.seen && (t.o === 'rival' || t.o === 'spider' || !!strongholdAt(ctx, i)) && adjacentToYou(ctx, i);
 };
 
 /** The share of an army lost on a campaign or assault: a third less with the rival queen's skull. */
@@ -467,6 +490,7 @@ function finishCampaign(ctx: Context) {
   const s = S(ctx), c = s.campaign!;
   s.campaign = null;
   const t = tiles(ctx)[c.target];
+  if (strongholdAt(ctx, c.target)) { assaultStronghold(ctx, c); return; }
   const enemy = enemyStrength(ctx, c.target);
   if (t.core && t.o === 'rival') { startBoss(ctx, c.target, enemy); return; }
   const ours = c.army * power(ctx) * rand(0.85, 1.15);
@@ -479,6 +503,7 @@ function finishCampaign(ctx: Context) {
   const loot = WAR.loot[owner] ?? {};
   const got = Object.entries(loot).map(([r, [lo, hi]]) => { const n = Math.round(rand(lo, hi) * (t.core ? 4 : 1) * (hasMilestone(ctx, 'spoils') ? 2 : 1)); ctx.res.add(r, n); return `${n} ${r}`; });
   if (owner === 'rival') s.rivalArmy = Math.max(5, s.rivalArmy - enemy * 0.5);
+  if (s.sap) { s.sap = 0; got.push('the antlions start digging again'); }
   if (t.core) giveChest(ctx, 'royal');
   const hon = WAR.honours.campaign * (t.core ? 3 : 1);
   giveHonours(ctx, hon);
@@ -487,6 +512,68 @@ function finishCampaign(ctx: Context) {
   ctx.log(`Victory. The tile is ours, with ${got.join(', ')}. ${lost} soldiers fell.`);
   showResult(ctx, 'The campaign', { win: true, title: 'Victory', lines: ['The tile is ours', ...got.map((g) => '+' + g), ...(lost ? [`${lost} soldiers fell`] : [])] });
   if (t.core && owner === 'spider') { addTrophy(ctx, 'spider'); s.spiderDefeated = true; ctx.flags.add('spider:defeated'); ctx.log('The spider is dead. Its web hangs empty in the wind.'); }
+}
+
+/** A march on a stronghold. Each kind has its own catch. */
+function assaultStronghold(ctx: Context, c: Campaign) {
+  const s = S(ctx), kind = strongholdAt(ctx, c.target)!, K = SK[kind], lines: string[] = [];
+  let army = c.army, pit = 0;
+  if (kind === 'antlion' && !bridgeBeside(ctx, c.target)) { pit = Math.min(army, SK.antlion.pit); army -= pit; lines.push(`${pit} soldiers slid into the pits`); }
+  if (kind === 'antlion' && !pit) lines.push('The living bridge carried the army over the pits');
+  const ours = army * power(ctx) * rand(0.85, 1.15);
+  let win: boolean;
+  if (kind === 'termite') {
+    const left = Math.max(0, wallsLeft(ctx, c.target) - ours);
+    (s.siege ??= {})[c.target] = left;
+    win = left <= 0;
+    if (!win) lines.push(`The walls are cracked: ${Math.round((left / SK.termite.walls) * 100)}% still stands`);
+  } else win = ours >= (K as { power: number }).power;
+  const lost = Math.min(c.army, pit + Math.ceil(army * WAR.campaignLoss * lossMult(ctx) * (win || kind === 'termite' ? 1 : 2)));
+  ctx.res.add('ant', -lost);
+  loseFighters(ctx, lost);
+  if (lost) lines.push(`${lost} soldiers fell`);
+  if (win) {
+    if (s.siege) delete s.siege[c.target];
+    giveHonours(ctx, WAR.strongholds.honours);
+    ctx.bus.emit('map:capture', { x: c.target % MAP.cols, y: Math.floor(c.target / MAP.cols) });
+    ctx.log(`${K.name} taken. Post 2 majors there on the Map to put it to work. +${WAR.strongholds.honours} war honours.`, 'story');
+    showResult(ctx, K.name, { win: true, title: 'The stronghold falls', lines: [`+${WAR.strongholds.honours} war honours`, 'Man it with 2 majors to use it', ...lines] });
+  } else {
+    ctx.log(kind === 'termite' ? `The army comes home from the termite mound. ${lines.join('. ')}.` : `The assault on the ${K.name.toLowerCase()} fails. ${lines.join('. ')}.`, 'warn');
+    showResult(ctx, K.name, { win: kind === 'termite', title: kind === 'termite' ? 'The siege goes on' : 'Thrown back', lines });
+  }
+  if (kind === 'wasp') startWasps(ctx, win);
+}
+/** The wasps follow the army home: a fight at the entrance with no barricade in the way. */
+function startWasps(ctx: Context, last: boolean) {
+  const s = S(ctx), W = SK.wasp;
+  if (s.battle) return;
+  const us = army(ctx);
+  s.battle = { us, them: [stack('wasp', W.swarm, W.hp, W.atk)], kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0,
+    soldiersAtStart: us.reduce((t, x) => t + x.n, 0), t: 0, wasps: true };
+  ctx.log(last ? 'The last of the wasps follow the army home, flying over the barricade.' : 'Wasps follow the army home, flying over the barricade.', 'warn');
+  ctx.announce('Wasps', 'They followed the army home and came in over the barricade. Watch the fight on the War tab.', { small: true, kicker: 'The wasp nest' });
+  if (autoCry(ctx) || ctx.mods.get('fierceGuards') > 0) warCry(ctx);
+  ctx.ping('war');
+}
+function endWasps(ctx: Context, b: Battle) {
+  const fell = b.soldiersLost + (b.majorsLost ?? 0);
+  const soldierLoss = Math.min(fell, Math.ceil(b.soldiersAtStart * B.maxSoldierLoss));
+  const workerLoss = Math.min(b.workersLost + b.breaches, 4);
+  const lost = soldierLoss + workerLoss;
+  if (lost) {
+    ctx.res.add('ant', -lost);
+    ctx.bus.emit('war:fallen', { n: lost });
+    const bigs = fell ? Math.round(soldierLoss * (b.majorsLost ?? 0) / fell) : 0;
+    loseFighters(ctx, soldierLoss - bigs);
+    const a = ctx.state.jobs?.assigned as Record<string, number> | undefined;
+    if (a && bigs) a.major = Math.max(0, (a.major ?? 0) - bigs);
+  }
+  const chitin = b.kills * B.brute.chitin;
+  if (chitin) ctx.res.add('chitin', chitin);
+  const lines = [`${b.kills} wasps killed`, ...(chitin ? [`+${chitin} chitin`] : []), ...(soldierLoss ? [`${soldierLoss} soldiers fell`] : []), ...(workerLoss ? [`${workerLoss} workers stung`] : [])];
+  ctx.log(`The wasps are gone. ${lines.join(', ')}.`, b.breaches ? 'warn' : 'story');
+  showResult(ctx, 'The wasps', { win: !b.breaches, title: b.breaches ? 'They got in' : 'Driven off', lines });
 }
 
 // ---- the rival queen: her home tile is a fight on the battle screen ----
@@ -626,10 +713,12 @@ export const war: GameSystem = {
     if (s.battle && s.rallyCd <= 0 && autoCry(ctx)) warCry(ctx);
     if (!s.battle && s.wall != null) s.wall = Math.min(wallMax(ctx), s.wall + (wallMax(ctx) * dt) / WAR.barricadeRegrow);
     refill(ctx);
+    if (s.battle) stepBattle(ctx, dt);
+    ctx.mods.set('noWipe', 'wasps', manned(ctx, 'wasp') ? 1 : 0);
+    s.sap = manned(ctx, 'antlion') ? Math.min(SK.antlion.sapMax, (s.sap ?? 0) + (SK.antlion.sapMax / SK.antlion.sapTime) * dt) : 0;
     if (!s.rivalDefeated) {
       s.rivalArmy = Math.min(rivalTiles(ctx) * WAR.rivalArmyPerTile, s.rivalArmy + WAR.rivalGrowthPerSecond * dt);
-      if (s.battle) stepBattle(ctx, dt);
-      else {
+      if (!s.battle) {
         s.nextRaid = Math.max(0, s.nextRaid - dt); // now: cooldown before you can provoke again
         if (s.autoProvoke && hasMilestone(ctx, 'drums') && s.nextRaid <= 0 && !s.campaign && ctx.res.canAfford(WAR.provokeCost)) {
           ctx.res.spend(WAR.provokeCost);
@@ -748,7 +837,7 @@ export const war: GameSystem = {
         } else if (s.rivalDefeated) status.textContent = 'The rival is gone. The entrance is quiet.';
         else if (s.battle) {
           const b = s.battle, sum = (xs: Stack[]) => xs.reduce((t, x) => t + x.n, 0);
-          const fighters = sum(b.us.filter((x) => x.kind !== 'worker' && x.kind !== 'wall')), helpers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
+          const fighters = sum(b.us.filter((x) => x.kind !== 'worker' && x.kind !== 'wall' && x.kind !== 'mound')), helpers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
           status.textContent = `Raid in progress: ${sum(b.them)} of them left, ${fighters} of ${b.soldiersAtStart} fighters standing` + (helpers ? `, ${helpers} workers helping` : '') + `, ${b.kills} killed` + (b.rescued ? `, ${b.rescued} wounded carried in` : '') + (b.breaches ? `, ${b.breaches} got in` : '') + '.' + (b.cry ? ` War cry: ${Math.ceil(b.cry / ctx.speed)}s left.` : s.rallyCd > 0 ? ` War cry ready in ${Math.ceil(s.rallyCd / ctx.speed)}s.` : '');
         } else status.textContent = 'The rival only attacks when you provoke it. ' +
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
@@ -771,7 +860,10 @@ export const war: GameSystem = {
         } else campBar.set(0);
         if (sel != null && tiles(ctx)[sel]) {
           const ok = validTarget(ctx, sel);
-          rows.push(['Target', ok ? `${tiles(ctx)[sel].o} ground${tiles(ctx)[sel].core ? ' (their home)' : ''}` : 'Not an enemy tile next to your territory']);
+          const sh = strongholdAt(ctx, sel);
+          rows.push(['Target', ok ? (sh ? SK[sh].name : `${tiles(ctx)[sel].o} ground${tiles(ctx)[sel].core ? ' (their home)' : ''}`) : sh ? `${SK[sh].name}: claim land next to it first` : 'Not an enemy tile next to your territory']);
+          if (sh) rows.push(['The catch', SK[sh].catch + (sh === 'antlion' && bridgeBeside(ctx, sel) ? ' A bridge stands ready.' : '')]);
+          if (!sh && (s.sap ?? 0) > 0.005) rows.push(['Antlions', `Enemy ground is undermined: ${Math.round((s.sap ?? 0) * 100)}% weaker`]);
           if (ok) rows.push(['Enemy strength vs yours', `about ${Math.round(enemyStrength(ctx, sel))} vs ${fmt(soldiers(ctx) * power(ctx))}`]);
         }
         campInfo.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
@@ -781,7 +873,7 @@ export const war: GameSystem = {
 };
 
 // ---- the entrance: one ant for each stack, with the front ant's health and the count over its head ----
-const NAMES: Record<Kind, string> = { queen: 'Queen', major: 'Majors', soldier: 'Soldiers', worker: 'Workers', wall: 'Barricade', raider: 'Raiders', brute: 'Brutes', rqueen: 'Rival queen', thrall: 'Turned' };
+const NAMES: Record<Kind, string> = { queen: 'Queen', major: 'Majors', soldier: 'Soldiers', worker: 'Workers', wall: 'Barricade', mound: 'Termite mound', wasp: 'Wasps', raider: 'Raiders', brute: 'Brutes', rqueen: 'Rival queen', thrall: 'Turned' };
 const LEGS_A = ['...#..#..#......', '..#..#..#.......'];
 const LEGS_B = ['...#..#..#......', '....#..#..#.....'];
 /** Pixel ants, facing right. '#' is body. */
@@ -840,14 +932,14 @@ const CW = 18, CH = 10;
 function drawAnt(cv: HTMLCanvasElement, x: Stack, theirs: boolean, fighting: boolean, cairn: [number, number, number] = [0, 0, 0]) {
   const c = setup(cv);
   c.clearRect(0, 0, CW, CH);
-  const shape = SHAPES[x.kind === 'major' ? 'major' : x.kind === 'brute' || x.kind === 'queen' ? 'brute' : x.kind === 'rqueen' ? 'rqueen' : x.kind === 'wall' ? 'wall' : 'small'];
+  const shape = SHAPES[x.kind === 'major' ? 'major' : x.kind === 'brute' || x.kind === 'queen' || x.kind === 'wasp' ? 'brute' : x.kind === 'rqueen' ? 'rqueen' : x.kind === 'wall' || x.kind === 'mound' ? 'wall' : 'small'];
   const t = performance.now() / 1000;
   const step = fighting ? Math.floor(t * 6) % 2 : 0;
-  const lunge = fighting && x.kind !== 'wall' && x.n > 0 && Math.floor(t * 2.5 + (theirs ? 0.5 : 0)) % 2 ? 1 : 0;
-  const still = x.kind === 'wall';
+  const lunge = fighting && x.kind !== 'wall' && x.kind !== 'mound' && x.n > 0 && Math.floor(t * 2.5 + (theirs ? 0.5 : 0)) % 2 ? 1 : 0;
+  const still = x.kind === 'wall' || x.kind === 'mound';
   const rows = still ? [...shape, '################', '################'] : [...shape, ...(step ? LEGS_B : LEGS_A)];
   const top = CH - rows.length;
-  let col = theirs ? (x.kind === 'rqueen' ? mix(PAL.rival, PAL.amber, 0.35) : x.kind === 'thrall' ? mix(PAL.you, PAL.rival, 0.55) : PAL.rival) : x.kind === 'worker' ? PAL.bone : x.kind === 'queen' ? PAL.amber : x.kind === 'wall' ? mix(PAL.rival, PAL.bg, 0.3) : PAL.you;
+  let col = theirs ? (x.kind === 'rqueen' ? mix(PAL.rival, PAL.amber, 0.35) : x.kind === 'thrall' ? mix(PAL.you, PAL.rival, 0.55) : x.kind === 'wasp' ? '#f2c14e' : PAL.rival) : x.kind === 'worker' ? PAL.bone : x.kind === 'queen' ? PAL.amber : x.kind === 'wall' ? mix(PAL.rival, PAL.bg, 0.3) : PAL.you;
   if (x.n <= 0) col = mix(col, PAL.bg, 0.65);
   else if ((x.hit ?? 0) > 0.12) col = mix(col, PAL.bone, 0.55);
   c.fillStyle = col;

@@ -7,7 +7,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
-import { MAP, NEST, WONDERS } from '../../data/balance';
+import { MAP, NEST, WAR, WONDERS } from '../../data/balance';
 import { reworkLevel, openNeighbour } from '../nest';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { terrainAt, gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
@@ -21,7 +21,9 @@ const TOWN_SITE_IDS = Object.keys(TOWN.sites);
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
 export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 /** w: a wonder stands (or is being built) here; dm: the outpost is a daughter mound (Great Mound epic). */
-export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean }
+/** sh: a stronghold stands here (see WAR.strongholds). Untaken it has no owner; taken it is a fort of yours. */
+export type Stronghold = keyof typeof WAR.strongholds.kinds;
+export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean; sh?: Stronghold }
 interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
 interface MapState { lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
@@ -76,6 +78,30 @@ function generate(seed: number, features = true): Tile[] {
   return tiles;
 }
 
+/**
+ * Strongholds: one of each kind, placed once per garden (older saves get them too) from the map's seed.
+ * They sit on free ground a fair march from the nest and apart from each other. The antlion pits lie by the
+ * stream, so a living bridge can stand beside them.
+ */
+function placeStrongholds(s: MapState) {
+  if (s.tiles.some((t) => t.sh)) return;
+  const R = rng(s.seed + 77), SH = WAR.strongholds, [nx, ny] = MAP.nest;
+  const far = (i: number) => { const [x, y] = xy(i); return Math.max(Math.abs(x - nx), Math.abs(y - ny)); };
+  const byWater = (i: number) => { const [x, y] = xy(i); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => inside(x + dx, y + dy) && s.tiles[idx(x + dx, y + dy)].t === 'water'); };
+  const placed: number[] = [];
+  const apart = (i: number) => placed.every((j) => { const [x, y] = xy(i), [px, py] = xy(j); return Math.max(Math.abs(x - px), Math.abs(y - py)) >= SH.apart; });
+  const free = (i: number) => { const t = s.tiles[i]; return t.o === null && !t.core && !t.w && t.t !== 'water' && t.t !== 'paved'; };
+  const want: Record<Stronghold, (i: number) => boolean> = { antlion: byWater, termite: (i) => s.tiles[i].t !== 'grass', wasp: (i) => s.tiles[i].t === 'grass' };
+  for (const kind of ['antlion', 'termite', 'wasp'] as Stronghold[]) {
+    const ok = (i: number, strict: boolean) => free(i) && apart(i) && far(i) >= SH.ring[0] && (!strict || (far(i) <= SH.ring[1] && want[kind](i)));
+    let pool = s.tiles.map((_, i) => i).filter((i) => ok(i, true));
+    if (!pool.length) pool = s.tiles.map((_, i) => i).filter((i) => ok(i, false));
+    if (!pool.length) continue;
+    const i = pool[Math.floor(R() * pool.length)];
+    s.tiles[i].sh = kind; placed.push(i);
+  }
+}
+
 function reveal(ctx: Context, cx: number, cy: number, r: number) {
   const s = S(ctx);
   for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++) {
@@ -85,6 +111,7 @@ function reveal(ctx: Context, cx: number, cy: number, r: number) {
       t.seen = true;
       if (t.o === 'rival' && t.core) ctx.log('Scouts map the rival mound itself. It bristles with guards.', 'warn');
       if (t.o === 'spider' && t.core) ctx.log('A web the size of a field. Something waits at its heart.', 'warn');
+      if (t.sh && t.o !== 'you') { const K = WAR.strongholds.kinds[t.sh]; ctx.log(`Scouts find a stronghold: ${K.name.toLowerCase()}. ${K.catch}`, 'story'); ctx.announce(K.name, 'A stronghold. Select it on the Map to see what it takes, and what it gives.', { small: true, kicker: 'Scouts report' }); }
     }
   }
 }
@@ -200,7 +227,7 @@ const besideYours = (ctx: Context, i: number) => { const [x, y] = xy(i); return 
 const postSpot = (ctx: Context, id: 'bridge' | 'nest', i: number | null) => {
   if (i == null) return false;
   const t = S(ctx).tiles[i];
-  return id === 'bridge' ? t.seen && t.t === 'water' && t.o === null && besideYours(ctx, i) : t.t === 'grass' && t.o === 'you' && !t.core && !t.w;
+  return id === 'bridge' ? t.seen && t.t === 'water' && t.o === null && besideYours(ctx, i) : t.t === 'grass' && t.o === 'you' && !t.core && !t.w && !t.sh;
 };
 const outposts = (ctx: Context) => S(ctx).tiles.filter((t) => t.o === 'you' && t.outpost).length;
 /** Claims get dearer in a straight line with the land you hold, so the whole map is reachable in the end. */
@@ -213,7 +240,7 @@ const outpostCost = (ctx: Context): Costs =>
 const claimTime = (ctx: Context, i: number) => Math.round(MAP.claimTime + MAP.claimTimePerTile * homeDist(ctx, i));
 /** Stream tiles open with Leaf rafts; patio slabs once soldiers can clear the pavement ants (Street fighting). */
 const openGround = (ctx: Context, t: Tile) =>
-  t.o === null ? t.t !== 'water' || ctx.flags.has('tech:rafts') : t.o === 'humans' && !t.core && ctx.flags.has('tech:pavement');
+  t.sh && t.o !== 'you' ? false : t.o === null ? t.t !== 'water' || ctx.flags.has('tech:rafts') : t.o === 'humans' && !t.core && ctx.flags.has('tech:pavement');
 export const canClaim = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = S(ctx).tiles[i];
@@ -300,6 +327,8 @@ export const map: GameSystem = {
   tick(ctx, dt) {
     const mine = owned(ctx);
     const s = S(ctx);
+    placeStrongholds(s);
+    if (!ctx.flags.has('stronghold:held') && mine.some((t) => t.sh)) ctx.flags.add('stronghold:held');
     delete ctx.busy.outposts;
     delete ctx.busy.claiming;
     ctx.busy['job:scout'] = (s.claiming?.ants ?? 0) + (s.world?.sortie?.ants ?? 0); // scouts out claiming or flying don't make pheromone
@@ -336,7 +365,8 @@ export const map: GameSystem = {
   panel: (() => {
     let autoBox: HTMLInputElement, autoWrap: HTMLElement;
     let abandonWrap: HTMLElement, lookBox: HTMLElement, lookText: HTMLElement, postWrap: HTMLElement;
-    const postBtns = {} as Record<'bridge' | 'nest', HTMLButtonElement>;
+    const postBtns = {} as Record<'bridge' | 'nest' | 'fort', HTMLButtonElement>;
+    let shArt: HTMLCanvasElement;
     const lookBtns = new Map<string, HTMLButtonElement>();
     let cam: Camera, ccam: Camera, lastLooking = -1;
     let wbox: ReturnType<typeof wonderTileBox>;
@@ -381,7 +411,7 @@ export const map: GameSystem = {
         build = actionButton({
           ctx, label: 'Build an outpost', costs: () => outpostCost(ctx),
           desc: `+${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, tile yields x3`,
-          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && t.o === 'you' && !t.core && !t.outpost; },
+          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && t.o === 'you' && !t.core && !t.outpost && !t.sh; },
           onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.outpost = true; basesChanged(); c.log(`An outpost rises on the ${TERRAIN_NAME[t.t].toLowerCase()}.`, 'info'); },
         });
         const abandon = el('button.ghost', { type: 'button', title: 'Pull the workers back. You lose the outpost and what it gives, and its reach for new claims. The land stays yours.' }, 'Abandon outpost') as HTMLButtonElement;
@@ -393,18 +423,20 @@ export const map: GameSystem = {
           setTimeout(() => { delete abandon.dataset.armed; abandon.textContent = 'Abandon outpost'; }, 3000);
         });
 abandonWrap = el('div.row', {}, abandon);
-        for (const id of ['bridge', 'nest'] as const) {
+        for (const id of ['bridge', 'nest', 'fort'] as const) {
           const b = el('button.action', { type: 'button', title: id === 'bridge'
             ? 'Two weavers link legs and hold a bridge here. Scouts and soldiers can cross it, and claims reach out from it like from an outpost. Let go at any time and the weavers walk home.'
-            : 'Three weavers pull the grass together and hold a leaf nest here: living space that adds no mould. Let go at any time and the weavers walk home.' }) as HTMLButtonElement;
+            : id === 'nest' ? 'Three weavers pull the grass together and hold a leaf nest here: living space that adds no mould. Let go at any time and the weavers walk home.'
+            : 'Two majors man this stronghold. Its rule works only while they stand here. Call them home at any time.' }) as HTMLButtonElement;
           b.addEventListener('click', () => {
             const i = S(ctx).selected; if (i == null) return;
-            if (tilePost(ctx, id, i)) recallFrom(ctx, id, i); else if (postSpot(ctx, id, i)) sendToPost(ctx, id, i);
+            if (tilePost(ctx, id, i)) recallFrom(ctx, id, i); else if (id === 'fort' ? !!S(ctx).tiles[i].sh && S(ctx).tiles[i].o === 'you' : postSpot(ctx, id, i)) sendToPost(ctx, id, i);
             basesChanged();
           });
           postBtns[id] = b;
         }
-        postWrap = el('div.row', {}, postBtns.bridge, postBtns.nest);
+        shArt = el('canvas.sh-art', { width: 8, height: 8, hidden: true }) as HTMLCanvasElement;
+        postWrap = el('div.row', {}, postBtns.bridge, postBtns.nest, postBtns.fort);
         lookText = el('span.muted');
         lookBox = el('div.row.lookouts', { hidden: true }, el('strong', {}, 'Lookouts burn'),
           ...[null, ...Object.keys(MAP.lookout.costs)].map((r) => {
@@ -440,7 +472,7 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           el('div.row.camctl', {}, el('p.controls', {}, 'Drag the map or use the arrow keys to look around. Click a tile to inspect it. Click the small map to jump.'), homeBtn),
           cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap), lookBox,
-          el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap, plantWrap, abandonWrap, postWrap, (wbox = wonderTileBox(ctx)).root,
+          el('h3', {}, 'Selected tile'), shArt, info, claimWrap, buildWrap, plantWrap, abandonWrap, postWrap, (wbox = wonderTileBox(ctx)).root,
           upsHead, ups.root,
         );
         // ---- the world ----
@@ -516,7 +548,7 @@ abandonWrap = el('div.row', {}, abandon);
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         hoverI = cam.hover;
-        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [] });
+        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [] });
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
@@ -527,7 +559,7 @@ abandonWrap = el('div.row', {}, abandon);
         const describe = (i: number | null) => {
           if (i == null) return '';
           const [x, y] = xy(i); const t = s.tiles[i];
-          return t.seen ? `${x},${y}  ${TERRAIN_NAME[t.t]}, ${OWNER_NAME[String(t.o)]}${t.core ? ' (home)' : ''}` : `${x},${y}  Unexplored`;
+          return t.seen ? `${x},${y}  ${t.sh ? WAR.strongholds.kinds[t.sh].name : TERRAIN_NAME[t.t]}, ${t.sh && t.o !== 'you' ? 'a stronghold' : OWNER_NAME[String(t.o)]}${t.core ? ' (home)' : ''}` : `${x},${y}  Unexplored`;
         };
         hover.textContent = describe(hoverI) || 'Hover a tile.';
         upsHead.hidden = !ups.update(ctx);
@@ -546,13 +578,18 @@ abandonWrap = el('div.row', {}, abandon);
         claimLine.hidden = !c;
         if (c) { claimText.textContent = `${c.ants} scouts claiming ${c.cell != null ? 'beyond the garden' : xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
-        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = true; wbox.update(null); return; }
+        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = postBtns.fort.hidden = true; shArt.hidden = true; wbox.update(null); return; }
         const t = s.tiles[i];
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
         if (t.seen) {
           const yl = (m: number) => Object.entries(y).map(([r, v]) => `+${fmt(v * m * yieldMult(ctx))} ${r}/s`).join(', ');
           const boost = outpostMult(ctx, i, null);
+if (t.sh) {
+            const K = WAR.strongholds.kinds[t.sh], on = tilePost(ctx, 'fort', i) === 'there';
+            if (t.o !== 'you') { rows.push(['Stronghold', 'Take it with a campaign from the War tab, once your land touches it.']); rows.push(['The catch', K.catch]); rows.push(['Manned by 2 majors', K.rule]); }
+            else rows.push([on ? 'Manned' : 'Not manned', on ? K.rule : `Empty, so it does nothing. With 2 majors here: ${K.rule}`]);
+          }
           rows.push(['Yield if held', Object.keys(y).length ? yl(1) : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
           if (!t.core && (t.o === null || t.o === 'you' || t.o === 'humans')) rows.push(['Yield with outpost', (Object.keys(y).length ? yl(boost) + ', ' : '') + `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence`]);
           if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)
@@ -568,19 +605,23 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
         }
         info.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         claimWrap.hidden = !(t.seen && (t.o === null || t.o === 'humans') && openGround(ctx, t));
-        buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && ctx.flags.has('tech:cartography'));
+        buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
         wbox.update(i);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
         plantWrap.hidden = sowKind(ctx, i) == null; plant.update(ctx);
         claim.update(ctx); build.update(ctx);
-        for (const id of ['bridge', 'nest'] as const) {
+        for (const id of ['bridge', 'nest', 'fort'] as const) {
           const b = postBtns[id], at = tilePost(ctx, id, i);
-          b.hidden = !postOpen(ctx, id) || !(at || postSpot(ctx, id, i));
+          const spot = id === 'fort' ? !!t.sh && t.o === 'you' : postSpot(ctx, id, i);
+          b.hidden = !(at || spot) || (!postOpen(ctx, id) && id !== 'fort');
           b.disabled = !at && !canPost(ctx, id, i);
-          b.textContent = id === 'bridge'
-            ? (at === 'there' ? 'Let the bridge go' : at ? 'Weavers on their way (call back)' : 'Hold a living bridge (2 weavers)')
-            : (at === 'there' ? 'Let the leaf nest go' : at ? 'Weavers on their way (call back)' : 'Hold a leaf nest (3 weavers)');
+          const walk = 'On their way (call back)';
+          b.textContent = id === 'bridge' ? (at === 'there' ? 'Let the bridge go' : at ? walk : 'Hold a living bridge (2 weavers)')
+            : id === 'nest' ? (at === 'there' ? 'Let the leaf nest go' : at ? walk : 'Hold a leaf nest (3 weavers)')
+            : (at === 'there' ? 'Call the garrison home' : at ? walk : postOpen(ctx, 'fort') ? 'Man the stronghold (2 majors)' : 'Open the Garrison post on the Castes tab');
         }
+        shArt.hidden = !(t.seen && t.sh);
+        if (t.seen && t.sh && shArt.dataset.k !== t.sh + t.t) { shArt.dataset.k = t.sh + t.t; const g = shArt.getContext('2d')!; g.fillStyle = TERRAIN_COLOR[t.t]; g.fillRect(0, 0, 8, 8); drawStronghold(g, t.sh, 0, 0); }
         void fmt;
       },
       world(ctx: Context) {
@@ -677,7 +718,44 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
 // ---- drawing: flat colours, 8px tiles, no shading ----
 /** Paint the whole garden into the camera's source canvas. Hover is drawn by the camera. */
 /** stones: the Signal Stones' trait tiers (beacon fires, watch posts, paved roads), drawn on outposts and near tiles. */
-function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[] } = { bridges: [], nests: [] }) {
+/** Stronghold tile art, 8x8, one letter per pixel ('.' leaves the ground showing). */
+const SH_ART: Record<Stronghold, { rows: string[]; pal: Record<string, string> }> = {
+  // a tall mud spire with air holes, wider at the foot
+  termite: { pal: { a: '#4a2f1b', b: '#a8733f', c: '#c9955a', k: '#1c1612' }, rows: [
+    '...aa...',
+    '..abca..',
+    '..abba..',
+    '.abkbca.',
+    '.abbbba.',
+    'abcbkbba',
+    'abbbbbca',
+    'aaaaaaaa'] },
+  // a grey paper ball hanging from a stalk, banded, with its hole at the bottom and two wasps out
+  wasp: { pal: { t: '#4a3a28', g: '#b9ad98', G: '#8f8474', k: '#1c1612', y: '#f2c14e' }, rows: [
+    '...tt...',
+    '..gggg..',
+    '.gGGGGg.',
+    '.gggggg.',
+    '.GGGGGG.',
+    'y.gggg..',
+    '..gkkg.y',
+    '........'] },
+  // loose pale sand with three cone pits, each dark at the bottom
+  antlion: { pal: { s: '#d8c48a', S: '#b8a26a', k: '#2a2014' }, rows: [
+    'ssSSSsss',
+    'sSSkSSss',
+    'ssSSSsSS',
+    'sssssSSk',
+    'sSSSssSS',
+    'SSkSSsss',
+    'sSSSssss',
+    'ssssssss'] },
+};
+function drawStronghold(c: CanvasRenderingContext2D, kind: Stronghold, X: number, Y: number) {
+  const a = SH_ART[kind];
+  a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
+}
+function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[] } = { bridges: [], nests: [], forts: [] }) {
   const c = setup(cv);
   const T = 8;
   const near = s.tiles.map((t, i) => t.seen && reach(i));
@@ -721,6 +799,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
     // weavers' posts: a pale chain of ants across the stream, a pale leaf tent on the grass
     if (posts.bridges.includes(i)) { rect(c, X, Y + 3, T, 1, PAL.bone); rect(c, X + 1, Y + 4, 1, 1, PAL.bone); rect(c, X + 3, Y + 4, 2, 1, PAL.bone); rect(c, X + 6, Y + 4, 1, 1, PAL.bone); }
     if (posts.nests.includes(i)) { rect(c, X + 3, Y + 2, 2, 1, PAL.bone); rect(c, X + 2, Y + 3, 4, 2, PAL.bone); rect(c, X + 3, Y + 5, 2, 1, PAL.bone); }
+    if (tile.sh) { drawStronghold(c, tile.sh, X, Y); if (posts.forts.includes(i)) { rect(c, X + 7, Y, 1, 3, PAL.bone); rect(c, X + 5, Y, 2, 2, PAL.you); } }
     if (tile.w) {
       // a little stepped monument in gold
       rect(c, X + 1, Y + 6, 6, 1, PAL.amber); rect(c, X + 2, Y + 4, 4, 2, PAL.amber); rect(c, X + 3, Y + 2, 2, 2, PAL.amber); rect(c, X + 3, Y + 1, 2, 1, PAL.bone);
@@ -740,7 +819,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
 function paintMini(c: CanvasRenderingContext2D, s: MapState) {
   s.tiles.forEach((t, i) => {
     const [x, y] = xy(i);
-    c.fillStyle = !t.seen ? PAL.fog : t.o === 'you' && (t.core || t.outpost) ? PAL.bone : t.o ? OWNER_COLOR[t.o] : TERRAIN_COLOR[t.t];
+    c.fillStyle = !t.seen ? PAL.fog : t.sh && t.o !== 'you' ? '#f2c14e' : t.o === 'you' && (t.core || t.outpost) ? PAL.bone : t.o ? OWNER_COLOR[t.o] : TERRAIN_COLOR[t.t];
     c.fillRect(x, y, 1, 1);
   });
 }

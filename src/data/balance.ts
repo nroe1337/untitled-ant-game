@@ -437,6 +437,30 @@ export const WAR = {
   campaignLoss: 0.15,       // share of the army lost on a win (double on a loss)
   tileDefence: { rival: 1, spider: 1.6 } as Record<string, number>,
   spiderPower: 70,
+  /**
+   * Strongholds (Nate, Nov 16): three rare fortress tiles far out on the Map, each with its own catch.
+   * Once taken, a stronghold is a fort, and its rule works only while 2 majors man it (a caste post).
+   * termite: one march can't take it; its walls keep their damage between assaults. Manned, raids hit the mound's walls first.
+   * wasp: after every assault the wasps follow the army home and attack over the barricade. Manned, parties and sorties are never wiped out.
+   * antlion: the pits swallow `pit` soldiers on every assault unless a living bridge stands next to it. Manned, enemy
+   *   tiles lose defence over time (up to `sapMax` after `sapTime` seconds), and a won campaign uses it up.
+   */
+  strongholds: {
+    honours: 12,
+    /** Tiles from the nest each one is placed (Chebyshev), and how far apart they must be. */
+    ring: [10, 18] as [number, number], apart: 8,
+    kinds: {
+      termite: { name: 'Termite mound', walls: 260, moundHp: 60, moundAtk: 4,
+        catch: 'One march will not take it. The walls keep their damage, so it falls to a siege of several campaigns.',
+        rule: 'Raids must get past the mound first: its walls stand in front of your gate, and the garrison bites from them.' },
+      wasp: { name: 'Wasp nest', power: 60, swarm: 6, hp: 14, atk: 3,
+        catch: 'After every assault the wasps follow your army home and attack at once, flying over the barricade.',
+        rule: 'Wasps fly escort. Expedition parties and sorties can lose workers but are never wiped out.' },
+      antlion: { name: 'Antlion pits', power: 50, pit: 6, sapMax: 0.4, sapTime: 1500,
+        catch: 'The pits swallow 6 soldiers on every assault, however strong you are. A living bridge on the next tile carries the army across.',
+        rule: 'The antlions dig for you. Enemy tiles slowly lose their defence, up to 40%. A won campaign uses it up.' },
+    },
+  },
   loot: {
     rival: { chitin: [2, 4], food: [10, 25] },
     spider: { venom: [1, 3], chitin: [3, 6] },
@@ -627,6 +651,7 @@ export const CASTES = {
       { id: 'gift', name: 'Gift', where: 'Kin', desc: 'Hang one in a kin colony. Trust grows while she is there, and that colony does not cool when you help its enemy. Call her home any time.', open: 15, per: 0.5, place: 'Choose the colony on the Kin tab.' },
     ] },
     major: { job: 'major', how: 'One for every 5 soldiers.', home: { name: 'Gate', where: 'War', desc: 'Each major fights like 3 soldiers in raids and on campaigns.' }, posts: [
+      { id: 'fort', name: 'Garrison', where: 'Map', desc: '2 majors man a stronghold you have taken. Its rule works only while they stand there.', open: 8, size: 2, needs: 'stronghold:held', place: 'Select a stronghold you hold on the Map.' },
       { id: 'deck', name: 'Deck guard', where: 'Waters', desc: 'One rides each boat. Some voyage events get a "Send the major" choice.', open: 10, needs: 'tech:rafts' },
     ] },
     weaver: { job: 'weaver', how: 'Slots come from silk lofts.', home: { name: 'Loom', where: 'Stores', desc: 'Each weaver spins silk.' }, posts: [

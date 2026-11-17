@@ -118,6 +118,11 @@ export const GUIDE: GuidePage[] = [
         'Their home tile is a boss fight with the rival queen: she hatches guards, spits acid, turns your soldiers and goes berserk when hurt. Bring more strength than hers. Kill her and the raids stop for good.',
         'The first kill of each kind of foe gives a skull. Hang them in a [Hall of husks] for a bonus each.',
       ] },
+      { head: 'Take the strongholds', do: [
+        'Three strongholds lie far out on the {Map}: a termite mound, a wasp nest and antlion pits. Select one to see its catch.',
+        'The termite mound falls to a siege of several campaigns. The wasps follow your army home after every assault. The antlion pits swallow soldiers unless a living bridge stands beside them.',
+        'A stronghold you hold does nothing until 2 majors man it. Open the Garrison post on the {Castes} tab, then man it from the {Map}.',
+      ], tip: 'You can take all three, but majors are scarce. Man the ones you need now.' },
       { head: 'Chase rumours', do: [
         'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',
         'Each rumour lasts a while and a few trips. Only these places give |sugar| and |ivory|.',
