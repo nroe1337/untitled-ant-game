@@ -1,4 +1,4 @@
-// Records: a stats page and achievements, in the spirit of Evolve and Kittens Game.
+// Records (a stats page) and Achievements (two tabs), in the spirit of Evolve and Kittens Game.
 // Reads other systems' state (never imports them) and keeps its own lifetime tallies across
 // every flight and migration. Achievements are feats, earned once and kept forever; they give
 // no bonus, they are a record. Publishes nothing.
@@ -299,7 +299,7 @@ export const stats: GameSystem = {
   },
 
   panel: (() => {
-    let overall: HTMLElement, colony: HTMLElement, featHead: HTMLElement, featList: HTMLElement, runsBox: HTMLElement;
+    let overall: HTMLElement, colony: HTMLElement, runsBox: HTMLElement;
     const rows = (box: HTMLElement, list: [string, string][]) =>
       box.replaceChildren(...list.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
     return {
@@ -309,14 +309,11 @@ export const stats: GameSystem = {
         overall = el('div.ledger.stats');
         colony = el('div.ledger.stats');
         runsBox = el('div.ledger.stats');
-        featHead = el('h3');
-        featList = el('div.feats');
         root.append(
           el('p.flavor', {}, 'What your line has done, scratched into the oldest wall of the nest.'),
           el('h3', {}, 'Your line'), overall,
           el('h3', {}, 'This colony'), colony,
           el('h3', {}, 'Past colonies'), runsBox,
-          featHead, featList,
         );
       },
       update(_root, ctx) {
@@ -363,8 +360,29 @@ export const stats: GameSystem = {
           `Colony ${s.runs.length - arr.length + i + 1}`,
           `${r.kind === 'flight' ? 'flew' : 'migrated'} after ${hms(r.time)}, ${r.peak} workers at most`,
         ] as [string, string]).reverse());
+      },
+    };
+  })(),
+};
+
+/** Achievements get their own tab next to Records. State stays in stats (ctx.state.stats.feats). */
+export const achievements: GameSystem = {
+  id: 'achievements',
+  init() {},
+  panel: (() => {
+    let head: HTMLElement, featList: HTMLElement;
+    return {
+      title: 'Achievements',
+      group: 'Legacy',
+      mount(root) {
+        head = el('h3');
+        featList = el('div.feats');
+        root.append(head, featList);
+      },
+      update(_root, ctx) {
+        const s = S(ctx);
         const got = FEATS.filter((f) => s.feats[f.id] !== undefined).length;
-        featHead.textContent = `Achievements: ${got} of ${FEATS.length}`;
+        head.textContent = `${got} of ${FEATS.length} earned`;
         const sig = Object.keys(s.feats).join(',');
         if (featList.dataset.sig !== sig) {
           featList.dataset.sig = sig;

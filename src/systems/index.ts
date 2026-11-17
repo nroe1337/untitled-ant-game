@@ -20,7 +20,7 @@ import { husbandry } from './husbandry';
 import { migration } from './migration';
 import { town } from './town';
 import { supercolony } from './supercolony';
-import { stats } from './stats';
+import { stats, achievements } from './stats';
 import { happenings } from './happenings';
 import { seasons } from './seasons';
 import { kin } from './kin';
@@ -44,6 +44,7 @@ export const SYSTEMS: GameSystem[] = [
   castes,
   waters,
   stats,
+  achievements,
   guide,
   lineage,
   husbandry,

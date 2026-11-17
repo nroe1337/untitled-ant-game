@@ -3,16 +3,153 @@
 import { spriteUrl } from '../../core/sprites';
 
 type G = CanvasRenderingContext2D;
-/** base, dark, light */
-export const CROWN_COLORS: Record<string, [string, string, string]> = {
-  chitin: ['#a8452e', '#6e2a1a', '#d9774f'], clay: ['#8a4f3a', '#5a3022', '#b8735a'], petal: ['#d08aa8', '#8a4a68', '#f0c0d4'],
-  fungus: ['#c8b890', '#7a6a4a', '#e8dcb8'], amber: ['#e0a030', '#9a6010', '#f8d070'], seed: ['#b89a50', '#6e5a28', '#d8c080'],
-  silk: ['#e8e4dc', '#9a948a', '#ffffff'], thorn: ['#6f8a3a', '#3a4a1e', '#9ab85a'],
-};
-/** height of each of the five points */
-const SHAPES: Record<string, number[]> = {
-  chitin: [0, 1, 2, 1, 0], clay: [1, 1, 1, 1, 1], petal: [2, 0, 2, 0, 2], fungus: [1, 2, 1, 2, 1],
-  amber: [0, 2, 3, 2, 0], seed: [1, 0, 1, 0, 1], silk: [2, 1, 2, 1, 2], thorn: [3, 0, 3, 0, 3],
+/** Each crown's left half (8 of 16 columns, mirrored onto the right) and its colours.
+ *  . empty  o outline  d dark  b base  l light  w shine  g gem  h gem light  a accent */
+const CROWN_ART: Record<string, { pal: Record<string, string>; rows: string[] }> = {
+  chitin: { pal: { o: '#2a0e08', d: '#6e2a1a', b: '#a8452e', l: '#d9774f', w: '#f0a878', g: '#3a1a12', h: '#c87858', a: '#8a3422' }, rows: [
+    '........',
+    '.o......',
+    'olo.....',
+    'obo....o',
+    'obbo..ol',
+    '.obo..ob',
+    '.odbo.ob',
+    '..odbood',
+    'o.oodbdb',
+    'obooaoob',
+    'olllllll',
+    'obbabbab',
+    'obhgbbhg',
+    'odggddgg',
+    'oooooooo',
+    '........',
+  ] },
+  clay: { pal: { o: '#2a140c', d: '#5a3022', b: '#8a4f3a', l: '#b8735a', w: '#d8987a', g: '#3a6a7a', h: '#8ac0d0', a: '#6e3a2a' }, rows: [
+    '........',
+    '........',
+    '........',
+    '........',
+    '........',
+    'oooo..oo',
+    'olbo..ol',
+    'obbo..ob',
+    'obboooob',
+    'obabbbab',
+    'olllllll',
+    'oabhgbba',
+    'obbggbbb',
+    'odddaddd',
+    'oooooooo',
+    '........',
+  ] },
+  petal: { pal: { o: '#3a1424', d: '#8a4a68', b: '#d08aa8', l: '#f0c0d4', w: '#fff0f6', g: '#e8c040', h: '#fff4b0', a: '#b06a88' }, rows: [
+    '........',
+    '........',
+    '........',
+    '..oo..oo',
+    '.olwo.ol',
+    'olbbo.ob',
+    'obbbaoob',
+    'oabbaobb',
+    '.oaaobbb',
+    'oohoooab',
+    'olllllll',
+    'obbbbhgb',
+    'obabbggb',
+    'odddaddd',
+    'oooooooo',
+    '........',
+  ] },
+  fungus: { pal: { o: '#2a2416', d: '#7a6a4a', b: '#c8b890', l: '#e8dcb8', w: '#fff8e8', g: '#a83a2a', h: '#e87a5a', a: '#9a8a64' }, rows: [
+    '........',
+    '........',
+    '........',
+    '....oooo',
+    '...olwll',
+    '.oooblbw',
+    'olwlbbbb',
+    'obbbdddd',
+    'odddooao',
+    '.oaoo.ao',
+    'olllllll',
+    'obbbbhgb',
+    'obabbggb',
+    'odddaddd',
+    'oooooooo',
+    '........',
+  ] },
+  amber: { pal: { o: '#3a2006', d: '#9a6010', b: '#e0a030', l: '#f8d070', w: '#fffbe0', g: '#c86a10', h: '#ffd890', a: '#b87818' }, rows: [
+    '........',
+    '.......o',
+    '......ol',
+    '......ob',
+    '...o..ob',
+    '..olo.ob',
+    '..obo.ob',
+    'o.obo.ob',
+    'olobooob',
+    'obbbbbbb',
+    'olllllll',
+    'obhgbbhg',
+    'obggbbgg',
+    'odddaddd',
+    'oooooooo',
+    '........',
+  ] },
+  seed: { pal: { o: '#2a2010', d: '#6e5a28', b: '#b89a50', l: '#d8c080', w: '#f8ecc0', g: '#5a3a1a', h: '#9a6a3a', a: '#8a7038' }, rows: [
+    '........',
+    '........',
+    '.......o',
+    '..oo..oh',
+    '.ohgo.og',
+    '.oggo.og',
+    '..oao..o',
+    '..oao.oa',
+    '..oao.oa',
+    'oooaooab',
+    'olllllll',
+    'obbbbhgb',
+    'obabbggb',
+    'odddaddd',
+    'oooooooo',
+    '........',
+  ] },
+  silk: { pal: { o: '#3a3630', d: '#9a948a', b: '#e8e4dc', l: '#ffffff', w: '#ffffff', g: '#b8c8e0', h: '#ffffff', a: '#c8c2b8' }, rows: [
+    '........',
+    '........',
+    '........',
+    '......oo',
+    '..oo.ohw',
+    '.ohwoohg',
+    '.oggo.oo',
+    '..oo.oao',
+    '..oa.oao',
+    'oaoaooao',
+    'olllllll',
+    'oabbaabb',
+    'obaabhgb',
+    'odddaggd',
+    'oooooooo',
+    '........',
+  ] },
+  thorn: { pal: { o: '#141a08', d: '#3a4a1e', b: '#6f8a3a', l: '#9ab85a', w: '#c8e090', g: '#a82a2a', h: '#e86a5a', a: '#55702a' }, rows: [
+    'o.......',
+    'olo.....',
+    '.obo...o',
+    '..obo.ol',
+    '.o.odo.b',
+    'olo.ob.b',
+    '.obooaod',
+    '..obdbob',
+    '..oodbbd',
+    'oaodbadb',
+    'olllllll',
+    'odbbbhgb',
+    'obdbbggb',
+    'odddaddd',
+    'oooooooo',
+    '........',
+  ] },
 };
 
 const images = new Map<string, HTMLImageElement | null>();
@@ -31,16 +168,17 @@ function sprite(id: string): HTMLImageElement | null {
 export function crownPix(g: G, id: string, ox: number, oy: number) {
   const img = sprite('crown_' + id);
   if (img) { g.drawImage(img, ox, oy, 16, 16); return; }
-  const [b, d, l] = CROWN_COLORS[id], s = SHAPES[id];
-  const px = (x: number, y: number, c: string) => { g.fillStyle = c; g.fillRect(ox + x, oy + y, 1, 1); };
-  for (let x = 1; x < 15; x++) { for (let y = 10; y < 14; y++) px(x, y, y === 13 ? d : b); px(x, 10, l); }
-  [1, 4, 7, 10, 13].forEach((cx, i) => {
-    const top = 8 - s[i] * 2;
-    for (let y = top; y < 10; y++) { px(cx, y, b); px(cx + 1, y, b); }
-    px(cx, top - 1, l); px(cx + 1, top - 1, l);
+  const art = CROWN_ART[id];
+  if (!art) return;
+  art.rows.forEach((row, y) => {
+    for (let x = 0; x < 8; x++) {
+      const c = art.pal[row[x]];
+      if (!c) continue;
+      g.fillStyle = c;
+      g.fillRect(ox + x, oy + y, 1, 1);
+      g.fillRect(ox + 15 - x, oy + y, 1, 1);
+    }
   });
-  const gem = id === 'amber' ? '#fff4c0' : l;
-  for (const x of [4, 7, 8, 11]) px(x, 11, gem);
 }
 
 export function drawCrown(cv: HTMLCanvasElement, id: string) {
