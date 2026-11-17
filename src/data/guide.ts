@@ -26,7 +26,6 @@ export const GUIDE: GuidePage[] = [
         'Open the {Jobs} tab.',
         'Put about 2 workers on Forager for every 1 on Digger.',
         'Foragers bring |food|. Diggers bring |soil|.',
-        'Each colony\'s brood has its own temperament, rolled at random and shown on the {Queen} tab. It is keen on one job (+15%) and reluctant at another (−10%), so the best mix shifts a little each colony.',
       ], tip: '!Every worker eats.! Hover |food| at the top to check it is going up, not down.' },
       { head: 'Dig chambers', do: [
         'On the {Nest} tab, dig [Resting chamber]s for living space.',
@@ -193,6 +192,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'After your first flight', do: [
         'New research appears: [Teaching], [Leaf culture], [Herding], [The hunt] and [Border nests].',
         'The {Archive} and {Records} tabs start filling up.',
+        'Every new colony\'s brood now has a temperament, rolled at random and shown on the {Queen} tab. It is keen on one job (+15%) and reluctant at another (−10%), so shift your workers to suit it.',
         'Fly again. A second flight opens the {Genome} tab.',
       ] },
     ],

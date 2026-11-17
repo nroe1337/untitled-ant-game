@@ -43,8 +43,8 @@ const rollTemper = (not?: string) => {
   const ids = Object.keys(BROOD.temperaments).filter((id) => id !== not);
   return ids[Math.floor(Math.random() * ids.length)];
 };
-/** This colony's brood temperament. */
-export const temperOf = (ctx: Context) => BROOD.temperaments[S(ctx)?.temper ?? ''] as (typeof BROOD.temperaments)[string] | undefined;
+/** This colony's brood temperament. None in the first colony, so the early game unfolds the same every time. */
+export const temperOf = (ctx: Context) => (!ctx.flags.has('legacy:flown') ? undefined : BROOD.temperaments[S(ctx)?.temper ?? '']) as (typeof BROOD.temperaments)[string] | undefined;
 /** The temperament's lean on a job: +keen, -loath or 0. */
 export const temperLean = (ctx: Context, job: string) => {
   const t = temperOf(ctx);
@@ -232,7 +232,14 @@ export const brood: GameSystem = {
       ctx.bus.emit('ant:born');
       if (!s.firstAnt) {
         s.firstAnt = true; ctx.log('The first worker pulls free of its cocoon. The colony has begun.');
-        if (t) ctx.log(`${temperLine(ctx)} (Queen tab)`, 'story');
+        if (t) {
+          ctx.log(`${temperLine(ctx)} (Queen tab)`, 'story');
+          ctx.announce(`A ${t.name.toLowerCase()} brood`, t.desc, {
+            small: true, kicker: 'This colony\'s temperament',
+            lines: [`Keen ${JOB_PLURAL[t.keen]}: ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better`,
+              `Reluctant ${JOB_PLURAL[t.loath]}: ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse`],
+          });
+        }
       }
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
@@ -380,8 +387,13 @@ export const brood: GameSystem = {
           const txt = temperLine(ctx);
           if (temperEl.dataset.txt !== txt) {
             temperEl.dataset.txt = txt;
-            temperEl.replaceChildren(el('strong', {}, 'Temperament: '), txt);
-            temperEl.dataset.tip = 'Every colony\'s brood is born with its own temperament, rolled at random. It is never the same twice running. Shift your workers to suit it.';
+            const t = temperOf(ctx)!;
+            temperEl.replaceChildren(
+              el('div.kicker', {}, 'This colony\'s temperament'),
+              el('strong', {}, `${t.name} brood`), el('span.muted', {}, ' ' + t.desc),
+              el('div', {}, el('span.lean.keen', {}, '▲ keen'), ` ${JOB_PLURAL[t.keen]} ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better`),
+              el('div', {}, el('span.lean.loath', {}, '▼ reluctant'), ` ${JOB_PLURAL[t.loath]} ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse`));
+            temperEl.dataset.tip = 'From your second colony on, every brood is born with its own temperament, rolled at random. It is never the same twice running. Shift your workers to suit it.';
           }
         }
         scrubWrap.hidden = !ctx.flags.has('mould:scrub');
