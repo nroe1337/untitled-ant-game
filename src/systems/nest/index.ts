@@ -445,6 +445,80 @@ function queenLook(ctx: Context): QueenLook {
   const tier = Math.min(6, Math.max(flights >= 3 ? 2 : flights >= 1 ? 1 : 0, ageIdx >= SETTLE ? ageIdx - SETTLE + 3 : 0));
   return { tier, fat: Math.min(1, ctx.res.amt('ant') / 120) };
 }
+const MOULD = '#8a8a80', MOULD_GREEN = '#7c8a5e', ALARM = '#d8613a';
+/** Chamber reworks: what each rebuilt chamber type adds to its picture. */
+function drawRework(c: CanvasRenderingContext2D, ctx: Context, id: string, cx: number, y: number, lane: number, k: number, t: number) {
+  const side = lane > 0 ? -1 : 1; // -1: the shaft is to the left of this chamber
+  switch (id) {
+    case 'brood': { // Infirmary: a leaf cot by the far wall, a pale sick worker laid on it
+      const bx = cx - side * 12;
+      rect(c, bx - 4, y + 3, 9, 2, LEAF); rect(c, bx - 3, y + 2, 7, 1, LEAF_RIB);
+      const sick = (ctx.state.brood as { infirm?: number[] } | undefined)?.infirm?.length ?? 0;
+      if (sick || k % 2 === 0) { rect(c, bx - 2, y + 1, 4, 1, MOULD); rect(c, bx + 2, y + 1, 1, 1, mix(MOULD, PAL.bone, 0.4)); }
+      break;
+    }
+    case 'airshaft': { // Draught shaft: the vent cut wide right up through the soil, mould swept up it in streaks
+      rect(c, cx - 3, y - 20, 6, 15, PAL.hole);
+      for (let e = 0; e < 4; e++) {
+        const r = ((t * 1.1 + e / 4 + k * 0.29) % 1);
+        rect(c, cx - 2 + (e % 3), y - 4 - Math.floor(r * 16), 1, 2, mix(PAL.hole, MOULD_GREEN, 0.9 * (1 - r)));
+      }
+      break;
+    }
+    case 'midden': { // Mould farm: grey-green fuzz combed into rows on the heap, a pale fungus cap growing from it
+      for (let e = 0; e < 5; e++) rect(c, cx - 8 + e * 4, y - 3 + Math.abs(e - 2), 2, 1, e % 2 ? MOULD_GREEN : MOULD);
+      rect(c, cx + 8, y + 1, 1, 3, PAL.bone); rect(c, cx + 6, y, 5, 1, CAP);
+      break;
+    }
+    case 'cistern': { // Flood channel: a cut channel from the pool to the tunnel, held back by a twig sluice
+      const ex = side < 0 ? cx - 22 : cx + 9;
+      rect(c, ex, y + 3, 13, 2, PAL.water);
+      const gx = side < 0 ? cx - 10 : cx + 9;
+      rect(c, gx, y - 1, 1, 6, TWIG); rect(c, gx - 1, y - 2, 3, 1, TWIG);
+      const cd = (S(ctx).floodCd ?? 0) > 0;
+      if (cd) rect(c, ex, y + 3, 13, 1, mix(PAL.water, DEW, 0.5)); // still draining after a flood
+      break;
+    }
+    case 'hall': { // Muster hall: a crossbeam on the pillars, and a row of posting marks, one per job, over the sleepers
+      rect(c, cx - 8, y - 3, 17, 1, PAL.dirt);
+      const marks = [PAL.food, PAL.dirt, PAL.bone, PAL.you, PAL.scent];
+      marks.forEach((col, i) => rect(c, cx - 15 + i * 7, y - 2, 2, 1, mix(PAL.hole, col, 0.85)));
+      if (ctx.mods.get('winter') > 0) rect(c, cx - 1, y - 2, 3, 1, DEW); // winter posts in force
+      break;
+    }
+    case 'gland': { // Alarm scent: a beacon of alarm scent that beats faster when the alarm is up
+      const up = (ctx.state.war as { battle?: unknown } | undefined)?.battle || (ctx.res.has('mould') && ctx.res.amt('mould') >= alarmLine(ctx));
+      const beat = wave(t, up ? 0.8 : 3, k * 0.3);
+      rect(c, cx - 1, y - 4, 3, 3, mix(PAL.hole, ALARM, 0.35 + 0.65 * beat));
+      for (const [dx, dy] of [[-4, -3], [4, -3], [0, -7]]) rect(c, cx + dx, y + dy, 1, 1, mix(PAL.hole, ALARM, 0.6 * beat));
+      break;
+    }
+    case 'barracks': { // Gatehouse: twig gate bars at the mouth facing the shaft, dropped shut when the gates are closed
+      const gx = side < 0 ? cx - 17 : cx + 15;
+      rect(c, gx, y - 7, 3, 1, TWIG);
+      if (gatesShut(ctx)) for (let e = 0; e < 3; e++) rect(c, gx + (e % 2), y - 6 + e * 3, 1, 3, TWIG);
+      else rect(c, gx + 1, y - 6, 1, 2, TWIG);
+      break;
+    }
+    case 'storeroom': { // Spoil walls: the heap of spare soil grows into a ridge of packed clods above the chamber
+      const h = Math.min(3, Math.ceil((S(ctx).walls ?? 0) / 4));
+      for (let r = 0; r < Math.max(1, h); r++) for (let e = 0; e < 5 - r; e++) rect(c, cx - 11 + r * 2 + e * 5, y - 6 - r * 2, 4, 2, mix(PAL.dirt, PAL.soil, (e + r) % 2 ? 0.35 : 0));
+      break;
+    }
+    case 'granary': { // Seed bank: the seed row sealed under resin caps, and two sealed pods banked by the wall
+      for (let e = 0; e < 6; e++) rect(c, cx - 10 + e * 4, y + 1, 2, 1, PAL.amber);
+      const px = cx - side * 13;
+      for (const dy of [0, 3]) { rect(c, px - 1, y - 2 + dy, 3, 2, PAL.seed); rect(c, px - 1, y - 3 + dy, 3, 1, PAL.amber); }
+      break;
+    }
+    case 'library': { // Hall of records: one mark on the wall glows gold, the record the next colony will keep
+      const kept = (ctx.state.lineage as { recorded?: string } | undefined)?.recorded;
+      rect(c, cx - 3, y - 4, 6, 2, mix(PAL.hole, JELLY, kept ? 0.55 + 0.45 * wave(t, 4, k) : 0.3));
+      break;
+    }
+  }
+}
+
 function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const order = S(ctx).order;
   const rows = Math.ceil(order.length / LANES.length);
@@ -816,8 +890,8 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       default:
         blob(c, cx, y, 12, 5, PAL.hole);
     }
-    // a reworked chamber type: every one of them gets a clay-lined floor with corner posts
-    if (reworked(ctx, id)) { rect(c, cx - 15, y + 6, 30, 1, CLAY); rect(c, cx - 15, y + 3, 1, 3, CLAY); rect(c, cx + 14, y + 3, 1, 3, CLAY); }
+    // a reworked chamber type: each draws what it was rebuilt into, on top of its usual look
+    if (reworked(ctx, id)) drawRework(c, ctx, id, cx, y, lane, k, t);
 
     // a chamber dug in the last moment fades in out of the soil
     const now = performance.now();
