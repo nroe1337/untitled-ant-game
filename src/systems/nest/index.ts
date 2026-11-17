@@ -1,8 +1,7 @@
 // Nest building: spend resources on chambers that raise caps and add bonuses.
 // Ten chambers break the surface. Each chamber type draws differently in the nest view.
 import type { GameSystem, Context } from '../../core/types';
-import { el, tileButton } from '../../core/ui';
-import { upgradeList, type UpgradeDef } from '../../core/upgrades';
+import { el, tileButton, actionButton } from '../../core/ui';
 import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
@@ -37,7 +36,12 @@ const SECTIONS: [string, string[]][] = [
 ];
 const IDS = Object.keys(DEFS) as ChamberId[];
 
-interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[]; swappedBrood?: boolean; ups?: Record<string, number> }
+interface NestState { built: Record<string, number>; order: ChamberId[]; queue?: ChamberId[]; swappedBrood?: boolean;
+  /** Chamber craft levels from before Nov 17, refunded on load. */
+  ups?: Record<string, number>;
+  reworks?: Record<string, boolean>;
+  /** Gatehouse: gates shut. Spoil walls: wall height. Alarm scent: mould line. Flood channel: cooldown. */
+  gates?: boolean; walls?: number; alarmAt?: number; floodCd?: number }
 const S = (ctx: Context) => ctx.state.nest as NestState;
 
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
@@ -102,24 +106,72 @@ function runQueue(ctx: Context) {
   build(ctx, id);
 }
 
-/** Chamber craft: each upgrade level makes every chamber of that kind give NEST.upgrade.per more. */
-const UP = NEST.upgrade;
-/** A chamber's strength: chamber upgrades, plus crowns (`room:<id>` mods). */
-const power = (ctx: Context, id: ChamberId) => Math.max(0.1, 1 + UP.per * (S(ctx).ups?.[id] ?? 0) + ctx.mods.get('room:' + id));
-const upCost = (id: ChamberId) => {
-  const late = DEFS[id].later?.cost ?? {};
-  const [r, v] = Object.entries(late)[0] ?? [];
-  const base: Costs = { clay: UP.clay, ...(r ? { [r]: (v ?? 1) * UP.lateMult } : UP.fallback) };
-  return (L: number): Costs => Object.fromEntries(Object.entries(base).map(([k, n]) => [k, Math.ceil((n ?? 0) * Math.pow(UP.growth, L))]));
+/** Chamber reworks (Chamber craft): one per chamber type, bought once, for every chamber of that type
+ *  (also ones dug later), and never undone. Most make that type gather more mould. See NEST.reworks. */
+const RW = NEST.rework, RX = NEST.rw;
+type ReworkDef = { name: string; desc: string; mould: number };
+const REWORKS = NEST.reworks as Partial<Record<ChamberId, ReworkDef>>;
+export const reworked = (ctx: Context, id: string) => !!S(ctx).reworks?.[id];
+/** A rework costs knowledge plus a big batch of what one chamber of that type costs to dig. */
+const reworkCost = (id: ChamberId): Costs => {
+  const out: Costs = { knowledge: RW.knowledge };
+  for (const [r, v] of Object.entries(DEFS[id].base)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * RW.baseMult);
+  return out;
 };
-const UPGRADES: UpgradeDef[] = (Object.keys(DEFS) as ChamberId[]).filter((id) => !UP.skip.includes(id)).map((id) => ({
-  id, name: DEFS[id].name, max: UP.max,
-  desc: `Every ${DEFS[id].name.toLowerCase()} gives ${Math.round(UP.per * 100)}% more of everything it gives, each level.`,
-  cost: upCost(id),
-  requires: (c: Context) => c.flags.has('tech:renovation') && count(c, id) >= UP.minBuilt,
-  onBuy: (c: Context) => applyEffects(c),
-  effect: (L: number) => (L ? `+${Math.round(UP.per * L * 100)}%` : ''),
-}));
+const reworkReady = (ctx: Context, id: ChamberId) => ctx.flags.has('tech:renovation') && count(ctx, id) >= RW.minBuilt;
+const mouldNote = (m: number) => (m > 0 ? `Each one gathers mould like ${m + 1} chambers.` : m < 0 ? 'Gathers no mould.' : 'Gathers mould as before.');
+/** Extra chambers' worth of mould from reworks (brood reads it through the mouldRooms mod). */
+const reworkMould = (ctx: Context) => (Object.keys(REWORKS) as ChamberId[]).reduce((t, id) => t + (reworked(ctx, id) ? REWORKS[id]!.mould * count(ctx, id) : 0), 0);
+/** Alarm scent: the mould line past which idle workers turn out as nurses. */
+export const alarmLine = (ctx: Context) => S(ctx).alarmAt ?? RX.alarmLines[1];
+export const gatesShut = (ctx: Context) => !!S(ctx).gates && reworked(ctx, 'barracks');
+const heldTiles = (ctx: Context) => ((ctx.state.map?.tiles ?? []) as { o: string | null }[]).filter((t) => t.o === 'you').length;
+/** Rework effects that run every tick: blown mould settling as soil, the mould farm, spoil walls. */
+function tickReworks(ctx: Context, dt: number) {
+  const s = S(ctx), res = ctx.res, mouldy = res.has('mould') && res.amt('mould') >= 1, prev = res.source;
+  if (reworked(ctx, 'airshaft') && mouldy) {
+    const blown = (DEFS.airshaft.mods?.mouldClean ?? 0) * RX.draught * count(ctx, 'airshaft');
+    res.source = 'Blown mould settling'; res.add('soil', blown * Math.min(1, heldTiles(ctx) / RX.draughtSoilTiles) * dt);
+  }
+  if (reworked(ctx, 'midden') && mouldy && res.has('fungus')) { res.source = 'Mould farm'; res.add('fungus', RX.farmClean * count(ctx, 'midden') * RX.farmFungus * dt); }
+  if (reworked(ctx, 'storeroom')) {
+    const diggers = (ctx.state.jobs?.assigned?.digger ?? 0) as number;
+    const full = res.amt('soil') >= res.cap('soil') - 0.5;
+    s.walls = Math.max(0, (s.walls ?? 0) * (1 - RX.wallDecay * dt) + (full ? diggers * RX.wallPerDigger * dt : 0));
+  }
+  if (s.floodCd) s.floodCd = Math.max(0, s.floodCd - dt);
+  res.source = prev;
+}
+/** Flood channel: all mould washed out, the eggs drown, a share of the food is soaked. */
+function flood(ctx: Context) {
+  const r = ctx.res;
+  r.lump('mould', -r.amt('mould'));
+  if (r.amt('egg') >= 1) r.lump('egg', -Math.floor(r.amt('egg')));
+  r.lump('food', -r.amt('food') * RX.floodFood);
+  S(ctx).floodCd = RX.floodCooldown;
+  ctx.log('The cisterns are opened. Water roars down the tunnels and carries the mould away, and the eggs with it.', 'warn');
+}
+function rework(ctx: Context, id: ChamberId) {
+  (S(ctx).reworks ??= {})[id] = true;
+  ctx.log(`Every ${DEFS[id].name.toLowerCase()} is rebuilt: ${REWORKS[id]!.name}.`, 'info');
+  applyEffects(ctx);
+}
+/** Saves from before Nov 17 had Chamber craft levels (+15% each). Those are gone: give back what they cost. */
+function refundOldLevels(ctx: Context) {
+  const ups = S(ctx).ups;
+  if (!ups) return;
+  const O = RW.old, back: Costs = {};
+  for (const [id, L] of Object.entries(ups)) {
+    const late = DEFS[id as ChamberId]?.later?.cost ?? {};
+    const [r, v] = Object.entries(late)[0] ?? [];
+    const base: Costs = { clay: O.clay, ...(r ? { [r]: (v ?? 1) * O.lateMult } : O.fallback) };
+    for (let l = 0; l < L; l++) for (const [k, n] of Object.entries(base)) back[k] = (back[k] ?? 0) + Math.ceil((n ?? 0) * Math.pow(O.growth, l));
+  }
+  delete S(ctx).ups;
+  const got = Object.entries(back).filter(([k, n]) => n && ctx.res.has(k));
+  for (const [k, n] of got) ctx.res.add(k, n!);
+  if (got.length) ctx.log(`Chamber craft has changed: old upgrade levels are gone, and what they cost comes back (${got.map(([k, n]) => `${n} ${k}`).join(', ')}).`, 'info');
+}
 /** Storage chambers each hold NEST.storeGrowth times the one before, so N of them hold this many 'firsts'. */
 const grows = (id: ChamberId) => NEST.storeGrowthIds.includes(id);
 const stack = (ctx: Context, id: ChamberId) => { const n = count(ctx, id); return grows(id) ? (Math.pow(NEST.storeGrowth, n) - 1) / (NEST.storeGrowth - 1) : n; };
@@ -135,7 +187,7 @@ const num = (n: number) => String(Number(n.toFixed(2)));
 function liveDesc(ctx: Context, id: ChamberId) {
   const m = storeMult(ctx, id) * nextScale(ctx, id) * power(ctx, id);
   let d = DEFS[id].desc.replace(/\+(\d+) living space/, (_, n) =>
-    `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx) * power(ctx, id))} living space`);
+    `+${num((Number(n) + (id === 'tunnel' && ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels : 0)) * roominess(ctx))} living space`);
   if (m !== 1) d = d.replace(/\+(\d+)(?![\d.]*%)(?! living)/g, (_, n) => `+${num(Number(n) * m)}`);
   // job slots this room gives (see COLONY.jobSlots)
   for (const [job, [room, per]] of Object.entries(COLONY.jobSlots)) if (room === id) d += `, +${per} ${job} slots`;
@@ -152,25 +204,34 @@ function liveDesc(ctx: Context, id: ChamberId) {
   return d;
 }
 
+/** A chamber's strength: crowns can boost or weaken a chamber type (`room:<id>` mods). */
+const power = (ctx: Context, id: ChamberId) => Math.max(0.1, 1 + ctx.mods.get('room:' + id));
 function applyEffects(ctx: Context) {
   const mult = (id: ChamberId) => storeMult(ctx, id);
   const sum = (k: keyof ChamberDef) => IDS.reduce((t, id) => t + ((DEFS[id][k] as number | undefined) ?? 0) * (k.endsWith('Cap') ? stack(ctx, id) * mult(id) : count(ctx, id)) * power(ctx, id), 0);
   const roomier = roominess(ctx);
-  const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') * power(ctx, 'tunnel') : 0;
+  const wide = ctx.flags.has('tech:widetunnels') ? NEST.wideTunnels * count(ctx, 'tunnel') : 0;
   // terrain specialists: held ground upgrades chambers already dug
   const T = NEST.terrain, has = (t: string) => ctx.flags.has('tech:' + t);
-  const masons = has('soilmasons') ? T.soilmasons * count(ctx, 'storeroom') * power(ctx, 'storeroom') : 0;
+  const masons = has('soilmasons') ? T.soilmasons * count(ctx, 'storeroom') : 0;
   ctx.res.setCapBonus('ant', 'nest', Math.floor((sum('antCap') + wide + masons) * roomier));
   ctx.res.setCapBonus('food', 'nest', sum('foodCap'));
-  ctx.res.setCapBonus('egg', 'nest', sum('broodCap') + (has('warmslabs') ? T.warmslabs * count(ctx, 'warmth') * power(ctx, 'warmth') : 0));
+  ctx.res.setCapBonus('egg', 'nest', sum('broodCap') + (has('warmslabs') ? T.warmslabs * count(ctx, 'warmth') : 0));
   ctx.res.setCapBonus('soil', 'nest', totalChambers(ctx) * NEST.soilPerChamber + sum('soilCap'));
   for (const r of Object.keys(NEST.baseMaterialCap)) {
     if (ctx.res.has(r)) ctx.res.setCapBonus(r, 'nest', IDS.reduce((t, id) => t + (DEFS[id].matCap?.[r] ?? 0) * stack(ctx, id) * mult(id) * power(ctx, id), 0));
   }
   if (ctx.res.has('pheromone')) ctx.res.setCapBonus('pheromone', 'nest', sum('pheroCap'));
-  ctx.mods.set('defence', 'nest', sum('defence') + (has('stoneposts') ? (DEFS.barracks.defence ?? 0) * count(ctx, 'barracks') * power(ctx, 'barracks') : 0));
-  ctx.mods.set('mouldClean', 'dewwells', has('dewwells') ? T.dewwells * count(ctx, 'cistern') * power(ctx, 'cistern') : 0);
+  const defence = sum('defence') + (has('stoneposts') ? (DEFS.barracks.defence ?? 0) * count(ctx, 'barracks') : 0) + Math.floor(S(ctx).walls ?? 0);
+  ctx.mods.set('defence', 'nest', defence);
+  // Gatehouse: shut gates double the nest's own defence (chambers and walls); foragers and expeditions read gatesShut
+  const shut = gatesShut(ctx);
+  ctx.mods.set('gatesShut', 'nest', shut ? 1 : 0);
+  ctx.mods.set('defence', 'gates', shut ? defence : 0);
+  ctx.mods.set('mouldClean', 'farm', reworked(ctx, 'midden') ? RX.farmClean * count(ctx, 'midden') : 0);
+  ctx.mods.set('mouldClean', 'dewwells', has('dewwells') ? T.dewwells * count(ctx, 'cistern') : 0);
   ctx.mods.set('upkeep', 'nest', -sum('upkeep'));
+  ctx.mods.set('mouldRooms', 'reworks', reworkMould(ctx));
   ctx.mods.set('job:scout', 'nest', sum('scout'));
   ctx.mods.set('job:elder', 'nest', sum('elder'));
   if (ctx.res.has('knowledge')) ctx.res.setCapBonus('knowledge', 'nest', sum('knowCap'));
@@ -179,7 +240,7 @@ function applyEffects(ctx: Context) {
   if (ctx.res.has('jelly')) ctx.res.setCapBonus('jelly', 'nest', sum('jellyCap'));
   ctx.mods.set('boatSlots', 'nest', sum('boats'));
   const m: Record<string, number> = {};
-  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * power(ctx, id);
+  for (const id of IDS) for (const [k, v] of Object.entries(DEFS[id].mods ?? {})) m[k] = (m[k] ?? 0) + v * count(ctx, id) * power(ctx, id) * (id === 'airshaft' && reworked(ctx, id) ? RX.draught : 1);
   for (const id of IDS) for (const k of Object.keys(DEFS[id].mods ?? {})) ctx.mods.set(k, 'nest:mods', m[k] ?? 0);
 }
 
@@ -198,6 +259,7 @@ export const nest: GameSystem = {
         n.order = n.order.map((id) => (id === 'brood' ? 'warmth' : id === 'warmth' ? 'brood' : id));
         n.swappedBrood = true;
       }
+      refundOldLevels(ctx);
       applyEffects(ctx);
     });
   },
@@ -207,9 +269,10 @@ export const nest: GameSystem = {
   tick(ctx, dt) {
     applyEffects(ctx);
     if (queueSlots(ctx)) runQueue(ctx);
+    tickReworks(ctx, dt);
     const g = count(ctx, 'granary');
-    if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * power(ctx, 'granary') * dt);
-    if (g && ctx.flags.has('tech:meadowgranary')) ctx.res.add('seed', g * NEST.terrain.meadowgranary * power(ctx, 'granary') * dt);
+    if (g) ctx.res.add('food', g * (DEFS.granary.foodRate ?? 0) * dt);
+    if (g && ctx.flags.has('tech:meadowgranary')) ctx.res.add('seed', g * NEST.terrain.meadowgranary * dt);
     if (!ctx.flags.has('surface') && ctx.flags.has('tech:surface') && totalChambers(ctx) >= NEST.surfaceAtChambers) {
       ctx.flags.add('surface');
       ctx.log('A digger pushes upward and the soil gives way. Light. Wind. The surface.');
@@ -219,7 +282,9 @@ export const nest: GameSystem = {
 
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
-    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, ups: ReturnType<typeof upgradeList>, upBox: HTMLElement;
+    let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, upBox: HTMLElement;
+    let floodBtn: ReturnType<typeof actionButton>, floodWrap: HTMLElement, gateWrap: HTMLElement, gateBox: HTMLInputElement, alarmWrap: HTMLElement, alarmSel: HTMLSelectElement;
+    const rwButtons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     return {
       title: 'Nest',
       group: 'Nest',
@@ -271,10 +336,40 @@ export const nest: GameSystem = {
           scroller.classList.toggle('whole', toggle.checked);
           try { localStorage.setItem('formicarium-whole-nest', toggle.checked ? '1' : '0'); } catch { /* storage blocked */ }
         });
-        ups = upgradeList(ctx, () => (S(ctx).ups ??= {}), UPGRADES);
-        upBox = el('div.tilegroups.compact.chamberups', { hidden: true }, el('div.tilegroup', {}, el('div.tilehead', {}, 'Chamber upgrades'), ups.root));
+        const rwTiles = el('div.tiles');
+        for (const id of Object.keys(REWORKS) as ChamberId[]) {
+          const r = REWORKS[id]!;
+          const btn = tileButton({
+            ctx, label: r.name,
+            effect: () => (reworked(ctx, id) ? `Every ${DEFS[id].name.toLowerCase()} is now a ${r.name.toLowerCase()}. ${r.desc} ${mouldNote(r.mould)}`
+              : `Rebuild every ${DEFS[id].name.toLowerCase()}, now and later, as a ${r.name.toLowerCase()}. ${r.desc} ${mouldNote(r.mould)} Can't be undone.`),
+            count: () => (reworked(ctx, id) ? 'done' : ''),
+            costs: () => reworkCost(id),
+            enabled: (c) => !reworked(c, id),
+            onBuy: (c) => rework(c, id),
+          });
+          btn.root.hidden = true;
+          rwTiles.append(btn.root);
+          rwButtons.set(id, btn);
+        }
+        // controls some reworks open: the flood, the gates, the alarm line
+        floodBtn = actionButton({
+          ctx, label: () => (S(ctx).floodCd ? `Flood the nest (${Math.ceil(S(ctx).floodCd!)}s)` : 'Flood the nest'),
+          desc: `Wash all the mould out at once. Every egg drowns and ${Math.round(RX.floodFood * 100)}% of the food is soaked. Then the channels refill (${RX.floodCooldown}s).`,
+          enabled: (c) => !S(c).floodCd && c.res.has('mould') && c.res.amt('mould') >= 1,
+          onBuy: (c) => flood(c),
+        });
+        floodWrap = el('div.row', { hidden: true }, floodBtn.root);
+        gateBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
+        gateBox.addEventListener('change', () => { S(ctx).gates = gateBox.checked; applyEffects(ctx); ctx.log(gateBox.checked ? 'The gates are sealed. Nothing goes out.' : 'The gates open again.', 'info'); });
+        gateWrap = el('div.row', { hidden: true }, el('label', {}, gateBox, ' Shut the gates (defence x2, no foraging or expeditions)'));
+        alarmSel = el('select', {}, ...RX.alarmLines.map((n) => el('option', { value: String(n) }, String(n)))) as HTMLSelectElement;
+        alarmSel.addEventListener('change', () => { S(ctx).alarmAt = Number(alarmSel.value); });
+        alarmWrap = el('div.row', { hidden: true }, el('label', {}, 'Alarm scent: idle workers turn out as nurses when mould passes ', alarmSel));
+        upBox = el('div.tilegroups.compact.chamberups', { hidden: true }, el('div.tilegroup', {}, el('div.tilehead', {}, 'Chamber reworks'), rwTiles));
+        const rwCtl = el('div.reworkctl', {}, floodWrap, gateWrap, alarmWrap);
         root.classList.add('nestpanel');
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox,
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox, rwCtl,
           el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest')), el('p.controls', {}, 'Click a chamber, then another, to swap them.'), scroller);
       },
       update(_root, ctx) {
@@ -286,7 +381,12 @@ export const nest: GameSystem = {
           b.root.hidden = !visible(ctx, id);
           b.update(ctx);
         }
-        upBox.hidden = !ups.update(ctx);
+        let anyRw = false;
+        for (const [id, b] of rwButtons) { b.root.hidden = !(reworked(ctx, id) || reworkReady(ctx, id)); anyRw ||= !b.root.hidden; b.update(ctx); }
+        upBox.hidden = !anyRw;
+        floodWrap.hidden = !reworked(ctx, 'cistern'); floodBtn.update(ctx);
+        gateWrap.hidden = !reworked(ctx, 'barracks'); gateBox.checked = !!S(ctx).gates;
+        alarmWrap.hidden = !reworked(ctx, 'gland'); alarmSel.value = String(alarmLine(ctx));
         grid.querySelectorAll<HTMLElement>('.tilegroup').forEach((g) => { g.hidden = !Array.from(g.querySelectorAll<HTMLElement>('.tilewrap')).some((t) => !t.hidden); });
         const n = totalChambers(ctx);
         const bits = [ctx.flags.has('surface') ? `${n} chambers`
@@ -294,7 +394,9 @@ export const nest: GameSystem = {
         const def = ctx.mods.get('defence'), up = -ctx.mods.get('upkeep');
         if (def) bits.push(`defence ${def}`);
         if (up) bits.push(`upkeep reduced ${Math.round(up * 100)}%`);
-        if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0) * power(ctx, 'granary')).toFixed(2)} food/s`);
+        if ((S(ctx).walls ?? 0) >= 1) bits.push(`spoil walls ${Math.floor(S(ctx).walls!)}`);
+        if (gatesShut(ctx)) bits.push('gates shut');
+        if (count(ctx, 'granary')) bits.push(`granaries +${(count(ctx, 'granary') * (DEFS.granary.foodRate ?? 0)).toFixed(2)} food/s`);
         progress.textContent = bits.join(' · ');
         drawNest(canvas, ctx);
       },
@@ -716,6 +818,8 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       default:
         blob(c, cx, y, 12, 5, PAL.hole);
     }
+    // a reworked chamber type: every one of them gets a clay-lined floor with corner posts
+    if (reworked(ctx, id)) { rect(c, cx - 15, y + 6, 30, 1, CLAY); rect(c, cx - 15, y + 3, 1, 3, CLAY); rect(c, cx + 14, y + 3, 1, 3, CLAY); }
 
     // a chamber dug in the last moment fades in out of the soil
     const now = performance.now();

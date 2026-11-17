@@ -133,6 +133,12 @@ export const GUIDE: GuidePage[] = [
         'Dig [Worker hall]s. Living space is the main limit this age.',
         'More chambers means more |mould|. Learn [Grooming] so each nurse scrubs 12 chambers instead of 8.',
       ] },
+      { head: 'Rework your chambers', do: [
+        'With 60 chambers, [Chamber craft] appears. Learn it to rework a chamber type you have 3 or more of, from the {Nest} tab.',
+        'A rework changes every chamber of that type for good, ones dug later too. It cannot be undone.',
+        'Most reworks make that chamber type gather more |mould|. The cleaners\' reworks (Infirmary, Draught shaft, Mould farm, Flood channel) fight it.',
+        'Some reworks reach other tabs: the Muster hall (winter jobs), the Seed bank (sow tiles on the {Map}) and the Hall of records (keep a research through a flight).',
+      ], tip: 'Rework a cleaner for every two or three other reworks, or the mould gets ahead of you.' },
       { head: 'Take to the water', do: [
         'Learn [Leaf rafts] to open the {Waters} tab.',
         'Send boats on voyages for loot. Some islands can be settled for steady income.',
@@ -159,7 +165,6 @@ export const GUIDE: GuidePage[] = [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',
         'Dig [Clay hall]s for lots of living space.',
         'Big nests need clay too: later Halls of husks, Memory vaults and Paper halls cost some.',
-        'Learn [Chamber craft] to upgrade a kind of chamber you have 3 or more of. Upgrades add no mould, so they beat digging more.',
       ] },
       { head: 'Watch the seasons', do: [
         'From now on the year turns.',

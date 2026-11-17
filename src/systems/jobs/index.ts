@@ -51,6 +51,8 @@ interface JobsState {
   assigned: Record<string, number>; tech: Record<string, number>; hunger?: number; starved?: number; bench?: number; warned?: boolean; warnCd?: number; lowFor?: number; lowest?: number;
   /** The queen's decree (an archive accord): the worker mix new workers are sent to match. Kept across colonies. */
   decree?: Record<string, number>; decreeOn?: boolean;
+  /** Muster hall: the job layout for winter, the one it replaced, and whether last tick was winter. */
+  winterLayout?: Record<string, number>; springLayout?: Record<string, number>; wasWinter?: boolean;
   /** Daily routine: idle workers go to this job. Kept across colonies. */
   defaultJob?: string;
   /** Workers last tick: only a rise (new hatchlings) is sent to the default job. */
@@ -100,6 +102,35 @@ function buriedFind(ctx: Context, diggerSeconds: number) {
   const n = Math.round(f.amt[0] + Math.random() * (f.amt[1] - f.amt[0]));
   ctx.res.lump(f.res, n);
   ctx.log(`${f.text} (+${n} ${ctx.res.get(f.res).name.toLowerCase()})`);
+}
+
+/** Chamber reworks live on the nest's state (Muster hall, Alarm scent, Gatehouse). */
+const rw = (ctx: Context, id: string) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.[id];
+/** Put the workers into a saved layout, as far as workers and job slots allow. */
+function applyLayout(ctx: Context, layout: Record<string, number>) {
+  const s = S(ctx);
+  for (const j of JOB_DEFS) if (j.id !== 'major') s.assigned[j.id] = 0;
+  for (const j of JOB_DEFS) {
+    if (j.id === 'major' || !jobOpen(ctx, j)) continue;
+    s.assigned[j.id] = Math.max(0, Math.min(layout[j.id] ?? 0, jobMax(ctx, j.id), idleAnts(ctx)));
+  }
+}
+/** Muster hall: switch to the winter layout as winter comes, and back to the old one in spring. */
+function muster(ctx: Context) {
+  const s = S(ctx), winter = ctx.mods.get('winter') > 0;
+  if (winter === !!s.wasWinter) return;
+  s.wasWinter = winter;
+  if (!rw(ctx, 'hall') || !s.winterLayout) return;
+  if (winter) { s.springLayout = { ...s.assigned }; applyLayout(ctx, s.winterLayout); ctx.log('Winter. The muster halls send every worker to their winter post.', 'info'); }
+  else if (s.springLayout) { applyLayout(ctx, s.springLayout); s.springLayout = undefined; ctx.log('Spring. The workers go back to their old jobs.', 'info'); }
+}
+/** Alarm scent: idle workers turn out as nurses past the mould line, and as soldiers while raiders are in. */
+function alarm(ctx: Context) {
+  if (!rw(ctx, 'gland')) return;
+  const s = S(ctx), line = (ctx.state.nest as { alarmAt?: number } | undefined)?.alarmAt ?? NEST.rw.alarmLines[1];
+  const turnOut = (id: string) => { const n = Math.min(idleAnts(ctx), jobMax(ctx, id) - (s.assigned[id] ?? 0)); if (n > 0) s.assigned[id] = (s.assigned[id] ?? 0) + n; };
+  if ((ctx.state.war as { battle?: unknown } | undefined)?.battle && ctx.flags.has('tech:martial')) turnOut('soldier');
+  if (ctx.res.has('mould') && ctx.res.amt('mould') >= line && ctx.flags.has('chamber:brood')) turnOut('nurse');
 }
 
 /** Daily routine: newly hatched workers go to the default job (after any decree). */
@@ -200,6 +231,8 @@ export const jobs: GameSystem = {
       const back = Math.max(0, Math.min(s.bench, jobMax(ctx, 'major') - s.assigned.major, idleAnts(ctx)));
       s.assigned.major += back; s.bench -= back;
     }
+    muster(ctx);
+    alarm(ctx);
     followDecree(ctx);
     followRoutine(ctx);
 
@@ -260,6 +293,7 @@ export const jobs: GameSystem = {
     for (const j of JOB_DEFS) {
       const n = Math.max(0, (s.assigned[j.id] ?? 0) - (ctx.busy['job:' + j.id] ?? 0));
       if (!n) continue;
+      if ((j.id === 'forager' || j.id === 'leafcutter') && ctx.mods.get('gatesShut') > 0) continue; // Gatehouse: gates shut
       ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
       if (j.id === 'digger' && ctx.flags.has('tech:deepdig')) ctx.res.add('clay', JOBS.diggerClay * n * mult * jobMult(ctx, j.id) * dt);
@@ -275,7 +309,7 @@ export const jobs: GameSystem = {
 
   panel: (() => {
     const rows = new Map<string, { row: HTMLElement; count: HTMLElement; out: HTMLElement; star: HTMLButtonElement; lean: HTMLElement }>();
-    let idleEl: HTMLElement, reservedEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement;
+    let idleEl: HTMLElement, reservedEl: HTMLElement, list: HTMLElement, upkeepEl: HTMLElement, census: HTMLElement, musterText: HTMLElement, musterBox: HTMLElement;
     let decreeBox: HTMLElement, decreeText: HTMLElement, decreeSet: HTMLButtonElement, decreeToggle: HTMLButtonElement;
     const change = (ctx: Context, id: string, d: number) => {
       const s = S(ctx);
@@ -301,10 +335,16 @@ export const jobs: GameSystem = {
         } }, 'Decree this mix') as HTMLButtonElement;
         decreeToggle = el('button.small', { type: 'button', onclick: () => { const s = S(ctx); s.decreeOn = !s.decreeOn; } }) as HTMLButtonElement;
         decreeBox = el('div.decree', { hidden: true }, el('strong', {}, 'The queen\'s decree'), decreeText, el('div.row', {}, decreeSet, decreeToggle));
+        musterText = el('span.muted');
+        const musterSet = el('button.small', { type: 'button', title: 'When winter comes, workers switch to this layout. In spring they go back.', onclick: () => {
+          S(ctx).winterLayout = Object.fromEntries(Object.entries(S(ctx).assigned).filter(([k, n]) => n > 0 && k !== 'major'));
+          ctx.log('The muster halls learn the winter posts.', 'info');
+        } }, 'Save as winter layout') as HTMLButtonElement;
+        musterBox = el('div.decree', { hidden: true }, el('strong', {}, 'Muster halls'), musterText, el('div.row', {}, musterSet));
         root.append(
           el('p.flavor', {}, 'Every worker waits for a purpose. Idle ants still eat.'),
           el('p', {}, 'Idle workers: ', idleEl, reservedEl = el('span.muted')),
-          decreeBox,
+          decreeBox, musterBox,
           list, upkeepEl, el('p.controls', {}, 'Shift-click moves 10. Ctrl-click moves all.'), census,
         );
         for (const j of JOB_DEFS) {
@@ -323,6 +363,11 @@ export const jobs: GameSystem = {
         idleEl.textContent = String(idleAnts(ctx));
         { const e = ctx.state.expeditions as { reserve?: boolean; reserved?: number } | undefined;
           reservedEl.textContent = e?.reserve ? `  ·  Reserved for expeditions: ${e.reserved ?? 0}` : ''; }
+        musterBox.hidden = !rw(ctx, 'hall');
+        if (!musterBox.hidden) {
+          const w = s.winterLayout, mix = w ? Object.entries(w).map(([k, n]) => `${n} ${JOB_DEFS.find((j) => j.id === k)?.name.toLowerCase() ?? k}`).join(', ') : '';
+          musterText.textContent = mix ? ` Winter posts: ${mix}.${s.springLayout ? ' In force now.' : ''}` : ' Set the jobs the way you want them in winter, then save.';
+        }
         decreeBox.hidden = !ctx.flags.has('accord:decree');
         if (!decreeBox.hidden) {
           const d = s.decree ?? {};

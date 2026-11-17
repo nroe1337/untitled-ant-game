@@ -14,6 +14,8 @@ interface LineageState {
   perks: Record<string, number>; flights: number; best: number; total: number; pending?: boolean; wonder?: Wonder;
   /** Princess traits the line carries (kept for good), and whether this colony has picked its new one. */
   traits?: string[]; picked?: boolean;
+  /** Hall of records (a chamber rework): one research the next colony starts with. */
+  recorded?: string;
   /** Fine evenings: seconds to the next evening, seconds left of the current one, and whether it is fine. */
   eveCd?: number; eveLeft?: number; fine?: boolean; autoFly?: boolean;
   /** Dowry carried from the last colony, still to be unpacked into stores as room allows. */
@@ -38,6 +40,9 @@ const wonder = (ctx: Context) => (S(ctx).wonder ??= { stage: 0, paid: {}, settle
 const moundDone = (ctx: Context) => wonder(ctx).stage >= W.stages.length;
 /** A flight needs a warm evening: not in autumn or winter (once the year turns). */
 const warm = (ctx: Context) => ctx.mods.get('cold') <= 0;
+/** Research the Hall of records can keep: learned, from the first three ages. */
+const RECORD_AGES = ['dirt', 'forage', 'conquest'];
+const recordable = (ctx: Context) => Object.keys(RESEARCH.techs).filter((id) => ctx.flags.has('tech:' + id) && RECORD_AGES.includes(RESEARCH.techs[id].age ?? ''));
 const canFly = (ctx: Context) => ctx.flags.has('tech:flight') && moundDone(ctx) && warm(ctx);
 /** A fine evening is on now (Sky-reader makes every warm evening fine). */
 function fineNow(ctx: Context) { const s = S(ctx); return warm(ctx) && (s.eveLeft ?? 0) > 0 && (!!s.fine || trait(ctx, 'sky')); }
@@ -145,6 +150,7 @@ export const lineage: GameSystem = {
       const swarm = LINEAGE.perks.swarm.per * P(ctx, 'swarm');
       if (swarm) { ctx.res.setCapBonus('ant', 'swarm', swarm); ctx.res.set('ant', swarm); }
       if (trait(ctx, 'warborn')) ctx.flags.add('tech:martial');
+      if (s.recorded) { ctx.flags.add('tech:' + s.recorded); ctx.log(`The new queen remembers what the hall of records kept: ${RESEARCH.techs[s.recorded]?.name ?? s.recorded}.`, 'story'); s.recorded = undefined; }
       const dw = s.dowry && Object.values(s.dowry).some((n) => n > 0) ? ` She brings a dowry: ${Object.entries(s.dowry).map(([r, n]) => `${fmt(n)} ${r}`).join(' and ')}, unpacked as the stores make room.` : '';
       ctx.log(`The wedding flight is over. A young queen sheds her wings and digs into new earth. This is flight ${s.flights} of your line.` + (swarm ? ` ${swarm} workers came with her.` : '') + dw);
     });
@@ -196,13 +202,14 @@ export const lineage: GameSystem = {
     const s = S(ctx);
     // carry unspent lineage as part of total; perks stay bought. Deeper prestiges (migration, supercolony)
     // never wipe the line: they pay their own currencies, and flights can always be ground for more.
-    return { perks: s.perks, flights: s.flights, best: s.best, total: s.total, pending: true, traits: s.traits ?? [], dowry: s.dowry, autoFly: s.autoFly };
+    return { perks: s.perks, flights: s.flights, best: s.best, total: s.total, pending: true, traits: s.traits ?? [], dowry: s.dowry, autoFly: s.autoFly,
+      recorded: (ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.library && s.recorded && ctx.flags.has('tech:' + s.recorded) ? s.recorded : undefined };
   },
 
   panel: (() => {
     let ledger: HTMLElement, flyBtn: HTMLButtonElement, note: HTMLElement, perks: ReturnType<typeof upgradeList>;
     let mound: HTMLElement, moundHead: HTMLElement, moundInfo: HTMLElement, haul: ActionButton, holdBox: HTMLInputElement;
-    let traitBox: HTMLElement, traitRow: HTMLElement, traitHave: HTMLElement, weather: HTMLElement, weatherText: HTMLElement, autoBox: HTMLInputElement;
+    let traitBox: HTMLElement, traitRow: HTMLElement, traitHave: HTMLElement, weather: HTMLElement, weatherText: HTMLElement, autoBox: HTMLInputElement, recordBox: HTMLElement, recordSel: HTMLSelectElement;
     const traitBtns = new Map<string, HTMLButtonElement>();
     const moundBar = progressBar();
     return {
@@ -241,6 +248,11 @@ export const lineage: GameSystem = {
         traitBox = el('div.section', { hidden: true }, el('h3', {}, 'Princess traits'),
           el('p.muted', {}, 'Each colony\'s princesses carry one new trait for your line. Pick one; the ones you picked before stay with you. Hover a trait for what it does.'),
           traitRow, traitHave);
+        recordSel = el('select') as HTMLSelectElement;
+        recordSel.addEventListener('change', () => { S(ctx).recorded = recordSel.value || undefined; });
+        recordBox = el('div.section', { hidden: true }, el('h3', {}, 'Hall of records'),
+          el('p.muted', {}, 'Your elders keep one research on the walls. The next colony starts with it already learned. (Age of Dirt, Forage and Conquest research only.)'),
+          el('label.row', {}, 'Keep: ', recordSel));
         weatherText = el('span');
         autoBox = el('input', { type: 'checkbox', id: 'fly-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { S(ctx).autoFly = autoBox.checked; });
@@ -254,7 +266,7 @@ export const lineage: GameSystem = {
           el('p.flavor', {}, 'One warm evening the winged ones climb out and take to the air. Only a queen needs to land.'),
           el('p.muted', {}, 'A flight ends this colony and starts a new one. You keep Lineage, its perks, and the territory on your map. Everything else starts over.'),
           el('p.muted', {}, 'The Age of Wings is the end of a colony\'s road. Your line is meant to fly several times: each flight earns Lineage, and each colony after it grows faster and reaches further. Pushing on without flying works, but it drags. Once the line has flown 3 times and a galleon has found the far shore, it can migrate into the Age of Settlement.'),
-          mound, traitBox, weather,
+          mound, traitBox, recordBox, weather,
           ledger, el('div.row', {}, flyBtn), note,
           el('h3', {}, 'Perks of the line'),
           perks.root,
@@ -308,6 +320,16 @@ export const lineage: GameSystem = {
         traitRow.hidden = !can;
         traitHave.textContent = (owned.length ? `Your line carries: ${owned.map((id) => `${LINEAGE.traits[id].name} (${LINEAGE.traits[id].desc.replace(/\.$/, '')})`).join('; ')}.` : 'Your line carries no traits yet.')
           + (can ? '' : s.picked ? ' This colony\'s pick is made.' : !pickable(ctx).length ? '' : ' A new pick opens at the Winged princesses stage.');
+        // Hall of records
+        recordBox.hidden = !(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.library;
+        if (!recordBox.hidden) {
+          const ids = recordable(ctx), key = ids.join(',');
+          if (recordSel.dataset.key !== key) {
+            recordSel.dataset.key = key;
+            recordSel.replaceChildren(el('option', { value: '' }, 'Nothing yet'), ...ids.map((id) => el('option', { value: id }, RESEARCH.techs[id].name)));
+          }
+          recordSel.value = s.recorded && ids.includes(s.recorded) ? s.recorded : '';
+        }
         // weather watch
         weather.hidden = !ctx.flags.has('tech:weatherwatch');
         if (!weather.hidden) {

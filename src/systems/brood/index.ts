@@ -23,6 +23,8 @@ interface BroodState {
   sick?: number;
   mouldWarned?: boolean;
   mouldIntro?: boolean;
+  /** Infirmary: seconds left for each sick worker. */
+  infirm?: number[];
   royal: Record<string, number>;
   /** Brood rhythm research: the larvae's pace, and seconds until it can change again. */
   rhythm?: string;
@@ -72,16 +74,20 @@ const larvaFood = (ctx: Context) => BROOD.larvaFoodPerSecond * rhythm(ctx).eat;
 /** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
 const MO = BROOD.mould;
 /** Mould scrubbed away per second by the queen, nurses and Purification chambers. */
-export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (1 + ctx.mods.get('job:nurse'));
+/** Chamber reworks are kept on the nest's state; brood reads them there (Infirmary). */
+const infirmary = (ctx: Context) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.brood;
+export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (infirmary(ctx) ? 1 + NEST.rw.nurseClean : 1) * (1 + ctx.mods.get('job:nurse'));
 export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseClean(ctx) + ctx.mods.get('mouldClean');
 /** Mould added per second by the nest's chambers. */
 /** Chambers in the nest: every one of them gathers a little mould. */
 export const roomCount = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCount(ctx) * MO.perRoom * Math.max(0.3, 1 + ctx.mods.get('mouldMade')) : 0);
+/** Chambers counted for mould: reworks make some gather more (or none). */
+export const mouldRooms = (ctx: Context) => Math.max(0, roomCount(ctx) + ctx.mods.get('mouldRooms'));
+export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? mouldRooms(ctx) * MO.perRoom * Math.max(0.3, 1 + ctx.mods.get('mouldMade')) : 0);
 RES_TIPS.mould = (ctx: Context) => {
   const m = ctx.res.amt('mould'), next = [[MO.half, 'the brood grows at half speed'], [MO.rot, 'eggs rot and food spoils'], [MO.weak, 'workers fall sick and slow down'], [MO.sick, 'sick workers die']] as [number, string][];
   const n = next.find(([at]) => m < at);
-  return `${roomCount(ctx)} chambers gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and purification scrub ${fmt(mouldClean(ctx))}/s.\n` +
+  return `${roomCount(ctx)} chambers${mouldRooms(ctx) !== roomCount(ctx) ? ` (gathering like ${Math.round(mouldRooms(ctx))})` : ''} gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and purification scrub ${fmt(mouldClean(ctx))}/s.\n` +
     `Brood speed now: ${Math.round(mouldSpeed(ctx) * 100)}%.` + (n ? ` At ${n[0]}: ${n[1]}.` : '');
 };
 /** Share of full speed the brood grows at, given the mould. */
@@ -253,6 +259,11 @@ export const brood: GameSystem = {
         addEggs(ctx, clutch(ctx));
       }
     }
+    if (s.infirm?.length) {
+      s.infirm = s.infirm.map((t) => t - dt).filter((t) => t > 0);
+      s.infirm = s.infirm.slice(0, Math.max(0, Math.floor(res.amt('ant')) - 1));
+    }
+    ctx.busy.infirmary = s.infirm?.length ?? 0;
     // Mould: chambers gather it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
     if (ctx.flags.has('tech:brood')) {
       if (!s.mouldIntro) { s.mouldIntro = true; ctx.log('Damp creeps into the chambers: mould. Every chamber gathers a little, and it slows the brood. The queen and nurses scrub it away (Environment, in the Stores).', 'story'); }
@@ -276,7 +287,12 @@ export const brood: GameSystem = {
       }
       if (m >= MO.sick && res.amt('ant') >= 2) {
         s.sick = (s.sick ?? 0) + dt / MO.sickEvery;
-        if (s.sick >= 1) { s.sick -= 1; res.add('ant', -1); ctx.log('A worker sickens in the mould and dies.', 'warn'); }
+        if (s.sick >= 1) {
+          s.sick -= 1;
+          // Infirmary: the sick are carried off to rest instead of dying (they count as away until well)
+          if (infirmary(ctx)) { (s.infirm ??= []).push(NEST.rw.infirmaryTime); ctx.log('A worker sickens in the mould and is carried to the infirmary.', 'warn'); }
+          else { res.add('ant', -1); ctx.log('A worker sickens in the mould and dies.', 'warn'); }
+        }
       } else s.sick = 0;
       if (m >= MO.half && !s.mouldWarned) { s.mouldWarned = true; ctx.log('Mould is building up around the brood. The brood grows slower. More nurses would scrub it away.', 'warn'); }
       if (m < MO.half / 2) s.mouldWarned = false;
