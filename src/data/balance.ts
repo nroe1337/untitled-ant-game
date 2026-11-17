@@ -768,10 +768,11 @@ export const WONDERS = {
     vault: {
       name: 'The Honey Vault', real: 'Honeypot ants hang living jars of nectar from the roof.',
       from: 'rumour', where: 'rumoured places', how: 'Each rumoured place your parties pick clean is a search.', every: 0, chance: 0.25,
-      act: 'minutes with the food stores full', goals: [30, 90, 180],
+      act: 'minutes living on vault food', goals: [30, 90, 180],
+      note: 'Choosing it builds the vault: food that would overflow goes in, and comes out when the stores run low. Fill it, then move foragers to other work and live on it.',
       cost: 'Everyone smells it. Raids are a quarter bigger and steal twice as much when they get in.',
       levels: [
-        'Food never overflows. The extra goes into the vault, which has no limit and feeds the colony when the stores run dry.',
+        'The vault keeps the food stores half full, not just off empty.',
         'Vault food can pay for anything that costs food.',
         'The vault slowly turns into royal jelly.',
         'Soil and seeds overflow into the vault too, and it can pay those costs.',
@@ -791,10 +792,12 @@ export const WONDERS = {
         'The queen moves up into the leaves. Raiders that get in find nothing to steal.',
       ],
     },
-  } as Record<string, { name: string; real: string; from: string; where: string; how: string; every: number; chance: number; act: string; goals: number[]; cost: string; levels: string[] }>,
+  } as Record<string, { name: string; real: string; from: string; where: string; how: string; every: number; chance: number; act: string; note?: string; goals: number[]; cost: string; levels: string[] }>,
   thatch: { mould: 0.5 },
   bivouac: { share: 0.1, reach: 3, farReach: 6, move: 300, campaign: -0.5 },
-  vault: { raid: 0.25, steal: 1, feedAt: 0.05, jellyFood: 400, jellyRate: 2, carry: 0.25 },   // jellyRate: vault food turned per second; jellyFood: food per jelly
+  /** Choosing the Vault gives the vault itself: food overflow goes in (no limit) and comes out when the stores drop
+   *  under feedAt of the cap. It rises by time spent being fed that way (Nov 17), so the play is fill, then spend. */
+  vault: { raid: 0.25, steal: 1, feedAt: 0.05, feedUpTo: 0.5, jellyFood: 400, jellyRate: 2, carry: 0.25 },   // jellyRate: vault food turned per second; jellyFood: food per jelly
   canopy: { soil: 1, living: [2, 4] },
   /** Saves from the old tile wonders: every `oldPerSign` old levels is one sign toward a blueprint. */
   oldPerSign: 2,

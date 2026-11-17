@@ -320,7 +320,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'The four wonders', do: [
         'Thatch Mound: rises by chambers dug (60, 120, 180). It takes the sting out of winter. Price: chambers gather half again as much |mould|.',
         'Bivouac: rises by fights won, raids and campaigns (6, 15, 27). A camp you move around the {Map} lets the army and scouts strike far from your land. Price: one worker in ten holds the camp and cannot take a job.',
-        'Honey Vault: rises by minutes with full |food| stores (30, 90, 180). Overflow is kept in a vault with no limit. Price: raids are a quarter bigger and steal twice as much.',
+        'Honey Vault: choosing it builds a vault with no limit. Overflow |food| goes in and feeds the colony when stores run low. It rises by minutes living on vault food (30, 90, 180): fill it, then move foragers to other work. Price: raids are a quarter bigger and steal twice as much.',
         'Canopy: rises by tiles claimed (45, 90, 150). The colony lives in the grass it holds. Price: chambers cost twice the |soil|.',
       ], tip: 'The {Wonder} tab lists all five levels of each wonder.' },
     ],
