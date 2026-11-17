@@ -23,6 +23,8 @@ interface CasteState {
 const S = (ctx: Context) => ctx.state.castes as CasteState;
 const IDS = Object.keys(CASTES.types);
 const nurses = (ctx: Context) => ctx.state.jobs?.assigned?.nurse ?? 0;
+/** Ants one unit of a post takes. The Canopy (a wonder) lets one weaver hold a leaf nest. */
+const sizeOf = (ctx: Context, p: { id: string; size?: number }) => (p.id === 'nest' && ctx.mods.get('leafNestOne') > 0 ? 1 : p.size ?? 1);
 const glandRate = (ctx: Context) => nurses(ctx) * CASTES.upgrades.glands.per * (S(ctx).ups.glands ?? 0);
 const UPS = fromBalance(CASTES.upgrades, (ctx) => ctx.flags.has('tech:castes'));
 
@@ -43,7 +45,7 @@ const pool = (ctx: Context, caste: string) => (ctx.state.jobs?.assigned?.[CASTES
 /** Ants of a caste away from their home post, walkers included. */
 export const awayOf = (ctx: Context, caste: string) => {
   if (!(ctx.state.castes as CasteState | undefined)?.posts) return 0;
-  return CASTES.posts[caste].posts.reduce((t, p) => t + (postCount(ctx, p.id) + walking(ctx, p.id)) * (p.size ?? 1), 0);
+  return CASTES.posts[caste].posts.reduce((t, p) => t + (postCount(ctx, p.id) + walking(ctx, p.id)) * sizeOf(ctx, p), 0);
 };
 const atHome = (ctx: Context, caste: string) => Math.max(0, pool(ctx, caste) - awayOf(ctx, caste));
 const postMax = (ctx: Context, p: PostDef) =>
@@ -52,7 +54,7 @@ export const postOpen = (ctx: Context, id: string) => !!(ctx.state.castes as Cas
 /** Can one more unit set out for this post? arg: the kin colony or Map tile for placed posts. */
 export function canPost(ctx: Context, id: string, arg?: string | number) {
   const p = POSTS[id], s = S(ctx);
-  if (!postOpen(ctx, id) || atHome(ctx, p.caste) < (p.size ?? 1)) return false;
+  if (!postOpen(ctx, id) || atHome(ctx, p.caste) < sizeOf(ctx, p)) return false;
   if (postCount(ctx, id) + walking(ctx, id) >= postMax(ctx, p)) return false;
   if (arg !== undefined && (placedList(s, id).includes(arg) || s.walk.some((w) => w.post === id && w.arg === arg))) return false;
   return true;
@@ -305,7 +307,7 @@ export const castes: GameSystem = {
           c.root.hidden = !bred;
           if (!bred) continue;
           const total = pool(ctx, c.caste), home = atHome(ctx, c.caste);
-          const walkers = CASTES.posts[c.caste].posts.reduce((t, p) => t + walking(ctx, p.id) * (p.size ?? 1), 0);
+          const walkers = CASTES.posts[c.caste].posts.reduce((t, p) => t + walking(ctx, p.id) * sizeOf(ctx, p), 0);
           const sig = `${total}:${home}:${walkers}`;
           if (c.dots.dataset.sig !== sig) {
             c.dots.dataset.sig = sig;
@@ -326,7 +328,7 @@ export const castes: GameSystem = {
             r.root.classList.toggle('locked', !opened);
             r.step.hidden = !opened;
             if (r.open) { r.open.root.hidden = opened; r.open.update(ctx); }
-            const n = isMules ? mules(ctx) : postCount(ctx, r.id), size = p?.size ?? 1;
+            const n = isMules ? mules(ctx) : postCount(ctx, r.id), size = p ? sizeOf(ctx, p) : 1;
             r.num.textContent = String(n * size);
             r.now.hidden = !opened;
             r.now.textContent = n ? nowText(ctx, r.id, n) : 'Nobody posted';

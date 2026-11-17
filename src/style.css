@@ -569,3 +569,39 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 
 /* the stronghold's tile art, shown large beside the selected tile */
 .sh-art { width: 64px; height: 64px; image-rendering: pixelated; border: 1px solid var(--line); display: block; margin-bottom: 8px; }
+
+/* Wonder tab (Legacy): four picks, then the chosen wonder's card */
+.wn-picks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 16px; max-width: 820px; }
+.wn-pick { background: var(--panel, #1d1a17); border: 1px solid var(--line, #3a332c); padding: 10px 8px; text-align: center; cursor: pointer; color: inherit; font: inherit; position: relative; }
+.wn-pick:hover { border-color: #a39886; }
+.wn-pick.sel { border: 2px solid #c4532f; padding: 9px 7px; }
+.wn-pick canvas { width: 64px; height: 64px; image-rendering: pixelated; display: block; margin: 0 auto 6px; }
+.wn-pick .nm { font-size: 15px; }
+.wn-pick .lv { font-size: 12px; color: #c9a03a; }
+.wn-pick.lost canvas { filter: brightness(.25) saturate(0); }
+.wn-pick.lost .nm, .wn-pick.lost .lv { opacity: .6; color: inherit; }
+.wn-pick.live::after { content: "this colony"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 10px; background: #c9a03a; color: #141210; padding: 0 6px; font-weight: 600; white-space: nowrap; }
+.wn-card { background: var(--panel, #1d1a17); border: 1px solid var(--line, #3a332c); padding: 14px 16px; max-width: 820px; }
+.wn-card h4 { font-size: 20px; font-weight: 400; margin: 0; }
+.wn-card .real { opacity: .7; font-size: 13px; margin-bottom: 10px; }
+.wn-card .sec { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; opacity: .7; margin: 14px 0 4px; }
+.wn-card .cost { color: #d9764f; }
+.wn-card .lvl { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line, #3a332c); }
+.wn-card .lvl:last-child { border-bottom: 0; }
+.wn-card .lvl b { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line, #3a332c); opacity: .7; font-weight: 600; }
+.wn-card .lvl.have b { background: #c9a03a; color: #141210; border-color: #c9a03a; opacity: 1; }
+.wn-card .lvl.next b { border-color: #c9a03a; color: #c9a03a; opacity: 1; }
+.wn-card .lvl.todo span { opacity: .6; }
+.wn-card .lvl small { display: block; color: #c9a03a; font-size: 12px; }
+.wn-card .stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.wn-card .stage { border: 1px solid var(--line, #3a332c); padding: 8px; }
+.wn-card .stage .t { font-size: 13px; opacity: .7; }
+.wn-card .stage .bar { height: 6px; background: var(--line, #3a332c); margin-top: 6px; }
+.wn-card .stage .bar i { display: block; height: 100%; background: #8fa35a; }
+.wn-card .hunt { border: 1px dashed var(--line, #3a332c); padding: 10px; opacity: .85; }
+.wn-card .pips { display: inline-flex; gap: 4px; vertical-align: middle; margin-left: 6px; }
+.wn-card .pips i { width: 12px; height: 8px; background: var(--line, #3a332c); }
+.wn-card .pips i.on { background: #c9a03a; }
+.wn-act { display: block; width: 100%; margin-top: 14px; background: #26221e; color: inherit; border: 1px solid #c4532f; font: inherit; font-weight: 600; padding: 9px; cursor: pointer; }
+.wn-act:disabled { border-color: var(--line, #3a332c); opacity: .6; cursor: default; }
+@media (max-width: 620px) { .wn-picks { grid-template-columns: repeat(2, minmax(0, 1fr)); } .wn-card .stages { grid-template-columns: 1fr; } }

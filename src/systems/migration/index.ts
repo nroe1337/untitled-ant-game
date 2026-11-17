@@ -1,17 +1,19 @@
-// Migration: the second prestige. Once a galleon has found the far shore, and the line has flown
-// and settled enough, the whole line can move across the water into the human town.
+// Migration: the second prestige. Once a galleon has found the far shore, the line has flown and settled
+// enough, one wonder is fully raised, every blueprint is found and the three strongholds are held, the whole line can move across the water into the human town.
 // The colony ends as a flight does, but Lineage and its perks are kept: migration pays Heritage on top.
 // Heritage is earned and buys permanent perks. Sets the flag legacy:migrated.
 import type { GameSystem, Context } from '../../core/types';
 import { el } from '../../core/ui';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { MIGRATION as M } from '../../data/town';
+import { bestWonder, blueprintsFound, blueprintCount } from '../wonders';
 
 interface MigState { perks: Record<string, number>; migrations: number; total: number; flightsAt: number; lineageAt?: number; migrating?: boolean; pending?: boolean }
 const S = (ctx: Context) => ctx.state.migration as MigState;
 const PERKS = fromBalance(M.perks);
 const P = (ctx: Context, id: keyof typeof M.perks) => S(ctx).perks[id] ?? 0;
 const flightsSince = (ctx: Context) => (ctx.state.lineage?.flights ?? 0) - S(ctx).flightsAt;
+const strongholds = (ctx: Context) => ((ctx.state.map?.tiles ?? []) as { sh?: string; o: string | null }[]).filter((t) => t.sh && t.o === 'you').length;
 const founded = (ctx: Context) => ctx.state.waters?.founded ?? 0;
 
 function checks(ctx: Context): [string, boolean][] {
@@ -19,6 +21,9 @@ function checks(ctx: Context): [string, boolean][] {
     ['A galleon has reached the far shore', ctx.flags.has('legacy:farshore')],
     [`${M.needs.flights} flights since the last migration (${flightsSince(ctx)})`, flightsSince(ctx) >= M.needs.flights],
     [`${M.needs.settlements} settlements founded across the water, ever (${founded(ctx)})`, founded(ctx) >= M.needs.settlements],
+    [`One wonder at level ${M.needs.wonder} (best: level ${bestWonder(ctx)})`, bestWonder(ctx) >= M.needs.wonder],
+    [`Every wonder blueprint found (${blueprintsFound(ctx)} of ${blueprintCount})`, blueprintsFound(ctx) >= blueprintCount],
+    [`All three strongholds held on the Map (${strongholds(ctx)} of 3)`, strongholds(ctx) >= 3],
   ];
 }
 function gain(ctx: Context) {
@@ -91,7 +96,7 @@ export const migration: GameSystem = {
         root.append(
           el('p.flavor', {}, 'Across the water the ground turns to stone, and the stone is warm, and it smells of bread.'),
           el('p.muted', {}, 'A migration moves your whole line across the water into the human town. This colony ends, as a flight does, but your Lineage and its perks stay: the line can go on flying for more. Migration earns Heritage, a deeper currency whose perks last forever. Your map, champion, archive and genome come with you. Every colony after this starts in the town.'),
-          el('h3', {}, 'Before the line can move'), list,
+          el('h3', {}, 'Before the line can move'), el('p.muted', {}, 'A wonder gains one level in each colony that crowns it (Legacy, Wonder). Start early: a full wonder takes five colonies.'), list,
           ledger, el('div.row', {}, go), note,
           el('h3', {}, 'Heritage'), perks.root,
         );

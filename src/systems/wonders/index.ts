@@ -1,328 +1,309 @@
-// Tile wonders: one per terrain, raised on a tile you hold on the Map. Each is built in three stages
-// (Footings, Body, Crown, then a settling time), carried in by hand or by Builders. A finished wonder
-// rises one level for good, through every flight; each colony can raise each wonder once.
-// This system owns the levels and the builds, and publishes every trait as a shared mod that the
-// nest, brood, war, expeditions and map read. The Map marks the tile (tile.w) and asks us for its buttons.
+// Wonders: a way of life for a colony. The line finds blueprints in special places (with bad luck
+// protection); each colony picks one wonder and it cannot be changed until the next flight. The wonder
+// rises by doing its activity, counted from the moment it is chosen: the Footings switch it on at the
+// levels the line owns, its price starts at the Body, and the Crown earns the next level for good.
+// This system owns blueprints, the pick, the stages and the levels, and publishes every rule as a shared
+// mod (or a small export) that seasons, brood, jobs, war, expeditions, castes, nest and the map read.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
+import { el } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { dockProject } from '../../core/queue';
-import { WONDERS, LINEAGE } from '../../data/balance';
+import { WONDERS, MAP } from '../../data/balance';
 
 const WD = WONDERS;
-export type WonderId = keyof typeof WD.list & string;
-const IDS = Object.keys(WD.list) as WonderId[];
-interface Build { id: WonderId; tile: number; stage: number; paid: Record<string, number>; settle: number }
+const IDS = Object.keys(WD.list);
+const VAULTED = ['food', 'soil', 'seed'];
 interface WState {
-  levels: Record<string, number>;
-  /** Wonders revealed (stays revealed through flights). */
-  seen: string[];
-  /** Raised this colony (each can be raised once a colony). */
-  raised: string[];
-  builds: Build[];
-  /** Deep stores: food kept back from what spilled past the stores. */
-  reserve?: number;
-  /** Great Mound epic: daughter mounds raised this colony, and the countdown to the next swarm. */
-  daughters?: number; swarmCd?: number;
+  /** Kept for good. */
+  levels: Record<string, number>; found: string[]; signs: Record<string, number>;
+  /** This colony: the wonder chosen, where its activity count stood when it was chosen, and stages finished (0 to 3). */
+  pick: string | null; base: number; count: number; stage: number;
+  /** Seconds a manned stronghold has been searched since the last search. */
+  search: Record<string, number>;
+  vault: Record<string, number>;
+  /** The Bivouac's camp: its tile, and seconds until it can move again. */
+  camp: number | null; campCd: number;
+  migrated?: boolean;
 }
 const S = (ctx: Context) => ctx.state.wonders as WState;
-export const wonderLevel = (ctx: Context, id: string) => S(ctx)?.levels?.[id] ?? 0;
 const def = (id: string) => WD.list[id];
-type Tile = { t: string; o: string | null; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean };
+export const wonderLevel = (ctx: Context, id: string) => S(ctx)?.levels?.[id] ?? 0;
+/** The highest level any wonder has reached (migration asks for a full one). */
+export const bestWonder = (ctx: Context) => Math.max(0, ...IDS.map((id) => wonderLevel(ctx, id)));
+export const blueprintsFound = (ctx: Context) => S(ctx)?.found?.length ?? 0;
+export const blueprintCount = IDS.length;
+/** The level at which this colony's wonder works: 0 until its Footings are done. */
+const live = (ctx: Context, id: string) => { const s = S(ctx); return s?.pick === id && s.stage >= 1 ? wonderLevel(ctx, id) : 0; };
+const paying = (ctx: Context, id: string) => { const s = S(ctx); return s?.pick === id && s.stage >= 2; };
+
+type Tile = { t: string; o: string | null; seen: boolean; core?: boolean; sh?: string };
 const tiles = (ctx: Context) => (ctx.state.map?.tiles ?? []) as Tile[];
+const cheb = (a: number, b: number) => Math.max(Math.abs((a % MAP.cols) - (b % MAP.cols)), Math.abs(Math.floor(a / MAP.cols) - Math.floor(b / MAP.cols)));
 
-// ---- traits ----
-/** Tier (0 to 3) of trait t at wonder level L: levels 1-3 open tier I of each trait in turn, 4-6 tier II, 7-9 tier III. */
-export const tierOf = (L: number, t: number) => Math.max(0, Math.min(3, Math.floor((Math.min(L, 9) - 1 - t) / 3) + 1));
-const traitValue = (id: string, t: number, L: number) => { const tr = def(id).traits?.[t]; const k = tierOf(L, t); return tr && k ? tr.tiers[k - 1] : 0; };
-const ROMAN = ['', 'I', 'II', 'III'];
-const showV = (tr: { flat?: boolean }, v: number) => (tr.flat ? String(v) : `${+(v * 100).toFixed(1)}%`);
-/** Lines describing what a wonder does at level L, for the panel. */
-function effectLines(id: string, L: number): string[] {
-  const d = def(id);
-  if (id === 'mound') return [L ? `Living space from chambers +${Math.round(L * WD.mound.per * 100)}%` : 'Nothing yet', ...(L >= WD.max ? [`${d.epic.name}: ${d.epic.desc}`] : [])];
-  const out: string[] = [];
-  d.traits!.forEach((tr, t) => { const k = tierOf(L, t); if (k) out.push(`${tr.name} ${ROMAN[k]}: ${tr.desc.replace('{v}', showV(tr, tr.tiers[k - 1]))}`); });
-  if (L >= WD.max) out.push(`${d.epic.name}: ${d.epic.desc}`);
-  return out.length ? out : ['Nothing yet'];
+// ---- the activity each wonder rises by ----
+const chambers = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, n) => a + (n || 0), 0);
+/** The running count behind a wonder's activity (the pick remembers where it stood). */
+function counter(ctx: Context, id: string) {
+  if (id === 'thatch') return chambers(ctx);
+  if (id === 'canopy') return ctx.state.map?.claims ?? 0;
+  return S(ctx).count; // fights won, or seconds with full stores
 }
-/** What the next level adds. */
-function nextLine(id: string, L: number) {
-  const d = def(id);
-  if (L >= WD.max) return 'Fully raised.';
-  if (L + 1 === WD.max) return `Level 10: ${d.epic.name} (epic). ${d.epic.desc}`;
-  if (id === 'mound') return `Level ${L + 1}: living space from chambers +${Math.round((L + 1) * WD.mound.per * 100)}%.`;
-  const t = L % 3, tr = d.traits![t], k = tierOf(L + 1, t);
-  return `Level ${L + 1}: ${tr.name} ${ROMAN[k]}. ${tr.desc.replace('{v}', showV(tr, tr.tiers[k - 1]))}`;
-}
+const progress = (ctx: Context) => { const s = S(ctx); if (!s.pick) return 0; const n = counter(ctx, s.pick) - s.base; return Math.max(0, s.pick === 'vault' ? n / 60 : n); };
 
-/** Publish every wonder's effects as shared mods (source 'wonders'). */
-function publish(ctx: Context) {
-  const L = (id: string) => wonderLevel(ctx, id);
-  const m = (k: string, v: number) => ctx.mods.set(k, 'wonders', v);
-  m('livingSpace', L('mound') * WD.mound.per);
-  m('wonderSoil', -traitValue('undercroft', 0, L('undercroft')));
-  m('rootProps', traitValue('undercroft', 1, L('undercroft')));
-  m('deepStores', traitValue('undercroft', 2, L('undercroft')));
-  m('daughterQueen', L('undercroft') >= WD.max ? 1 : 0);
-  m('tunnelsTier', tierOf(L('undercroft'), 0)); m('propsTier', tierOf(L('undercroft'), 1)); m('storesTier', tierOf(L('undercroft'), 2));
-  m('cairnDouble', traitValue('cairn', 0, L('cairn')));
-  m('cairnPlates', traitValue('cairn', 1, L('cairn')));
-  m('cairnAcid', traitValue('cairn', 2, L('cairn')));
-  m('cairnJawsTier', tierOf(L('cairn'), 0)); m('cairnPlatesTier', tierOf(L('cairn'), 1)); m('cairnAcidTier', tierOf(L('cairn'), 2));
-  m('cairnStand', L('cairn') >= WD.max ? 1 : 0);
-  m('expSpeed', -traitValue('ford', 0, L('ford')));
-  m('rumourChance', traitValue('ford', 1, L('ford')));
-  m('wipeChance', -traitValue('ford', 2, L('ford')));
-  m('expColumns', L('ford') >= WD.max ? 1 : 0);
-  m('fordTier', tierOf(L('ford'), 0));
-  m('outpostCost', -traitValue('stones', 0, L('stones')));
-  m('reach', tierOf(L('stones'), 0) >= 3 ? 1 : 0);
-  m('lookoutSight', traitValue('stones', 1, L('stones')));
-  m('roadYield', traitValue('stones', 2, L('stones')));
-  m('beaconChain', L('stones') >= WD.max ? 1 : 0);
-  m('firesTier', tierOf(L('stones'), 0)); m('watchTier', tierOf(L('stones'), 1)); m('roadsTier', tierOf(L('stones'), 2));
-}
-
-// ---- building ----
-const loreKnown = (ctx: Context) => ctx.flags.has('tech:wonderlore');
-const held = (ctx: Context, terrain: string) => tiles(ctx).filter((t) => t.o === 'you' && t.t === terrain).length;
-const building = (ctx: Context, id: string) => S(ctx).builds.find((b) => b.id === id);
-/** Can wonder id be raised now (somewhere)? */
-const canStart = (ctx: Context, id: WonderId) => loreKnown(ctx) && S(ctx).seen.includes(id) && wonderLevel(ctx, id) < WD.max && !S(ctx).raised.includes(id) && !building(ctx, id);
-/** Which wonder could stand on tile i, if any. */
-export function wonderFor(ctx: Context, i: number): WonderId | null {
-  const t = tiles(ctx)[i];
-  if (!t || t.o !== 'you' || t.core || t.outpost || t.w) return null;
-  return IDS.find((id) => def(id).terrain === t.t && canStart(ctx, id)) ?? null;
-}
-/** One stage's cost for wonder id at its current level. */
-function stageCost(ctx: Context, id: string, stage: number): Record<string, number> {
-  const st = WD.stages[stage], g = Math.pow(WD.growth, wonderLevel(ctx, id));
-  const out: Record<string, number> = {};
-  for (const [r, v] of Object.entries(st.cost)) out[r] = Math.ceil(v * g);
-  if (st.rare) for (const [r, v] of Object.entries(def(id).rare)) out[r] = Math.max(1, Math.round(v * st.rare * g));
-  return out;
-}
-const owed = (ctx: Context, b: Build, r: string) => Math.max(0, (stageCost(ctx, b.id, b.stage)[r] ?? 0) - (b.paid[r] ?? 0));
-const stagePaid = (ctx: Context, b: Build) => Object.keys(stageCost(ctx, b.id, b.stage)).every((r) => owed(ctx, b, r) <= 0);
-const spare = (ctx: Context, r: string) => (ctx.res.has(r) ? Math.max(0, ctx.res.amt(r) - ctx.res.held(r)) : 0);
-/** Carry up to `units` into a build's current stage, spread over what it still needs. */
-function carry(ctx: Context, b: Build, units: number) {
-  if (b.stage >= WD.stages.length || stagePaid(ctx, b)) return 0;
-  const want = Object.keys(stageCost(ctx, b.id, b.stage)).filter((r) => owed(ctx, b, r) > 0 && spare(ctx, r) > 0);
-  if (!want.length) return 0;
-  let moved = 0;
-  for (const r of want) {
-    // rare materials come in whole pieces
-    const rare = r === 'sugar' || r === 'ivory';
-    let n = Math.min(units / want.length, owed(ctx, b, r), spare(ctx, r));
-    if (rare) n = Math.min(owed(ctx, b, r), Math.floor(spare(ctx, r)), Math.max(1, Math.floor(n)));
-    if (n <= 0) continue;
-    ctx.res.add(r, -n);
-    b.paid[r] = (b.paid[r] ?? 0) + n;
-    moved += n;
+// ---- blueprints ----
+function search(ctx: Context, id: string) {
+  const s = S(ctx), d = def(id);
+  if (s.found.includes(id)) return;
+  const signs = s.signs[id] ?? 0;
+  if (signs + 1 >= WD.pity || Math.random() < d.chance) {
+    s.found.push(id);
+    ctx.log(`A blueprint, found at ${d.where}: ${d.name}. ${d.real} Your line keeps it for good. (Legacy, Wonder)`, 'story');
+    ctx.announce(d.name, `${d.real} A colony can now choose it as its wonder.`, { kicker: 'Blueprint found' });
+  } else {
+    s.signs[id] = signs + 1;
+    ctx.log(`Signs of something at ${d.where}, but no blueprint yet (${signs + 1} of ${WD.pity}: the search after ${WD.pity - 1} signs is sure to find it).`, 'info');
   }
-  return moved;
-}
-function advance(ctx: Context, b: Build) {
-  if (!stagePaid(ctx, b)) return;
-  const last = b.stage === WD.stages.length - 1;
-  if (last && b.settle < WD.settle) return;
-  if (!last) { b.stage++; b.paid = {}; ctx.log(`${def(b.id).name}: the ${WD.stages[b.stage - 1].name.toLowerCase()} are done. Next, the ${WD.stages[b.stage].name.toLowerCase()}.`, 'info'); return; }
-  finish(ctx, b);
-}
-function finish(ctx: Context, b: Build) {
-  const s = S(ctx);
-  s.builds = s.builds.filter((x) => x !== b);
-  s.raised.push(b.id);
-  const L = (s.levels[b.id] = (s.levels[b.id] ?? 0) + 1);
-  const d = def(b.id);
-  ctx.log(`${d.name} stands finished, level ${L}. Its gift stays with your line through every flight.`, 'story');
-  ctx.announce(`${d.name}, level ${L}`, L >= WD.max ? `${d.epic.name}: ${d.epic.desc}` : effectLines(b.id, L).slice(-1)[0] ?? '', { kicker: L >= WD.max ? 'Wonder fully raised' : 'Wonder raised' });
   ctx.ping('wonders');
 }
-export function raiseWonder(ctx: Context, i: number) {
-  const id = wonderFor(ctx, i);
-  if (!id) return;
-  tiles(ctx)[i].w = id;
-  S(ctx).builds.push({ id, tile: i, stage: 0, paid: {}, settle: 0 });
-  ctx.log(`Work begins on ${def(id).name}. Builders carry to it when the Swarm Spire doesn't need them, or haul by hand (World, Wonders).`, 'info');
-}
-/** Builders work on the Spire first, while it is being built. */
-const spireBusy = (ctx: Context) => ctx.flags.has('tech:flight') && (ctx.state.lineage?.wonder?.stage ?? 0) < LINEAGE.wonder.stages.length;
-
-// ---- the Great Mound's epic: daughter mounds ----
-function daughterMounds(ctx: Context, dt: number) {
+const mannedKind = (ctx: Context, kind: string) => ((ctx.state.castes?.forts ?? []) as number[]).some((i) => tiles(ctx)[i]?.sh === kind && tiles(ctx)[i].o === 'you');
+function searches(ctx: Context, dt: number) {
   const s = S(ctx);
-  if (wonderLevel(ctx, 'mound') < WD.max || (s.daughters ?? 0) >= WD.mound.maxDaughters) return;
-  if (ctx.res.amt('ant') < ctx.res.cap('ant') - 0.5) return;
-  s.swarmCd = (s.swarmCd ?? WD.mound.every) - dt;
-  if (s.swarmCd > 0) return;
-  s.swarmCd = WD.mound.every;
-  const T = tiles(ctx);
-  const spots = T.map((t, i) => [t, i] as const).filter(([t]) => t.o === 'you' && t.t === 'grass' && !t.core && !t.outpost && !t.w);
-  if (!spots.length) return;
-  const [t] = spots[Math.floor(Math.random() * spots.length)];
-  ctx.res.add('ant', -WD.mound.swarm);
-  t.outpost = true; t.dm = true;
-  s.daughters = (s.daughters ?? 0) + 1;
-  ctx.log(`The Great Mound is full to bursting. ${WD.mound.swarm} workers swarm out and raise a daughter mound on the grass. It works as an outpost. (${s.daughters} of ${WD.mound.maxDaughters})`, 'story');
-}
-
-// ---- Deep stores ----
-function deepStores(ctx: Context) {
-  const s = S(ctx), share = ctx.mods.get('deepStores'), spilt = ctx.res.spill('food');
-  if (share <= 0) return;
-  const cap = ctx.res.cap('food');
-  s.reserve = Math.min(cap, (s.reserve ?? 0) + spilt * share);
-  if (s.reserve > 0 && ctx.res.amt('food') < cap * 0.05) {
-    const n = Math.min(s.reserve, cap * 0.05 - ctx.res.amt('food'));
-    ctx.res.source = 'Deep stores'; ctx.res.add('food', n); s.reserve -= n;
+  for (const id of IDS) {
+    if (s.found.includes(id)) continue;
+    const d = def(id);
+    if (d.from === 'rival') { const t = tiles(ctx)[MAP.rival[1] * MAP.cols + MAP.rival[0]]; if (ctx.flags.has('rival:defeated') || t?.o === 'you') search(ctx, id); continue; }
+    if (!d.every || !mannedKind(ctx, d.from)) continue;
+    s.search[id] = (s.search[id] ?? 0) + dt;
+    if (s.search[id] >= d.every) { s.search[id] = 0; search(ctx, id); }
   }
 }
+
+// ---- choosing, and rising ----
+export function chooseWonder(ctx: Context, id: string) {
+  const s = S(ctx);
+  if (s.pick || !s.found.includes(id)) return;
+  s.pick = id; s.stage = 0; s.count = 0; s.base = counter(ctx, id);
+  ctx.log(`This colony will raise ${def(id).name}. It rises by ${def(id).act}, and cannot be changed until the next flight.`, 'story');
+}
+function rise(ctx: Context) {
+  const s = S(ctx);
+  if (!s.pick) return;
+  const d = def(s.pick), p = progress(ctx);
+  while (s.stage < 3 && p >= d.goals[s.stage]) {
+    s.stage++;
+    const L = wonderLevel(ctx, s.pick);
+    if (s.stage === 1) ctx.log(`${d.name}: the footings are done. ${L ? `It works now, at level ${L}.` : 'It does nothing yet: your line has no levels in it.'}`, 'story');
+    if (s.stage === 2) ctx.log(`${d.name}: the body stands. From here on its price is paid. ${d.cost}`, 'warn');
+    if (s.stage === 3) {
+      if (L < WD.max) {
+        s.levels[s.pick] = L + 1;
+        ctx.log(`${d.name} is crowned. Level ${L + 1}, kept by your line for good: ${d.levels[L]}`, 'story');
+        ctx.announce(`${d.name}, level ${L + 1}`, d.levels[L], { kicker: L + 1 >= WD.max ? 'Wonder fully raised' : 'Wonder crowned' });
+      } else ctx.log(`${d.name} is crowned again. It is already fully raised.`, 'story');
+    }
+    ctx.ping('wonders');
+  }
+}
+
+// ---- the Bivouac's camp ----
+export const campAt = (ctx: Context) => (live(ctx, 'bivouac') >= 1 ? S(ctx).camp : null);
+export const campReach = (ctx: Context) => (live(ctx, 'bivouac') >= 4 ? WD.bivouac.farReach : WD.bivouac.reach);
+/** Is tile i within the camp's reach? `claims`: for scouts (level 2), not only the army. */
+export const nearCamp = (ctx: Context, i: number, claims = false) => { const c = campAt(ctx); return c != null && (!claims || live(ctx, 'bivouac') >= 2) && cheb(c, i) <= campReach(ctx); };
+const moveTime = (ctx: Context) => WD.bivouac.move / (live(ctx, 'bivouac') >= 4 ? 2 : 1);
+export const campWait = (ctx: Context) => S(ctx).campCd ?? 0;
+export const canPitch = (ctx: Context, i: number | null) => { const t = i == null ? null : tiles(ctx)[i]; return live(ctx, 'bivouac') >= 1 && !!t && t.o === 'you' && S(ctx).camp !== i && campWait(ctx) <= 0; };
+let overrunning = false;
+export function pitchCamp(ctx: Context, i: number) {
+  if (!canPitch(ctx, i)) return;
+  const s = S(ctx);
+  s.camp = i; s.campCd = moveTime(ctx);
+  ctx.log('The camp is struck and pitched again on new ground.', 'info');
+  if (live(ctx, 'bivouac') < 5) return;
+  const x = i % MAP.cols, y = Math.floor(i / MAP.cols);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= MAP.cols || ny >= MAP.rows) continue;
+    const t = tiles(ctx)[ny * MAP.cols + nx];
+    if (!t || t.core || t.sh || (t.o !== 'rival' && t.o !== 'spider')) continue;
+    overrunning = true; ctx.bus.emit('map:capture', { x: nx, y: ny }); overrunning = false;
+    ctx.log('The camp rolls over the enemy ground beside it. The tile is ours without a fight.', 'story');
+    return;
+  }
+}
+
+// ---- the Honey Vault ----
+export const vaultOf = (ctx: Context, r: string) => S(ctx)?.vault?.[r] ?? 0;
+function vault(ctx: Context, dt: number) {
+  const s = S(ctx), L = live(ctx, 'vault');
+  for (const r of VAULTED) {
+    const spilt = ctx.res.has(r) ? ctx.res.spill(r) : 0; // always drained, so an old spill never lands in a new vault
+    if (L >= (r === 'food' ? 1 : 4) && spilt > 0) s.vault[r] = (s.vault[r] ?? 0) + spilt;
+  }
+  if (!L) return;
+  const cap = ctx.res.cap('food'), low = cap * WD.vault.feedAt;
+  if (s.vault.food > 0 && ctx.res.amt('food') < low) {
+    const n = Math.min(s.vault.food, low - ctx.res.amt('food'));
+    ctx.res.source = 'Honey Vault'; ctx.res.add('food', n); s.vault.food -= n;
+  }
+  if (L >= 3 && ctx.res.has('jelly') && s.vault.food > 0 && ctx.res.amt('jelly') < ctx.res.cap('jelly')) {
+    const n = Math.min(s.vault.food, WD.vault.jellyRate * dt);
+    s.vault.food -= n; ctx.res.source = 'Honey Vault'; ctx.res.add('jelly', n / WD.vault.jellyFood);
+  }
+}
+
+/** Publish every rule as a shared mod (source 'wonders'). */
+function publish(ctx: Context) {
+  const s = S(ctx), m = (k: string, v: number) => ctx.mods.set(k, 'wonders', v);
+  // Thatch Mound
+  const th = live(ctx, 'thatch'), cold = ctx.mods.get('winter') > 0 ? (th >= 2 ? 1 : th >= 1 ? 0.5 : 0) : 0;
+  m('mouldMade', paying(ctx, 'thatch') ? WD.thatch.mould : 0);
+  m('job:forager', 0.75 * cold); m('job:leafcutter', 0.5 * cold); m('brood', 0.5 * cold); // gives back what winter takes (SEASONS)
+  m('untendedFull', th >= 3 ? 1 : 0);
+  m('winterTrails', th >= 4 ? 1 : 0);
+  m('shortWinter', th >= 5 ? 1 : 0);
+  // Bivouac
+  const held = paying(ctx, 'bivouac') ? Math.floor(ctx.res.amt('ant') * WD.bivouac.share) : 0;
+  if (held) ctx.busy.bivouac = held; else delete ctx.busy.bivouac;
+  m('campaignTime', live(ctx, 'bivouac') >= 3 ? WD.bivouac.campaign : 0);
+  if (s.camp != null && tiles(ctx)[s.camp]?.o !== 'you') s.camp = null;
+  // Honey Vault
+  m('raidSize', paying(ctx, 'vault') ? WD.vault.raid : 0);
+  m('stealMult', paying(ctx, 'vault') ? WD.vault.steal : 0);
+  const vl = live(ctx, 'vault');
+  for (const r of VAULTED) ctx.res.purse[r] = vl >= (r === 'food' ? 2 : 4) ? { amt: () => s.vault[r] ?? 0, take: (n) => { s.vault[r] = Math.max(0, (s.vault[r] ?? 0) - n); } } : undefined;
+  // Canopy
+  const ca = live(ctx, 'canopy');
+  m('wonderSoil', paying(ctx, 'canopy') ? WD.canopy.soil : 0);
+  const grass = ca ? tiles(ctx).filter((t) => t.o === 'you' && t.t === 'grass').length : 0;
+  ctx.res.setCapBonus('ant', 'canopy', grass * (ca >= 4 ? WD.canopy.living[1] : ca >= 1 ? WD.canopy.living[0] : 0));
+  m('leafNestOne', ca >= 2 ? 1 : 0);
+  m('treeRoads', ca >= 3 ? 1 : 0);
+  m('noSteal', ca >= 5 ? 1 : 0);
+}
+
+// ---- drawing: placeholder art, 8x8, until Nate's sprites ----
+const ART: Record<string, { rows: string[]; pal: Record<string, string> }> = {
+  thatch: { rows: ['........', '...aa...', '..abba..', '.abcbba.', '.abbcba.', 'abcbbbca', 'abbbcbba', 'dddddddd'], pal: { a: '#5a4a2a', b: '#9a7a3a', c: '#c9a85a', d: '#3a2e1c' } },
+  bivouac: { rows: ['........', '..rrrr..', '.rRrRrr.', 'rrRrrRrr', 'rRrrRrRr', 'rrRrrrrr', '.rr..rr.', '.r....r.'], pal: { r: '#c4532f', R: '#7a2f18' } },
+  vault: { rows: ['dddddddd', '.d.dd.d.', '.h.hh.h.', 'hHhhHhHh', 'hHhHHhHh', 'hhhHHhhh', '.h.hh.h.', '........'], pal: { d: '#3a2e1c', h: '#e0a030', H: '#f8d070' } },
+  canopy: { rows: ['..gGg...', '.gGGGg..', 'gGgGGGg.', '.GGgGGGg', '..gGGg..', '...tt...', '...tt...', '..tttt..'], pal: { g: '#5f8a3a', G: '#8fb85a', t: '#5a3a22' } },
+};
+function drawArt(id: string) {
+  const cv = el('canvas', { width: 8, height: 8 }), g = cv.getContext('2d')!, a = ART[id];
+  g.fillStyle = '#1d1a17'; g.fillRect(0, 0, 8, 8);
+  a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') { g.fillStyle = a.pal[r[x]]; g.fillRect(x, y, 1, 1); } });
+  return cv;
+}
+
+const fresh = (): WState => ({ levels: {}, found: [], signs: {}, pick: null, base: 0, count: 0, stage: 0, search: {}, vault: {}, camp: null, campCd: 0, migrated: true });
 
 export const wonders: GameSystem = {
   id: 'wonders',
   init(ctx) {
-    ctx.state.wonders = { levels: {}, seen: [], raised: [], builds: [] } satisfies WState;
+    ctx.state.wonders = fresh();
     ctx.bus.on('loaded', () => {
-      const s = S(ctx);
-      s.levels ??= {}; s.seen ??= []; s.raised ??= []; s.builds ??= [];
-      // a wonder's tile is marked on the map; drop marks whose build is gone (a new colony starts bare)
-      const live = new Set([...s.builds.map((b) => b.tile)]);
-      tiles(ctx).forEach((t, i) => { if (t.w && !live.has(i) && !s.raised.includes(t.w)) delete t.w; });
+      const s = S(ctx), old = s as unknown as { levels?: Record<string, number>; reserve?: number };
+      for (const [k, v] of Object.entries(fresh())) (s as unknown as Record<string, unknown>)[k] ??= v;
+      // saves from the old tile wonders: their levels become signs toward the blueprints, and the deep reserve goes into the vault
+      const gone = Object.keys(s.levels).filter((id) => !IDS.includes(id));
+      if (gone.length) {
+        let signs = Math.floor(gone.reduce((a, id) => a + (old.levels![id] ?? 0), 0) / WD.oldPerSign);
+        for (const id of gone) delete s.levels[id];
+        const hunt = IDS.filter((id) => def(id).chance < 1);
+        for (let k = 0; signs > 0 && k < hunt.length * (WD.pity - 1); k++) { const id = hunt[k % hunt.length]; if ((s.signs[id] ?? 0) < WD.pity - 1) { s.signs[id] = (s.signs[id] ?? 0) + 1; signs--; } }
+        if (old.reserve) s.vault.food = (s.vault.food ?? 0) + old.reserve;
+        ctx.log('The old wonders are gone: a wonder is now one way of life for each colony. What your line learned raising them counts as signs toward the new blueprints. (Legacy, Wonder)', 'story');
+      }
     });
+    const fight = () => { const s = S(ctx); if (s.pick === 'bivouac' && !overrunning) s.count++; };
+    ctx.bus.on('war:won', fight);
+    ctx.bus.on('map:capture', fight);
+    ctx.bus.on('rumour:done', () => search(ctx, 'vault'));
   },
-  isUnlocked: (ctx) => loreKnown(ctx) || IDS.some((id) => wonderLevel(ctx, id) > 0),
-  keep(ctx) { const s = S(ctx); return { levels: s.levels, seen: s.seen, raised: [], builds: [] }; },
+  isUnlocked: (ctx) => { const s = S(ctx); return s.found.length > 0 || Object.keys(s.signs).length > 0 || bestWonder(ctx) > 0 || ctx.flags.has('stronghold:held') || ctx.flags.has('rival:defeated') || ctx.flags.has('legacy:flown'); },
+  keep(ctx) {
+    const s = S(ctx), carry = live(ctx, 'vault') >= 5 ? WD.vault.carry : 0;
+    return { ...fresh(), levels: s.levels, found: s.found, signs: s.signs, vault: Object.fromEntries(VAULTED.map((r) => [r, Math.floor((s.vault[r] ?? 0) * carry)])) };
+  },
   tick(ctx, dt) {
     const s = S(ctx);
+    if (!ctx.flags.has('wonders:open') && wonders.isUnlocked!(ctx)) ctx.flags.add('wonders:open'); // opens the Guide's Wonders page
+    if (s.pick === 'vault' && ctx.res.amt('food') >= ctx.res.cap('food') - 0.5) s.count += dt;
+    s.campCd = Math.max(0, (s.campCd ?? 0) - dt);
+    searches(ctx, dt);
+    rise(ctx);
     publish(ctx);
-    deepStores(ctx);
-    daughterMounds(ctx, dt);
-    if (loreKnown(ctx)) for (const id of IDS) {
-      if (s.seen.includes(id) || held(ctx, def(id).terrain) < def(id).tiles) continue;
-      s.seen.push(id);
-      ctx.log(`Your builders have an idea: ${def(id).name}, on ${def(id).terrain === 'water' ? 'a stream' : def(id).terrain === 'paved' ? 'the patio slabs' : def(id).terrain === 'soil' ? 'bare soil' : def(id).terrain} you hold. Select such a tile on the Map to raise it.`, 'info');
-      ctx.ping('wonders');
-    }
-    // a build whose tile was lost stops (nothing paid is lost: it waits for the tile)
-    const builders = spireBusy(ctx) ? 0 : (ctx.state.jobs?.assigned?.builder ?? 0);
-    let units = builders * LINEAGE.wonder.builderRate * (ctx.flags.has('accord:haul') ? 2 : 1) * dt;
-    for (const b of [...s.builds]) {
-      if (tiles(ctx)[b.tile]?.o !== 'you') continue;
-      if (units > 0) units -= carry(ctx, b, units);
-      if (b.stage === WD.stages.length - 1 && stagePaid(ctx, b)) b.settle += dt;
-      advance(ctx, b);
-    }
+    vault(ctx, dt);
   },
   panel: (() => {
-    const rows = new Map<WonderId, { root: HTMLElement; head: HTMLElement; now: HTMLElement; next: HTMLElement; build: HTMLElement; bar: ReturnType<typeof progressBar>; haul: ActionButton }>();
-    let intro: HTMLElement;
+    let picks: HTMLElement, card: HTMLElement, sel = 0, sig = '', armed = '';
+    const draw = (ctx: Context) => {
+      const s = S(ctx);
+      picks.replaceChildren(...IDS.map((id, i) => {
+        const d = def(id), found = s.found.includes(id);
+        const b = el(`button.wn-pick${i === sel ? '.sel' : ''}${found ? '' : '.lost'}${s.pick === id ? '.live' : ''}` as 'button', { type: 'button' }, drawArt(id),
+          el('div.nm', {}, found ? d.name : 'Not found'), el('div.lv', {}, found ? `Level ${wonderLevel(ctx, id)} of ${WD.max}` : `Signs ${s.signs[id] ?? 0} of ${WD.pity}`));
+        b.addEventListener('click', () => { sel = i; armed = ''; sig = ''; });
+        return b;
+      }));
+      const id = IDS[sel], d = def(id), found = s.found.includes(id), L = wonderLevel(ctx, id), mine = s.pick === id;
+      const kids: (Node | string)[] = [el('h4', {}, d.name), el('div.real', {}, d.real)];
+      if (!found) {
+        const n = s.signs[id] ?? 0;
+        kids.push(el('div.hunt', {}, `The blueprint is hidden at ${d.where}. ${d.how}`,
+          ...(d.chance < 1 ? [` Each search might find it. You have found signs ${n} time${n === 1 ? '' : 's'}, and search ${WD.pity} is sure to find it.`, el('span.pips', {}, ...Array.from({ length: WD.pity }, (_, k) => el(k < n ? 'i.on' : 'i')))] : [])));
+      } else kids.push(el('div.sec', {}, 'Its price, at every level'), el('div.cost', {}, d.cost));
+      kids.push(el('div.sec', {}, 'Levels, kept by your line for good'));
+      kids.push(el('div.levels', {}, ...d.levels.map((t, k) => {
+        const st = k < L ? 'have' : k === L && found ? 'next' : 'todo';
+        return el(`div.lvl.${st}` as 'div', {}, el('b', {}, String(k + 1)), el('span', {}, t, st === 'next' ? el('small', {}, mine ? (s.stage >= 3 ? 'Earned next: crown the wonder in another colony.' : 'Crown the wonder in this colony to earn this level.') : 'Crown the wonder in a colony to earn this level.') : null));
+      })));
+      if (found) {
+        const p = mine ? progress(ctx) : 0;
+        kids.push(el('div.sec', {}, mine ? `Rising in this colony, by ${d.act}` : `How it rises: by ${d.act}, counted from when you choose it`));
+        kids.push(el('div.stages', {}, ...WD.stages.map((name, k) => {
+          const g = d.goals[k], fill = el('i'); fill.style.width = `${Math.min(1, p / g) * 100}%`;
+          return el('div.stage', {}, el('b', {}, name), el('div.t', {}, `${fmt(Math.min(p, g), true)} of ${g} ${d.act}`), el('div.bar', {}, fill),
+            el('div.t', {}, k === 0 ? 'Switches the wonder on at the levels you own' : k === 1 ? 'Its price is paid from here on' : 'Earns the next level for good'));
+        })));
+        const b = el('button.wn-act', { type: 'button' }, mine ? 'This colony\'s wonder. It cannot be changed until the next flight.' : s.pick ? 'This colony has already chosen' : armed === id ? 'Really? It cannot be changed until the next flight' : 'Choose for this colony') as HTMLButtonElement;
+        b.disabled = !!s.pick;
+        b.addEventListener('click', () => { if (armed !== id) { armed = id; sig = ''; setTimeout(() => { if (armed === id) { armed = ''; sig = ''; } }, 4000); return; } armed = ''; chooseWonder(ctx, id); sig = ''; });
+        kids.push(b);
+      }
+      card.replaceChildren(...kids);
+    };
     return {
-      title: 'Wonders',
-      group: 'World',
-      mount(root, ctx) {
-        intro = el('p.muted');
-        root.append(el('p.flavor', {}, 'Great works raised on the land you hold. The building is left behind at each flight, but what it taught the colony stays.'), intro);
-        for (const id of IDS) {
-          const head = el('h3'), now = el('div.ledger'), next = el('p.muted'), build = el('div.ledger'), bar = progressBar();
-          const haul = actionButton({
-            ctx, label: 'Haul a load', cooldown: WD.haulCooldown, desc: `Carry ${WD.haul} units of what this stage needs from your stores. Builders (Jobs tab) do this on their own when the Swarm Spire doesn't need them.`,
-            enabled: (c) => { const b = building(c, id); return !!b && !stagePaid(c, b); },
-            onBuy: (c) => { const b = building(c, id); if (b) { carry(c, b, WD.haul); advance(c, b); } },
-          });
-          const box = el('div.section.wonder', {}, head, now, next, build, bar.root, el('div.row', {}, haul.root));
-          rows.set(id, { root: box, head, now, next, build, bar, haul });
-          root.append(box);
-        }
+      title: 'Wonder',
+      group: 'Legacy',
+      mount(root) {
+        picks = el('div.wn-picks'); card = el('div.wn-card');
+        root.append(
+          el('p.flavor', {}, 'One wonder for each colony. It decides what kind of colony this is.'),
+          el('p.muted', {}, `Wonder levels are the main thing a colony hands on to the next: every level changes a rule for good. The line cannot migrate to the town until one wonder reaches level ${WD.max}, so plan to crown a wonder in every colony.`),
+          picks, card);
       },
       update(_root, ctx) {
         const s = S(ctx);
-        intro.textContent = loreKnown(ctx)
-          ? 'A wonder shows here once you hold enough of its ground. To raise one, select a tile of that ground you hold on the Map (not the nest or an outpost). Each can be raised once a colony; each raise is one level, up to 10. The tile gives no yield while a wonder stands on it.'
-          : 'Learn Wonder lore to raise wonders in this colony. The levels you have already raised still work.';
-        for (const id of IDS) {
-          const r = rows.get(id)!, d = def(id), L = wonderLevel(ctx, id), seen = s.seen.includes(id);
-          r.root.hidden = !seen && !L;
-          if (r.root.hidden) continue;
-          r.head.textContent = `${d.name}, level ${L} of ${WD.max}`;
-          r.now.replaceChildren(el('div', {}, el('span.muted', {}, 'Ground'), el('span', {}, `${{ grass: 'Grass', soil: 'Bare soil', stone: 'Stones', water: 'Stream', paved: 'Patio slabs' }[d.terrain]}. ${d.what}`)),
-            ...effectLines(id, L).map((line, k) => el('div', {}, el('span.muted', {}, k ? '' : 'Now'), el('span', {}, line))));
-          r.next.textContent = nextLine(id, L);
-          const b = building(ctx, id);
-          r.bar.root.hidden = !b; r.haul.root.hidden = !b;
-          if (!b) {
-            const why = L >= WD.max ? 'Fully raised.' : s.raised.includes(id) ? 'Raised this colony. The next level waits for a new colony.' : !loreKnown(ctx) ? 'Needs Wonder lore in this colony.' : `Not started. Select a ${{ grass: 'grass', soil: 'bare soil', stone: 'stone', water: 'stream', paved: 'patio slab' }[d.terrain]} tile you hold on the Map.`;
-            r.build.replaceChildren(el('div', {}, el('span.muted', {}, 'Building'), el('span', {}, why)));
-            continue;
-          }
-          r.haul.update(ctx);
-          const cost = stageCost(ctx, id, b.stage), st = WD.stages[b.stage];
-          const lines: [string, string][] = [['Building', `Stage ${b.stage + 1} of ${WD.stages.length}: ${st.name}`]];
-          for (const k of Object.keys(cost)) lines.push([ctx.res.has(k) ? ctx.res.get(k).name : k, `${fmt(b.paid[k] ?? 0)} / ${cost[k]}` + (owed(ctx, b, k) > 0 && spare(ctx, k) <= 0 ? ' (none in stores)' : '')]);
-          if (b.stage === WD.stages.length - 1) lines.push(['Then', stagePaid(ctx, b) ? `settling, ${Math.ceil((WD.settle - b.settle) / 60)} min left` : `${Math.round(WD.settle / 60)} min to settle once paid`]);
-          if (tiles(ctx)[b.tile]?.o !== 'you') lines.push(['Stopped', 'The tile is no longer ours. Work waits until it is taken back.']);
-          if (spireBusy(ctx)) lines.push(['Builders', 'busy on the Swarm Spire']);
-          r.build.replaceChildren(...lines.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
-          r.bar.set(progressOf(ctx, b));
-        }
+        const key = [sel, armed, s.pick, s.stage, s.found.join(), IDS.map((id) => `${s.signs[id] ?? 0}${wonderLevel(ctx, id)}`).join(), Math.floor(progress(ctx) * 10)].join('|');
+        if (key === sig) return;
+        sig = key;
+        draw(ctx);
       },
     };
   })(),
 };
 
-/** How far along a build is, 0 to 1, over all its stages and the settling. */
-function progressOf(ctx: Context, b: Build) {
-  const n = WD.stages.length + 1;
-  const cost = stageCost(ctx, b.id, b.stage);
-  const total = Object.values(cost).reduce((a, x) => a + x, 0) || 1;
-  const paid = Object.keys(cost).reduce((a, r) => a + Math.min(cost[r], b.paid[r] ?? 0), 0);
-  const settled = b.stage === WD.stages.length - 1 && stagePaid(ctx, b) ? b.settle / WD.settle : 0;
-  return Math.min(1, (b.stage + paid / total + settled) / n);
-}
-
-// ---- the project bar above the tabs ----
+// ---- the project bar above the tabs: this colony's wonder ----
 const projRoot = el('div.projectbar', { hidden: true });
 dockProject(projRoot, (ctx) => {
   const s = S(ctx);
-  const list = s?.builds ?? [];
-  projRoot.hidden = !list.length;
-  if (!list.length) return;
-  const key = list.map((b) => `${b.id}${b.stage}${Math.floor(progressOf(ctx, b) * 200)}`).join();
+  projRoot.hidden = !s?.pick || s.stage >= 3;
+  if (projRoot.hidden) return;
+  const d = def(s.pick!), p = progress(ctx), g = d.goals[s.stage], from = s.stage ? d.goals[s.stage - 1] : 0;
+  const key = `${s.pick}${s.stage}${Math.floor(p * 10)}`;
   if (projRoot.dataset.k === key) return;
   projRoot.dataset.k = key;
-  projRoot.replaceChildren(...list.map((b) => {
-    const p = progressOf(ctx, b), fill = el('span.fill');
-    fill.style.width = `${(p * 100).toFixed(1)}%`;
-    return el('div.project', { title: 'World, Wonders' }, el('span.pname', {}, `${def(b.id).name}: ${WD.stages[b.stage].name}${b.stage === WD.stages.length - 1 && stagePaid(ctx, b) ? ', settling' : ''}`), el('span.bar', {}, fill), el('span.ppct', {}, `${Math.floor(p * 100)}%`));
-  }));
+  const fill = el('span.fill'); fill.style.width = `${(Math.min(1, (p - from) / (g - from)) * 100).toFixed(1)}%`;
+  projRoot.replaceChildren(el('div.project', { title: 'Legacy, Wonder' }, el('span.pname', {}, `${d.name}: ${WD.stages[s.stage]}`), el('span.bar', {}, fill), el('span.ppct', {}, `${fmt(Math.min(p, g), true)} / ${g} ${d.act}`)));
 });
-
-/** For the Map: what to show for the selected tile, and the Raise button. */
-export function wonderTileBox(ctx: Context) {
-  const raise = actionButton({
-    ctx, label: () => { const i = ctx.state.map?.selected; const id = i == null ? null : wonderFor(ctx, i); return id ? `Raise ${def(id).name}` : 'Raise a wonder'; },
-    desc: () => { const i = ctx.state.map?.selected; const id = i == null ? null : wonderFor(ctx, i); return id ? `Start building here. ${nextLine(id, wonderLevel(ctx, id))} The tile gives no yield while the wonder stands.` : ''; },
-    enabled: (c) => { const i = c.state.map?.selected; return i != null && !!wonderFor(c, i); },
-    onBuy: (c) => raiseWonder(c, c.state.map.selected),
-  });
-  const note = el('span.muted');
-  const root = el('div.row', { hidden: true }, raise.root, note);
-  return {
-    root,
-    /** A line for the tile's ledger, if a wonder stands or is being built there. */
-    line(i: number): string | null {
-      const t = tiles(ctx)[i];
-      if (!t?.w) return null;
-      const b = S(ctx).builds.find((x) => x.tile === i);
-      return b ? `${def(t.w).name}, being built (${Math.floor(progressOf(ctx, b) * 100)}%)` : `${def(t.w).name}, level ${wonderLevel(ctx, t.w)}`;
-    },
-    update(i: number | null) {
-      const id = i == null ? null : wonderFor(ctx, i);
-      root.hidden = !id;
-      if (id) raise.update(ctx);
-    },
-  };
-}

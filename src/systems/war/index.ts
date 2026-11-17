@@ -12,6 +12,7 @@ import { reworkLevel } from '../nest';
 import { idleAnts } from '../jobs';
 import { queenGuard } from '../brood';
 import { awayOf, tilePost } from '../castes';
+import { nearCamp } from '../wonders';
 
 const B = WAR.battle;
 const F = WAR.fortifications;
@@ -419,7 +420,7 @@ function endBattle(ctx: Context) {
     if (a && bigs) { const k = Math.min(bigs, a.major ?? 0); a.major -= k; if (S(ctx).replenish) { S(ctx).refill ??= { soldier: 0, major: 0 }; S(ctx).refill!.major += k; } }
   }
   const stealShare = Math.min(B.maxSteal, b.breaches * B.stealPerBreach) * Math.max(0.2, 1 + F.plug.per * fl(ctx, 'plug'));
-  const stolen = ctx.res.amt('food') * stealShare;
+  const stolen = ctx.mods.get('noSteal') > 0 ? 0 : ctx.res.amt('food') * Math.min(0.9, stealShare * (1 + ctx.mods.get('stealMult')));
   ctx.res.add('food', -stolen);
   const clean = !b.breaches;
   const chitin = Math.round(((b.chitin ?? 0) + (clean ? waveOf(ctx) * B.wave.clearBonus : 0)) * (1 + H.harvest.per * hl(ctx, 'harvest')));
@@ -481,7 +482,7 @@ const adjacentToYou = (ctx: Context, i: number) => {
 const validTarget = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = tiles(ctx)[i];
-  return !!t && t.seen && (t.o === 'rival' || t.o === 'spider' || !!strongholdAt(ctx, i)) && adjacentToYou(ctx, i);
+  return !!t && t.seen && (t.o === 'rival' || t.o === 'spider' || !!strongholdAt(ctx, i)) && (adjacentToYou(ctx, i) || nearCamp(ctx, i));
 };
 
 /** The share of an army lost on a campaign or assault: a third less with the rival queen's skull. */
@@ -762,7 +763,7 @@ export const war: GameSystem = {
           enabled: (c) => !S(c).campaign && !S(c).battle && soldiers(c) >= 3 && validTarget(c, c.state.map?.selected ?? null),
           onBuy: (c) => {
             const target = c.state.map.selected as number;
-            S(c).campaign = { target, army: soldiers(c), elapsed: 0, duration: WAR.campaignTime };
+            S(c).campaign = { target, army: soldiers(c), elapsed: 0, duration: WAR.campaignTime * Math.max(0.2, 1 + c.mods.get('campaignTime')) };
             c.log(`${soldiers(c)} soldiers march out to take enemy ground.`);
           },
         });

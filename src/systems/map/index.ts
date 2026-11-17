@@ -7,14 +7,14 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
-import { MAP, NEST, WAR, WONDERS } from '../../data/balance';
+import { MAP, NEST, WAR } from '../../data/balance';
 import { reworkLevel, openNeighbour } from '../nest';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { terrainAt, gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
 import { WORLD } from '../../data/balance';
 import { makeCamera, type Camera } from './camera';
 import { TOWN } from '../../data/town';
-import { wonderTileBox } from '../wonders';
+import { campAt, campReach, nearCamp, canPitch, pitchCamp, campWait } from '../wonders';
 import { tilePost, canPost, sendToPost, recallFrom, postOpen } from '../castes';
 const TOWN_SITE_IDS = Object.keys(TOWN.sites);
 
@@ -163,13 +163,13 @@ function sowKind(ctx: Context, i: number | null): Sow | null {
   return L >= 3 && openNeighbour(ctx, i!) != null ? 'claim' : null;
 }
 const SOW: Record<Sow, { label: string; cost: () => Record<string, number>; desc: string }> = {
-  grass: { label: 'Sow it with grass', cost: () => ({ seed: NEST.rw.meadowSeed }), desc: 'The seed bank sows this bare soil. It becomes grass for good: grass yields, and grass ground for wonders.' },
+  grass: { label: 'Sow it with grass', cost: () => ({ seed: NEST.rw.meadowSeed }), desc: 'The seed bank sows this bare soil. It becomes grass for good, with grass yields.' },
   claim: { label: 'Sow it to claim it', cost: () => ({ seed: NEST.rw.claimSeed }), desc: 'The seed bank sows this open tile next to our land. What grows there smells of us: the tile becomes ours.' },
 };
 /** Steps (diagonals count as one) from tile i to the nearest nest or outpost. */
 const homeDist = (ctx: Context, i: number) => { const [x, y] = xy(i); return Math.min(...bases(ctx).map((b) => { const [bx, by] = xy(b); return Math.max(Math.abs(x - bx), Math.abs(y - by)); })); };
 const reachOf = (ctx: Context) => MAP.reach + ctx.mods.get('reach');
-export const inReach = (ctx: Context, i: number) => homeDist(ctx, i) <= reachOf(ctx);
+export const inReach = (ctx: Context, i: number) => homeDist(ctx, i) <= reachOf(ctx) || nearCamp(ctx, i, true);
 
 // ---- outpost research ----
 const cheb = (a: number, b: number) => { const [ax, ay] = xy(a), [bx, by] = xy(b); return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); };
@@ -195,7 +195,7 @@ const besideOutpost = (ctx: Context, i: number) => { const [x, y] = xy(i); for (
 function tileMult(ctx: Context, i: number, linked: Set<number> | null) {
   const t = S(ctx).tiles[i];
   // Paved roads (Signal Stones): tiles near the nest yield a little more
-  const road = ctx.mods.get('roadYield') > 0 && cheb(i, idx(...MAP.nest)) <= WONDERS.roadsWithin ? 1 + ctx.mods.get('roadYield') : 1;
+  const road = ctx.mods.get('roadYield') > 0 && cheb(i, idx(...MAP.nest)) <= 4 ? 1 + ctx.mods.get('roadYield') : 1;
   if (t.outpost) return outpostMult(ctx, i, linked) * road;
   return (ctx.flags.has('tech:foragingcamps') && besideOutpost(ctx, i) ? 1 + MAP.camps : 1) * road;
 }
@@ -244,7 +244,9 @@ const openGround = (ctx: Context, t: Tile) =>
 export const canClaim = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = S(ctx).tiles[i];
-  return t.seen && openGround(ctx, t) && adjacentToYou(ctx, i) && inReach(ctx, i);
+  // the Bivouac's camp claims anywhere in its reach; the Canopy's tree roads reach any grass tile in reach
+  const loose = nearCamp(ctx, i, true) || (t.t === 'grass' && ctx.mods.get('treeRoads') > 0);
+  return t.seen && openGround(ctx, t) && (adjacentToYou(ctx, i) || loose) && inReach(ctx, i);
 };
 /** Scouts a claiming party needs: more for tiles farther from the nest. */
 const claimScouts = (ctx: Context, i: number) => MAP.claimParty + Math.floor(MAP.claimScoutsPerTile * homeDist(ctx, i));
@@ -369,7 +371,7 @@ export const map: GameSystem = {
     let shArt: HTMLCanvasElement;
     const lookBtns = new Map<string, HTMLButtonElement>();
     let cam: Camera, ccam: Camera, lastLooking = -1;
-    let wbox: ReturnType<typeof wonderTileBox>;
+    let campWrap: HTMLElement, campBtn: ActionButton;
     let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement, plant: ActionButton, plantWrap: HTMLElement;
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement, skyUps: ReturnType<typeof upgradeList>, skyHead: HTMLElement;
     let hoverI: number | null = null;
@@ -385,7 +387,7 @@ export const map: GameSystem = {
     let cHover: number | null = null, cSel: number | null = null, cHoverLine: HTMLElement, cTile: HTMLElement, fClaim: ActionButton, fAssault: ActionButton, fClaimWrap: HTMLElement, fAssaultWrap: HTMLElement, aLine: HTMLElement, aText: HTMLElement;
     const abar = progressBar();
     const sbar = progressBar();
-    const winter = (ctx: Context) => ctx.mods.get('winter') > 0;
+    const winter = (ctx: Context) => ctx.mods.get('winter') > 0 && ctx.mods.get('winterTrails') <= 0;
     const canFly = (ctx: Context, c: number | null) => c != null && frontier(W(ctx), c) && !W(ctx).sortie && !winter(ctx) && scoutsFree(ctx) >= sortieAnts(c);
     const windText = { down: 'with the wind', up: 'into the wind', cross: 'across the wind' };
     const P = {
@@ -437,6 +439,12 @@ abandonWrap = el('div.row', {}, abandon);
         }
         shArt = el('canvas.sh-art', { width: 8, height: 8, hidden: true }) as HTMLCanvasElement;
         postWrap = el('div.row', {}, postBtns.bridge, postBtns.nest, postBtns.fort);
+        campBtn = actionButton({
+          ctx, label: () => (campWait(ctx) > 0 ? `Pitch the camp here (${Math.ceil(campWait(ctx) / ctx.speed)}s)` : 'Pitch the camp here'),
+          desc: () => `The Bivouac's camp moves to this tile. Campaigns can march on enemy tiles within ${campReach(ctx)} tiles of it.`,
+          enabled: (c) => canPitch(c, S(c).selected), onBuy: (c) => { pitchCamp(c, S(c).selected!); basesChanged(); },
+        });
+        campWrap = el('div.row', { hidden: true }, campBtn.root);
         lookText = el('span.muted');
         lookBox = el('div.row.lookouts', { hidden: true }, el('strong', {}, 'Lookouts burn'),
           ...[null, ...Object.keys(MAP.lookout.costs)].map((r) => {
@@ -472,7 +480,7 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           el('div.row.camctl', {}, el('p.controls', {}, 'Drag the map or use the arrow keys to look around. Click a tile to inspect it. Click the small map to jump.'), homeBtn),
           cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap), lookBox,
-          el('h3', {}, 'Selected tile'), shArt, info, claimWrap, buildWrap, plantWrap, abandonWrap, postWrap, (wbox = wonderTileBox(ctx)).root,
+          el('h3', {}, 'Selected tile'), shArt, info, claimWrap, buildWrap, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
         );
         // ---- the world ----
@@ -548,7 +556,7 @@ abandonWrap = el('div.row', {}, abandon);
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         hoverI = cam.hover;
-        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [] });
+        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx) });
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
@@ -578,7 +586,7 @@ abandonWrap = el('div.row', {}, abandon);
         claimLine.hidden = !c;
         if (c) { claimText.textContent = `${c.ants} scouts claiming ${c.cell != null ? 'beyond the garden' : xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
-        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = postBtns.fort.hidden = true; shArt.hidden = true; wbox.update(null); return; }
+        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = postBtns.fort.hidden = true; shArt.hidden = true; campWrap.hidden = true; return; }
         const t = s.tiles[i];
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
@@ -599,14 +607,15 @@ if (t.sh) {
           if (t.o === 'you' && t.outpost) rows.push([t.dm ? 'Daughter mound' : 'Outpost', `Built. Claims reach ${reachOf(ctx)} tiles from here.`]);
 if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by 2 weavers. Claims reach ${reachOf(ctx)} tiles from here.`]);
           if (tilePost(ctx, 'nest', i) === 'there') rows.push(['Leaf nest', 'Held by 3 weavers. Living space that adds no mould.']);
-          const wl = wbox.line(i); if (wl) rows.push(['Wonder', wl + '. The tile gives no yield while it stands.']);
+          if (campAt(ctx) === i) rows.push(['Camp', `The Bivouac's camp. Campaigns reach ${campReach(ctx)} tiles from here.`]);
           if (t.o === 'rival' || t.o === 'spider') rows.push(['Enemy ground', 'Take it with a campaign from the War tab']);
           if (t.o === 'humans' && !ctx.flags.has('tech:pavement')) rows.push(['Humans', 'Too big to fight. For now.']);
         }
         info.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         claimWrap.hidden = !(t.seen && (t.o === null || t.o === 'humans') && openGround(ctx, t));
         buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
-        wbox.update(i);
+        campWrap.hidden = !(t.o === 'you' && campReach(ctx) > 0 && (canPitch(ctx, i) || campWait(ctx) > 0) && campAt(ctx) !== i);
+        if (!campWrap.hidden) campBtn.update(ctx);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
         plantWrap.hidden = sowKind(ctx, i) == null; plant.update(ctx);
         claim.update(ctx); build.update(ctx);
@@ -755,7 +764,7 @@ function drawStronghold(c: CanvasRenderingContext2D, kind: Stronghold, X: number
   const a = SH_ART[kind];
   a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
 }
-function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[] } = { bridges: [], nests: [], forts: [] }) {
+function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null } = { bridges: [], nests: [], forts: [] }) {
   const c = setup(cv);
   const T = 8;
   const near = s.tiles.map((t, i) => t.seen && reach(i));
@@ -791,7 +800,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
       }
       // Paved roads: road lines running out from the nest, along its row and column
       const roads = stones[2];
-      if (roads && tile.o === 'you' && !tile.core && (x === MAP.nest[0] || y === MAP.nest[1]) && Math.max(Math.abs(x - MAP.nest[0]), Math.abs(y - MAP.nest[1])) <= WONDERS.roadsWithin) {
+      if (roads && tile.o === 'you' && !tile.core && (x === MAP.nest[0] || y === MAP.nest[1]) && Math.max(Math.abs(x - MAP.nest[0]), Math.abs(y - MAP.nest[1])) <= 4) {
         const rc = roads > 2 ? '#a8a29a' : roads > 1 ? '#8f8a82' : '#6f6a62';
         if (Math.abs(x - MAP.nest[0]) >= Math.abs(y - MAP.nest[1])) rect(c, X + 1, Y + 4, T - 2, 1, rc); else rect(c, X + 4, Y + 1, 1, T - 2, rc);
       }
@@ -800,10 +809,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
     if (posts.bridges.includes(i)) { rect(c, X, Y + 3, T, 1, PAL.bone); rect(c, X + 1, Y + 4, 1, 1, PAL.bone); rect(c, X + 3, Y + 4, 2, 1, PAL.bone); rect(c, X + 6, Y + 4, 1, 1, PAL.bone); }
     if (posts.nests.includes(i)) { rect(c, X + 3, Y + 2, 2, 1, PAL.bone); rect(c, X + 2, Y + 3, 4, 2, PAL.bone); rect(c, X + 3, Y + 5, 2, 1, PAL.bone); }
     if (tile.sh) { drawStronghold(c, tile.sh, X, Y); if (posts.forts.includes(i)) { rect(c, X + 7, Y, 1, 3, PAL.bone); rect(c, X + 5, Y, 2, 2, PAL.you); } }
-    if (tile.w) {
-      // a little stepped monument in gold
-      rect(c, X + 1, Y + 6, 6, 1, PAL.amber); rect(c, X + 2, Y + 4, 4, 2, PAL.amber); rect(c, X + 3, Y + 2, 2, 2, PAL.amber); rect(c, X + 3, Y + 1, 2, 1, PAL.bone);
-    }
+    if (posts.camp === i) { rect(c, X + 2, Y + 2, 4, 4, '#7a2f18'); rect(c, X + 3, Y + 1, 2, 5, '#c4532f'); rect(c, X + 1, Y + 6, 6, 1, '#c4532f'); }
   });
   const mark = (i: number | null, col: string) => {
     if (i == null) return;

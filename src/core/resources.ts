@@ -42,6 +42,9 @@ export class Resources {
   private lumping = false;
   /** What gains ran past the cap since the last spill() call (e.g. food lost to full stores). */
   private spills = new Map<string, number>();
+  /** Extra purses a system opens for a resource (the Honey Vault): purchases draw on them after the stores. */
+  purse: Record<string, { amt(): number; take(n: number): void } | undefined> = {};
+  private extra(id: string) { return this.purse[id]?.amt() ?? 0; }
   /** Take what has spilled past the cap of a resource since the last call. */
   spill(id: string) { const n = this.spills.get(id) ?? 0; this.spills.delete(id); return n; }
 
@@ -102,15 +105,19 @@ export class Resources {
   holders(id: string) { return Object.entries(this.holds.get(id) ?? {}).filter(([, n]) => n > 0).map(([k]) => k); }
 
   canAfford(costs: Costs) {
-    return Object.entries(costs).every(([id, n]) => this.amt(id) - this.held(id) >= n);
+    return Object.entries(costs).every(([id, n]) => this.amt(id) - this.held(id) + this.extra(id) >= n);
   }
   /** Could afford it if nothing were held back. */
   canAffordIgnoringHolds(costs: Costs) {
-    return Object.entries(costs).every(([id, n]) => this.amt(id) >= n);
+    return Object.entries(costs).every(([id, n]) => this.amt(id) + this.extra(id) >= n);
   }
   spend(costs: Costs) {
     if (!this.canAfford(costs)) return false;
-    for (const [id, n] of Object.entries(costs)) this.lump(id, -n);
+    for (const [id, n] of Object.entries(costs)) {
+      const own = Math.min(n, Math.max(0, this.amt(id) - this.held(id)));
+      this.lump(id, -own);
+      if (n > own) this.purse[id]?.take(n - own);
+    }
     return true;
   }
   /**

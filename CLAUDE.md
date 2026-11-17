@@ -47,6 +47,15 @@ new standing rule in a thread, add it here in the same pull request.
   rather than making them stronger. New castes should follow this: a small pool, a home post, and posts in other tabs.
 - Stay on theme: grounded ant-colony mechanics, not sci-fi oddities, until the far end of the game calls for them.
 
+## Wonders
+- A wonder is a choice that changes how a colony plays, not a buff to tick off: one per colony, with a price that never
+  goes away. Getting a blueprint should feel like an achievement (a special place, with visible bad luck protection).
+- Levels must be big steps (a new rule each), and hard to earn, so there is lots of colony replay value. Nate set the
+  level goals at 3x the first draft; tone down only if he asks.
+- Gate the next prestige layer behind long-term goals like a max-level wonder, and say so in the game: the Wonder tab,
+  the Migration tab and the Guide all tell the player that levelling wonders matters.
+- Keep the Guide easy to read. When an age page gets long, move the detail into a topic page and leave a pointer.
+
 ## Strongholds
 - Three fortress tiles on the Map (`WAR.strongholds`): each has its own catch when attacked, not just more strength, and
   each works only while 2 majors man it. New war objectives should follow this: a different way to take it, and a rule
@@ -71,14 +80,13 @@ new standing rule in a thread, add it here in the same pull request.
 - Caste posts (PR #211) replaced the caste upgrade tracks. Still to do from that pitch: one new caste per later age
   (wire ants for Settlement, sun carriers for Industry, daughter queens for Network).
 - Stronghold tiles: termite mound, wasp nest, antlion pits, with the majors' Garrison post. Tile art is 8x8, drawn in code (`SH_ART` in the map system).
-- Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
-  like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
-  feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc
-  (https://claude.ai/artifact/6ngZiwrfRrhgWYJam71nFJ), under "Rethink ideas":
-  - Blueprints dropping from special places, with bad luck protection.
-  - Building a wonder by doing its activity.
-  - One wonder per colony.
-
-  Nate hasn't picked a direction yet: ask him first.
+- Wonders (Nov 17, `src/systems/wonders`, `WONDERS` in balance.ts): four ways of life (Thatch Mound, Bivouac, Honey Vault, Canopy).
+  Blueprints come from the termite mound, the wasp nest (searched while manned), rumoured places and the rival queen.
+  One wonder per colony, raised by its activity in three stages, 5 kept levels. The old tile wonders are gone; a few of
+  their mod readers in war, nest, expeditions and brood are still in the code and read 0 (safe to delete).
+- Migration now also needs one wonder at level 5, every blueprint and all three strongholds (`MIGRATION.needs`, migration system).
+- The Guide has topic pages after the age pages (War, Castes, Wonders, Flights), opened by flags (`opens` in guide.ts).
+- Cut for now (Nov 17): the Brood raiding and Nest guests research groups. They were flat bumps pointing at screens never built.
+- Next up: Nate's week of playtesting, then the three new castes, the zoom-out steps, colony curses and the balance pass.
 - Later ideas Nate liked: building the placeholder screens that techs point at (`screen` tags in techs2.ts),
   a balance playtest pass, and colony curses.

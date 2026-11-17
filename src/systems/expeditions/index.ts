@@ -118,7 +118,8 @@ const markCost = (ctx: Context) => {
   return Object.fromEntries(Object.entries(X.markTrailCost).map(([r, n]) => [r, Math.ceil(n * Math.sqrt(d.time / X.destinations[0].time))]));
 };
 const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
-const canSend = (ctx: Context) => ctx.mods.get('winter') <= 0 && ctx.mods.get('gatesShut') <= 0 && S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
+const frozen = (ctx: Context) => ctx.mods.get('winter') > 0 && ctx.mods.get('winterTrails') <= 0;
+const canSend = (ctx: Context) => !frozen(ctx) && ctx.mods.get('gatesShut') <= 0 && S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
 const lossOf = (ctx: Context, d: { loss: number }) => d.loss * safetyOf(ctx) * (1 - ctx.mods.get('nurseHeal')) * Math.max(0.1, 1 + ctx.mods.get('expSafety'));
@@ -156,6 +157,7 @@ function send(ctx: Context) {
   if (isRumour(d.id) && !rumour) { st.dest = st.homeDest ?? 'grass'; return send(ctx); }
   if (rumour && --rumour.runs <= 0) {
     st.rumours = openRumours(ctx).filter((r) => r !== rumour);
+    ctx.bus.emit('rumour:done', { id: d.id });
     st.dest = st.homeDest ?? 'grass';
   }
   const mules = ctx.flags.has('tech:packmules') ? Math.min(st.mules ?? 0, X.packMules.max, freeMajors(ctx)) : 0;
@@ -445,7 +447,7 @@ export const expeditions: GameSystem = {
             p.event ? el('span.muted', {}, p.event) : null);
         }) : [el('div.caption', {}, el('span.muted', {}, 'The trail is quiet.'))]));
 
-        statusEl.textContent = ctx.mods.get('winter') > 0 ? 'Winter: the trails are frozen. Parties wait for spring.' : ctx.mods.get('gatesShut') > 0 ? 'The gates are shut. Parties wait until you open them (Nest tab).' : !canSend(ctx) && s.parties.length < maxParties(ctx)
+        statusEl.textContent = frozen(ctx) ? 'Winter: the trails are frozen. Parties wait for spring.' : ctx.mods.get('gatesShut') > 0 ? 'The gates are shut. Parties wait until you open them (Nest tab).' : !canSend(ctx) && s.parties.length < maxParties(ctx)
           ? `Need ${s.party} idle workers. Take some off their jobs.`
           : s.parties.length >= maxParties(ctx) ? 'Every column is out on the trail.' : '';
         ledger.replaceChildren(...[

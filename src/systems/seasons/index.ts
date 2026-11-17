@@ -32,7 +32,7 @@ dockStrip(0, strip, (ctx) => {
   when.textContent = ` ${next.name} in ${clock(left(ctx) / ctx.speed)}`;
   strip.dataset.season = se.id;
   bar.set((s.t % SEASONS.length) / SEASONS.length);
-  strip.title = se.note + (se.id === 'winter' ? ' Expeditions wait for spring.' : '') + (se.mods.cold ? ' No warm evenings for a flight.' : ' Warm evenings: a flight can leave.');
+  strip.title = se.note + (se.id === 'winter' && ctx.mods.get('winterTrails') <= 0 ? ' Expeditions wait for spring.' : '') + (se.mods.cold ? ' No warm evenings for a flight.' : ' Warm evenings: a flight can leave.');
 });
 
 export const seasons: GameSystem = {
@@ -61,7 +61,7 @@ export const seasons: GameSystem = {
         if (fine) s.winters++;
         ctx.log(fine ? `Spring. The colony came through the winter whole. (${s.winters} winter${s.winters > 1 ? 's' : ''} survived: +${SEASONS.winterLineage} lineage each)` : 'Spring, at last. Not everyone lived to see it.', fine ? 'story' : 'warn');
       } else ctx.log(`${se.name}. ${se.note}`, 'story');
-      if (se.id === 'winter') s.starvedAtWinter = starved(ctx);
+      if (se.id === 'winter') { s.starvedAtWinter = starved(ctx); if (ctx.mods.get('shortWinter') > 0) s.t += SEASONS.length / 3; } // Thatch Mound: the first third never comes
       ctx.announce(se.name, se.note, { small: true, kicker: `Year ${s.year}` });
     }
     for (const [m, v] of Object.entries(season(ctx).mods)) ctx.mods.set(m, 'season', v);

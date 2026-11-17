@@ -107,7 +107,7 @@ export const tendSpeed = (ctx: Context) => {
   const brood = ctx.res.amt('egg') + ctx.res.amt('larva');
   if (brood <= 0) return mouldSpeed(ctx);
   const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseTends(ctx));
-  return (tended + (brood - tended) * BROOD.untendedSpeed) / brood * mouldSpeed(ctx);
+  return (tended + (brood - tended) * (ctx.mods.get('untendedFull') > 0 ? 1 : BROOD.untendedSpeed)) / brood * mouldSpeed(ctx);
 };
 const queenRate = (ctx: Context) => (RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay')) * layMult(ctx);
 

@@ -1,5 +1,6 @@
-// The Guide: a Legacy sub-tab with one page per age. A page opens the first time the line reaches
-// its age and stays open forever after. Text comes from data/guide.ts; {Tab}, [Thing], |res| and !warn!
+// The Guide: a Legacy sub-tab with one page per age, then topic pages (War, Castes, Wonders, Flights).
+// An age page opens the first time the line reaches its age, a topic page when one of its flags is set;
+// both stay open forever after. Text comes from data/guide.ts; {Tab}, [Thing], |res| and !warn!
 // are drawn in colour.
 import type { GameSystem, Context } from '../../core/types';
 import { el } from '../../core/ui';
@@ -11,7 +12,7 @@ import { currentAge } from '../research';
 interface GuideState { seen: string[]; page?: string; shown?: string[] }
 const S = (ctx: Context) => ctx.state.guide as GuideState;
 const ageIdx = (id: string) => RESEARCH.ages.findIndex((a) => a.id === id);
-const ageName = (id: string) => RESEARCH.ages[ageIdx(id)]?.name ?? id;
+const ageName = (id: string) => GUIDE.find((p) => p.age === id)?.title ?? RESEARCH.ages[ageIdx(id)]?.name ?? id;
 
 const MARKS: Record<string, string> = { '{': 'g-tab', '[': 'g-thing', '|': 'g-res', '!': 'g-warn' };
 const CLOSE: Record<string, string> = { '{': '}', '[': ']', '|': '|', '!': '!' };
@@ -39,11 +40,11 @@ export const guide: GameSystem = {
   },
   tick(ctx) {
     const s = S(ctx), at = ageIdx(currentAge(ctx).id);
-    const fresh = GUIDE.filter((p) => ageIdx(p.age) <= at && !s.seen.includes(p.age));
+    const fresh = GUIDE.filter((p) => !s.seen.includes(p.age) && (p.opens ? p.opens.some((f) => ctx.flags.has(f)) : ageIdx(p.age) <= at));
     if (!fresh.length) return;
     for (const p of fresh) s.seen.push(p.age);
     const last = fresh[fresh.length - 1].age;
-    s.page = last;
+    if (!GUIDE.find((p) => p.age === last)?.opens || fresh.length === 1) s.page = last;
     if (last !== 'dirt') ctx.log(`A new page in the Guide: ${ageName(last)}. (Legacy tab)`, 'story');
   },
   keep(ctx) {
@@ -58,7 +59,7 @@ export const guide: GameSystem = {
       mount(root) {
         bar = el('div.tabs.maptoggle');
         page = el('div.guide');
-        root.append(el('p.flavor', {}, 'What the old ants tell the young ones. A new page opens with each age.'), bar, page);
+        root.append(el('p.flavor', {}, 'What the old ants tell the young ones. A new page opens with each age, and one for each big part of colony life.'), bar, page);
       },
       update(_root, ctx) {
         const s = S(ctx);
@@ -97,7 +98,7 @@ export const guide: GameSystem = {
             el('ul', {}, ...st.do.map((d) => el('li', {}, ...rich(d)))),
             st.tip ? el('p.g-tip', {}, el('span.g-label', {}, 'Tip'), ...rich(st.tip)) : null,
           )))),
-          veil(`${cur.age}:next`, 'Show how to reach the next age', el('p.g-next', {}, el('span', {}, el('span.g-label', {}, 'Next age'), ...rich(cur.next)))),
+          ...(cur.next ? [veil(`${cur.age}:next`, 'Show how to reach the next age', el('p.g-next', {}, el('span', {}, el('span.g-label', {}, 'Next age'), ...rich(cur.next)))) ] : []),
           el('p.muted.g-key', {},
             el('span.g-tab', {}, 'Tabs'), ' · ', el('span.g-thing', {}, 'Research, chambers and buttons'), ' · ',
             el('span.g-res', {}, 'Resources'), ' · ', el('span.g-warn', {}, 'Watch out')),

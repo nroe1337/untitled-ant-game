@@ -3,7 +3,7 @@
 // Heritage is earned instead and buys permanent perks. Every colony after that starts in the town.
 
 export const MIGRATION = {
-  needs: { flights: 3, settlements: 3 },   // flights since the last migration, settlements founded (lifetime)
+  needs: { flights: 3, settlements: 3, wonder: 5 },   // flights since the last migration, settlements founded (lifetime), one wonder at this level (Nate, Nov 17: plus every blueprint and all three strongholds)
   // heritage earned = sqrt(lineage earned since the last migration) + 2 per settlement + 1 per flight
   perks: {
     roots:    { name: 'Deep roots',     desc: 'Lineage from flights +{p} per level',  per: 0.1,  base: { heritage: 2 }, growth: 1.3, max: 20 },
