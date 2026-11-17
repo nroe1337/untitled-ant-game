@@ -20,6 +20,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 - Expedition party size has a soft cap tied to a building: 20 plus 10 per Forager's rest. Past the cap workers still
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
+- Pacing (Nate, Nov 17): things should take longer but stay achievable. There is a lot of content, so prefer
+  spreading it out (and locking some of it behind nuptial flights) over letting it all open in the first colony.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 - Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
 - Keep in-game text short and plain: say what it does, without flowery or wordy phrasing.
@@ -38,7 +40,8 @@ new standing rule in a thread, add it here in the same pull request.
   can't ignore major mechanics like mould.
 - Only chambers with a real idea get a rework; there is no target count. Data: `NEST.reworks` and `NEST.rw` in balance.ts.
 - Reworks have three levels (I, II, III), gated by chambers of that type (3, 8, 15). Level I is the rule change; II and III
-  are mostly rate bonuses on it, with a few of the coolest rule changes kept (Nate, Nov 17).
+  are mostly rate bonuses on it, with a few of the coolest rule changes kept (Nate, Nov 17). II and III are paid in parts
+  (3 and 8, each the size of level I's cost) so their totals can exceed storage caps (`NEST.rework.parts`).
 - Each level must look clearly bigger and busier in the cross-section, like an RTS building upgrade: more colour,
   more detail, more animation at higher levels. Never a shared outline; each chamber type gets its own drawing.
 
@@ -80,6 +83,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Caste posts (PR #211) replaced the caste upgrade tracks. Still to do from that pitch: one new caste per later age
   (wire ants for Settlement, sun carriers for Industry, daughter queens for Network).
 - Stronghold tiles: termite mound, wasp nest, antlion pits, with the majors' Garrison post. Tile art is 8x8, drawn in code (`SH_ART` in the map system).
+- Map (Nov 17): 4 zoom levels (`MAP.zooms`, start 32x20) and a see-through minimap that folds away.
+- Honey Vault (Nov 17): choosing it builds the vault; it rises by minutes living on vault food, not by idling with full stores.
 - Wonders (Nov 17, `src/systems/wonders`, `WONDERS` in balance.ts): four ways of life (Thatch Mound, Bivouac, Honey Vault, Canopy).
   Blueprints come from the termite mound, the wasp nest (searched while manned), rumoured places and the rival queen.
   One wonder per colony, raised by its activity in three stages, 5 kept levels. The old tile wonders are gone; a few of

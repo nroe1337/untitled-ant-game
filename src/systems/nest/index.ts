@@ -41,6 +41,8 @@ interface NestState { built: Record<string, number>; order: ChamberId[]; queue?:
   ups?: Record<string, number>;
   /** Chamber reworks: level 1-3 per chamber type (true in saves from before levels). */
   reworks?: Record<string, number | boolean>;
+  /** Parts already paid toward each chamber type's next rework level (levels II and III are paid in parts). */
+  reworkPaid?: Record<string, number>;
   /** Gatehouse: gates shut. Spoil walls: wall height. Alarm scent: mould line. Flood channel: cooldown. */
   gates?: boolean; walls?: number; alarmAt?: number; floodCd?: number }
 const S = (ctx: Context) => ctx.state.nest as NestState;
@@ -116,13 +118,23 @@ const ROMAN = ['', 'I', 'II', 'III'];
 /** A chamber type's rework level, 0 to 3 (saves from before levels stored true for level I). */
 export const reworkLevel = (ctx: Context, id: string) => { const v = (ctx.state.nest as NestState | undefined)?.reworks?.[id]; return v === true ? 1 : Number(v) || 0; };
 export const reworked = (ctx: Context, id: string) => reworkLevel(ctx, id) > 0;
-/** A rework level costs knowledge plus a big batch of what one chamber of that type costs to dig; II and III cost more. */
+/** A rework level costs knowledge plus a big batch of what one chamber of that type costs to dig; II and III cost more.
+ *  II and III are paid in parts (RW.parts), so their totals can run past what the stores can hold. This is one part. */
 const reworkCost = (id: ChamberId, L: number): Costs => {
-  const m = RW.levelMult[Math.min(L, 2)];
+  const m = RW.levelMult[Math.min(L, 2)] / partsFor(L);
   const out: Costs = { knowledge: Math.ceil(RW.knowledge * m) };
   for (const [r, v] of Object.entries(DEFS[id].base)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * RW.baseMult * m);
   return out;
 };
+const partsFor = (L: number) => RW.parts[Math.min(L, 2)];
+const partsPaid = (ctx: Context, id: string) => S(ctx).reworkPaid?.[id] ?? 0;
+/** Pay one part toward the next level; the last part does the rework. */
+function payRework(ctx: Context, id: ChamberId) {
+  const n = partsFor(reworkLevel(ctx, id)), paid = partsPaid(ctx, id) + 1, all = (S(ctx).reworkPaid ??= {});
+  if (paid < n) { all[id] = paid; ctx.log(`${REWORKS[id]!.name}: part ${paid} of ${n} paid.`, 'info'); return; }
+  delete all[id];
+  rework(ctx, id);
+}
 /** Chambers of the type needed for the next level (3, 8, 15). */
 const nextNeeds = (ctx: Context, id: ChamberId) => RW.levelBuilt[Math.min(2, reworkLevel(ctx, id))];
 const reworkReady = (ctx: Context, id: ChamberId) => ctx.flags.has('tech:renovation') && count(ctx, id) >= RW.levelBuilt[0];
@@ -374,14 +386,15 @@ export const nest: GameSystem = {
             effect: () => {
               const L = reworkLevel(ctx, id), lines = [r.desc, r.ii, r.iii];
               const have = lines.slice(0, L).map((d, i) => `${ROMAN[i + 1]}: ${d}`).join(' ');
-              const next = L < 3 ? `Next, ${r.name} ${ROMAN[L + 1]} (needs ${nextNeeds(ctx, id)} ${DEFS[id].name.toLowerCase()}s): ${lines[L]}` : '';
+              const n = partsFor(L), parts = n > 1 ? ` Paid in ${n} parts (${partsPaid(ctx, id)} paid); the cost shown is one part.` : '';
+              const next = L < 3 ? `Next, ${r.name} ${ROMAN[L + 1]} (needs ${nextNeeds(ctx, id)} ${DEFS[id].name.toLowerCase()}s): ${lines[L]}${parts}` : '';
               return L ? `${have} ${mouldNote(r.mould)}${next ? ' ' + next : ''}`
                 : `Rebuild every ${DEFS[id].name.toLowerCase()}, now and later, as a ${r.name.toLowerCase()}. ${r.desc} ${mouldNote(r.mould)} Can't be undone. Two more levels follow.`;
             },
-            count: () => ROMAN[reworkLevel(ctx, id)] || '',
+            count: () => { const L = reworkLevel(ctx, id), p = partsPaid(ctx, id); return (ROMAN[L] || '') + (p ? ` ${p}/${partsFor(L)}` : ''); },
             costs: () => reworkCost(id, reworkLevel(ctx, id)),
             enabled: (c) => reworkLevel(c, id) < 3 && count(c, id) >= nextNeeds(c, id),
-            onBuy: (c) => rework(c, id),
+            onBuy: (c) => payRework(c, id),
           });
           btn.root.hidden = true;
           rwTiles.append(btn.root);

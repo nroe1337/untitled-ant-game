@@ -46,7 +46,7 @@ const chambers = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) a
 function counter(ctx: Context, id: string) {
   if (id === 'thatch') return chambers(ctx);
   if (id === 'canopy') return ctx.state.map?.claims ?? 0;
-  return S(ctx).count; // fights won, or seconds with full stores
+  return S(ctx).count; // fights won, or seconds living on vault food
 }
 const progress = (ctx: Context) => { const s = S(ctx); if (!s.pick) return 0; const n = counter(ctx, s.pick) - s.base; return Math.max(0, s.pick === 'vault' ? n / 60 : n); };
 
@@ -134,16 +134,18 @@ export function pitchCamp(ctx: Context, i: number) {
 // ---- the Honey Vault ----
 export const vaultOf = (ctx: Context, r: string) => S(ctx)?.vault?.[r] ?? 0;
 function vault(ctx: Context, dt: number) {
-  const s = S(ctx), L = live(ctx, 'vault');
+  // the vault itself comes with choosing it (Nov 17): it is how this wonder rises, so it works from level 0
+  const s = S(ctx), L = live(ctx, 'vault'), on = s.pick === 'vault';
   for (const r of VAULTED) {
     const spilt = ctx.res.has(r) ? ctx.res.spill(r) : 0; // always drained, so an old spill never lands in a new vault
-    if (L >= (r === 'food' ? 1 : 4) && spilt > 0) s.vault[r] = (s.vault[r] ?? 0) + spilt;
+    if ((r === 'food' ? on : L >= 4) && spilt > 0) s.vault[r] = (s.vault[r] ?? 0) + spilt;
   }
-  if (!L) return;
-  const cap = ctx.res.cap('food'), low = cap * WD.vault.feedAt;
+  if (!on) return;
+  const cap = ctx.res.cap('food'), low = cap * (L >= 1 ? WD.vault.feedUpTo : WD.vault.feedAt);
   if (s.vault.food > 0 && ctx.res.amt('food') < low) {
     const n = Math.min(s.vault.food, low - ctx.res.amt('food'));
     ctx.res.source = 'Honey Vault'; ctx.res.add('food', n); s.vault.food -= n;
+    s.count += dt; // the wonder rises by time the colony lives on vault food
   }
   if (L >= 3 && ctx.res.has('jelly') && s.vault.food > 0 && ctx.res.amt('jelly') < ctx.res.cap('jelly')) {
     const n = Math.min(s.vault.food, WD.vault.jellyRate * dt);
@@ -228,7 +230,6 @@ export const wonders: GameSystem = {
   tick(ctx, dt) {
     const s = S(ctx);
     if (!ctx.flags.has('wonders:open') && wonders.isUnlocked!(ctx)) ctx.flags.add('wonders:open'); // opens the Guide's Wonders page
-    if (s.pick === 'vault' && ctx.res.amt('food') >= ctx.res.cap('food') - 0.5) s.count += dt;
     s.campCd = Math.max(0, (s.campCd ?? 0) - dt);
     searches(ctx, dt);
     rise(ctx);
@@ -261,6 +262,7 @@ export const wonders: GameSystem = {
       if (found) {
         const p = mine ? progress(ctx) : 0;
         kids.push(el('div.sec', {}, mine ? `Rising in this colony, by ${d.act}` : `How it rises: by ${d.act}, counted from when you choose it`));
+        if (d.note) kids.push(el('div.hunt', {}, d.note));
         kids.push(el('div.stages', {}, ...WD.stages.map((name, k) => {
           const g = d.goals[k], fill = el('i'); fill.style.width = `${Math.min(1, p / g) * 100}%`;
           return el('div.stage', {}, el('b', {}, name), el('div.t', {}, `${fmt(Math.min(p, g), true)} of ${g} ${d.act}`), el('div.bar', {}, fill),

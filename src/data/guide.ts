@@ -93,7 +93,7 @@ export const GUIDE: GuidePage[] = [
     steps: [
       { head: 'Claim land', do: [
         'Learn [Mapping] first. It opens the {Map} tab.',
-        'On the {Map} tab, drag to look around. Click a tile next to your land, then claim it.',
+        'On the {Map} tab, drag to look around and scroll to zoom. The minimap in the corner jumps the view. Click a tile next to your land, then claim it.',
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out.',
         'Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
@@ -123,7 +123,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Rework your chambers', do: [
         'With 60 chambers, [Chamber craft] appears. Learn it to rework a chamber type you have 3 or more of, from the {Nest} tab.',
         'A rework changes every chamber of that type for good, ones dug later too. It cannot be undone.',
-        'Each rework has three levels. Level II needs 8 of that chamber and level III needs 15. Each level makes the rework stronger, and a few add something new, like the Gatehouse shutting itself in a raid or the Seed bank claiming land. Each level also redraws the chamber bigger in the {Nest}.',
+        'Each rework has three levels. Level II needs 8 of that chamber and level III needs 15, and they are paid in parts (3 for II, 8 for III), so you never need more than your stores hold. Each level makes the rework stronger, and a few add something new, like the Gatehouse shutting itself in a raid or the Seed bank claiming land. Each level also redraws the chamber bigger in the {Nest}.',
         'Most reworks make that chamber type gather more |mould|. The cleaners\' reworks (Infirmary, Draught shaft, Mould farm, Flood channel) fight it.',
         'Some reworks reach other tabs: the Muster hall (winter jobs), the Seed bank (sow tiles on the {Map}) and the Hall of records (keep a research through a flight).',
       ], tip: 'Rework a cleaner for every two or three other reworks, or the mould gets ahead of you.' },
@@ -320,7 +320,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'The four wonders', do: [
         'Thatch Mound: rises by chambers dug (60, 120, 180). It takes the sting out of winter. Price: chambers gather half again as much |mould|.',
         'Bivouac: rises by fights won, raids and campaigns (6, 15, 27). A camp you move around the {Map} lets the army and scouts strike far from your land. Price: one worker in ten holds the camp and cannot take a job.',
-        'Honey Vault: rises by minutes with full |food| stores (30, 90, 180). Overflow is kept in a vault with no limit. Price: raids are a quarter bigger and steal twice as much.',
+        'Honey Vault: choosing it builds a vault with no limit. Overflow |food| goes in and feeds the colony when stores run low. It rises by minutes living on vault food (30, 90, 180): fill it, then move foragers to other work. Price: raids are a quarter bigger and steal twice as much.',
         'Canopy: rises by tiles claimed (45, 90, 150). The colony lives in the grass it holds. Price: chambers cost twice the |soil|.',
       ], tip: 'The {Wonder} tab lists all five levels of each wonder.' },
     ],
