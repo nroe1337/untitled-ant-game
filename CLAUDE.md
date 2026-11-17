@@ -19,6 +19,15 @@ new standing rule in a thread, add it here in the same pull request.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
+- Think outside the box: no upgrade that is just another way to make food or births easier. Several ideas that do the
+  same thing in different coats make the game feel sloppy. Each one should change a rule or a decision, not a rate.
+
+## Chamber reworks (Chamber craft)
+- A rework is one-way and applies to every chamber of that type at once (ones dug later too). Never per chamber.
+- Some reworks raise mould. The reworks of mould-fighting chambers (nurses' den, purification, midden, cistern...)
+  must be strong enough to offset it when the player builds a balanced nest. Players design their own base, but
+  can't ignore major mechanics like mould.
+- Only chambers with a real idea get a rework; there is no target count. Data: `NEST.reworks` and `NEST.rw` in balance.ts.
 
 ## Code map
 - `src/data/balance.ts`: all numbers, the core tech tree (`RESEARCH`) and milestones.
@@ -29,6 +38,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
   queen boss, rumours and pack mules, tile wonders (PR #203), and the Swarm Spire batch (PR #204: stage gates,
   princess traits, scaffolding, pulley lines, weather watch, dowry, project bar). Spire choices were left out on purpose.
+- Chamber reworks (Nov 17): Chamber craft is a Conquest research shown at 60 chambers. 10 reworks (Infirmary,
+  Draught shaft, Mould farm, Flood channel, Muster hall, Alarm scent, Gatehouse, Spoil walls, Seed bank, Hall of records).
 - Next up: **rethink wonders.** The current wonders (`src/systems/wonders`) are a stopgap. Nate wants a wonder to feel
   like a choice that changes how you play a colony, not another buff to check off, and getting the blueprint should
   feel like an achievement. The ideas so far are in the "Tile wonders: draft" doc

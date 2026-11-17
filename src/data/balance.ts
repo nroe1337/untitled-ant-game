@@ -109,8 +109,35 @@ export const NEST = {
   costGrowth: 1.3,          // default; each chamber can set its own growth
   /** Techs that make storage chambers hold more (Evolve-style shelving): tech id -> chambers it boosts by +50%. */
   /** Each storage chamber holds this much more than the one before it, so late ones keep pace with their cost. */
-  /** Chamber craft: upgrade a whole kind of chamber. Costs clay plus that chamber's own late resource. */
-  upgrade: { per: 0.15, max: 5, growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number>, minBuilt: 3, skip: ['harbour'] as string[] },
+  /** Chamber craft reworks (Nate, Nov 17): one per chamber type, bought once for every chamber of that type
+   *  (ones dug later too) and never undone. Each changes a rule, never a flat rate. Most make the type gather more
+   *  mould; the cleaners' reworks scrub enough to pay for a balanced nest. Cost: knowledge plus baseMult times
+   *  one chamber's own dig cost. old: the pre-Nov 17 level costs, only to refund old saves. */
+  rework: { knowledge: 250, baseMult: 15, minBuilt: 3,
+    old: { growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number> } },
+  /** mould: extra chambers' worth of mould each reworked chamber gathers (1 = like two chambers, -1 = none). */
+  reworks: {
+    brood:     { name: 'Infirmary',      mould: 0,  desc: 'Mould no longer kills workers: the sick are carried here and come back after a while. Nurses scrub 50% more.' },
+    airshaft:  { name: 'Draught shaft',  mould: -1, desc: 'Purifies 3 times as much, blowing the mould out onto your held tiles, where it settles as soil.' },
+    midden:    { name: 'Mould farm',     mould: -1, desc: 'Each one scrubs 0.4 mould/s and feeds it to the fungus: mould scrubbed here comes back as fungus.' },
+    cistern:   { name: 'Flood channel',  mould: -1, desc: 'Opens the Flood button: wash every bit of mould out of the nest at once. The flood drowns the eggs and soaks a quarter of the food.' },
+    hall:      { name: 'Muster hall',    mould: 1,  desc: 'Save a winter job layout on the Jobs tab. When winter comes the workers switch to it, and back again in spring.' },
+    gland:     { name: 'Alarm scent',    mould: 1,  desc: 'When mould passes the line you set, idle workers turn out as nurses. When raiders come, idle workers turn out as soldiers.' },
+    barracks:  { name: 'Gatehouse',      mould: 1,  desc: 'Opens the gate switch. Shut, nest defence doubles, but foragers stay in and no expeditions leave.' },
+    storeroom: { name: 'Spoil walls',    mould: 1,  desc: 'While the soil pits are full, diggers pile the extra soil up at the entrance as walls: nest defence that slowly crumbles.' },
+    granary:   { name: 'Seed bank',      mould: 1,  desc: 'Plant seeds on a held bare-soil tile on the Map to turn it into grass. Shape the ground your wonders need.' },
+    library:   { name: 'Hall of records', mould: 1, desc: 'On the Lineage tab, pick one research. The next colony starts with it already learned.' },
+  } as Record<string, { name: string; mould: number; desc: string }>,
+  /** Numbers for the reworks above. */
+  rw: {
+    infirmaryTime: 90, nurseClean: 0.5,        // seconds a sick worker spends in the Infirmary; nurses scrub +50%
+    draught: 3, draughtSoilTiles: 20,          // purification x3; soil from blown mould is full at this many held tiles
+    farmClean: 0.4, farmFungus: 1,             // mould each Mould farm scrubs a second, fungus per mould
+    floodFood: 0.25, floodCooldown: 300,
+    alarmLines: [100, 250, 500, 750],
+    wallPerDigger: 0.005, wallDecay: 0.005,     // walls a second per digger while soil is full; share lost a second
+    meadowSeed: 20,
+  },
   storeGrowth: 1.08,
   storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
@@ -435,7 +462,7 @@ export const RESEARCH = {
     castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
-    renovation: { name: 'Chamber craft',     age: 'wings', cost: { knowledge: 560, clay: 80 },       needs: ['deepdig'], desc: 'Old chambers can be rebuilt with clay. Opens chamber upgrades in the Nest: each level makes every chamber of that kind give 15% more. Upgrades add no mould.' },
+    renovation: { name: 'Chamber craft',     age: 'conquest', cost: { knowledge: 600, soil: 800 },   needs: ['ventilation'], desc: 'Opens chamber reworks in the Nest: rebuild every chamber of a type into something new, for good. Most reworks gather more mould; the cleaners\' reworks fight it.' },
     deepdig:    { name: 'Deep diggers',      age: 'wings', cost: { knowledge: 420, soil: 600 },        needs: ['royal'], desc: 'Diggers tunnel down past the soil into the clay. Each digger also brings up a little clay. Unlocks the Clay hall.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 100, food: 120 },          needs: ['worksongs'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
     galleons:   { name: 'Wax hulls',         age: 'conquest', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
@@ -475,7 +502,7 @@ export const RESEARCH = {
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
     packmules: ['runs', 80, 'The expedition leaders'], wonderlore: ['tiles', 25, 'Your scouts'], talltales: ['rumours', 3, 'The expedition leaders'],
-    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
+    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'], renovation: ['rooms', 60, 'Your diggers'],
     // Age of Wings: the Swarm Spire. Each stage needs its own research, which shows as the Spire rises.
     packedearth: ['spire', 0, 'Your diggers'], resinvault: ['spire', 1, 'Your builders'], winglore: ['spire', 3, 'Your nurses'], eveningwinds: ['spire', 4, 'Your builders'],
     scaffolding: ['spire', 1, 'Your builders'], pulleys: ['spire', 2, 'Your builders'], weatherwatch: ['spire', 4, 'Your scouts'],
