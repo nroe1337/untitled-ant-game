@@ -21,6 +21,8 @@ const F = WAR.fortifications;
 type Kind = 'major' | 'soldier' | 'worker' | 'queen' | 'wall' | 'mound' | 'raider' | 'brute' | 'rqueen' | 'thrall' | 'wasp';
 interface Stack { kind: Kind; n: number; hp: number; max: number; atk: number; start: number; hit?: number; fell?: number }
 interface Battle {
+  /** How strong this raid is (threat x luck x bait), its kind, and the spoils multiplier from bait and kind. */
+  lvl?: number; kind?: string; spoils?: number;
   /** ours, in the order the raiders bite them: majors, then soldiers, then rallied workers */
   us: Stack[];
   /** theirs, in the order we bite them: raiders, then brutes */
@@ -87,6 +89,12 @@ interface WarState {
   autoProvoke?: boolean;
   /** Seconds until the rival raids on its own (Nov 17: raids also come unprovoked, every so often). */
   attackIn?: number;
+  /** The next unprovoked raid, rolled when the clock resets: its kind and its luck (so the marching column can hint at it). */
+  next?: { kind: string; luck: number };
+  /** Seconds since the War tab opened this colony: threat creeps up with it. */
+  warTime?: number;
+  /** How hard Provoke baits the rival: light, normal or heavy. */
+  bait?: string;
   /** Husk barricade health left (it regrows between raids). */
   wall?: number;
   /** Unopened spoils chests. */
@@ -185,14 +193,35 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const tiles = (ctx: Context) => (ctx.state.map?.tiles ?? []) as { t: string; o: string | null; seen: boolean; core?: boolean; sh?: ShKind }[];
 const rivalTiles = (ctx: Context) => Math.max(1, tiles(ctx).filter((t) => t.o === 'rival').length);
 const waveOf = (ctx: Context) => S(ctx).wave ?? 1;
+// ---- threat (Nate, Nov 17): raids are an ongoing pressure, not a ladder you climb ----
+// A raid's strength comes from the colony's threat (its size, plus a slow creep with time), a roll of luck, and the bait.
+const T = WAR.threat;
+const builtChambers = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, n) => a + (n || 0), 0);
+export function threat(ctx: Context) {
+  const s = S(ctx);
+  const size = Math.max(0, ctx.res.amt('ant') / T.perWorkers + builtChambers(ctx) / T.perChambers - T.offset);
+  return (1 + size + ((s.warTime ?? 0) / 3600) * T.perHour) * (s.rivalDefeated ? T.wanderers : 1);
+}
+const threatWord = (t: number) => T.words.reduce((w, [at, name]) => (t >= at ? name : w), T.words[0][1]);
+function rollKind(ctx: Context) {
+  const t = threat(ctx), ks = Object.entries(WAR.raidKinds).filter(([, k]) => t >= k.from);
+  let r = Math.random() * ks.reduce((a, [, k]) => a + k.weight, 0);
+  for (const [id, k] of ks) { r -= k.weight; if (r <= 0) return id; }
+  return 'plain';
+}
+const rollLuck = () => 1 - T.luck + Math.random() * 2 * T.luck;
 const waveComp = (w: number) => ({
   raiders: Math.min(WAR.maxRaiders, Math.round(B.wave.base + w * B.wave.perWave)),
   brutes: Math.floor(w / B.wave.bruteEvery),
 });
 /** The wave as it arrives: minims in the rival's walls (a caste post) thin it out. */
-const raidComp = (ctx: Context) => { const c = waveComp(waveOf(ctx)), m = Math.max(0.5, 1 + ctx.mods.get('raidSize')); return { raiders: Math.max(1, Math.round(c.raiders * m)), brutes: Math.round(c.brutes * m) }; };
+const raidComp = (ctx: Context, lvl = threat(ctx), kind = 'plain') => {
+  const c = waveComp(lvl), k = WAR.raidKinds[kind] ?? WAR.raidKinds.plain, m = Math.max(0.5, 1 + ctx.mods.get('raidSize'));
+  const raiders = Math.min(k.cap ?? WAR.maxRaiders, Math.round(c.raiders * k.raiders * m));
+  return { raiders: Math.max(1, raiders), brutes: Math.max(k.brutes > 1 ? 1 : 0, Math.round(c.brutes * k.brutes * m)) };
+};
 const toughness = (w: number) => Math.pow(B.wave.toughness, w - 1);
-const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round((toughness(w) - 1) * 100)}% tougher` : ''); };
+const describeRaid = (ctx: Context, lvl: number, kind = 'plain') => { const c = raidComp(ctx, lvl, kind), w = lvl * (WAR.raidKinds[kind]?.tough ?? 1); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round((toughness(w) - 1) * 100)}% tougher` : ''); };
 
 
 /** Fighters died: take them off their jobs, and queue them for refilling from idle if that's on. */
@@ -240,11 +269,14 @@ function army(ctx: Context): Stack[] {
   return us;
 }
 const rollAttack = () => WAR.attack.every[0] + Math.random() * (WAR.attack.every[1] - WAR.attack.every[0]);
-function startBattle(ctx: Context) {
+function startBattle(ctx: Context, how: { kind: string; luck: number; bait?: string } = { kind: rollKind(ctx), luck: rollLuck(), bait: S(ctx).bait }) {
   const s = S(ctx);
   s.attackIn = rollAttack(); // any raid, provoked or not, resets the clock to the next unprovoked one
-  const comp = raidComp(ctx);
-  const tough = toughness(waveOf(ctx));
+  s.next = { kind: rollKind(ctx), luck: rollLuck() };
+  const K = WAR.raidKinds[how.kind] ?? WAR.raidKinds.plain, bait = WAR.bait[how.bait ?? 'normal'] ?? WAR.bait.normal;
+  const lvl = Math.max(1, threat(ctx) * how.luck * bait.size);
+  const comp = raidComp(ctx, lvl, how.kind);
+  const tough = toughness(lvl) * K.tough;
   const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
   const us: Stack[] = [];
   if (wallHp(ctx) > 0) { const w = stack('wall', 1, wallMax(ctx), 0); w.hp = wallHp(ctx); us.push(w); }
@@ -261,8 +293,8 @@ function startBattle(ctx: Context) {
   if (nurses > 0) us.push(stack('worker', nurses, B.worker.hp, B.worker.atk));
   const them: Stack[] = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
-  s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0, spoil, barricade0 };
-  ctx.log(`Wave ${waveOf(ctx)}: the rival takes the bait. ${comp.raiders + comp.brutes} of them pour toward the entrance.`, 'warn');
+  s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0, spoil, barricade0, lvl, kind: how.kind, spoils: bait.spoils * K.spoils };
+  ctx.log(`${K.name}${how.bait && how.bait !== 'normal' ? ` (${bait.name.toLowerCase()})` : ''}: ${comp.raiders + comp.brutes} of them pour toward the entrance. ${K.desc}`, 'warn');
   if (autoCry(ctx) || ctx.mods.get('fierceGuards') > 0) warCry(ctx);
 }
 
@@ -273,6 +305,7 @@ const cryTime = (ctx: Context) => B.warCry.time * (skullWorks(ctx, 'raider') ? 2
 function warCry(ctx: Context) {
   const s = S(ctx);
   if (!s.battle || s.rallyCd > 0) return;
+  if (WAR.raidKinds[s.battle.kind ?? '']?.noCry) return; // a night raid: nobody hears the cry in the dark
   s.rallyCd = B.warCry.cooldown;
   s.battle.cry = cryTime(ctx);
   ctx.log('The war cry goes up. Every fighter bites harder.', 'info');
@@ -427,19 +460,19 @@ function endBattle(ctx: Context) {
   const stolen = ctx.mods.get('noSteal') > 0 ? 0 : ctx.res.amt('food') * Math.min(0.9, stealShare * (1 + ctx.mods.get('stealMult')));
   ctx.res.add('food', -stolen);
   const clean = !b.breaches;
-  const chitin = Math.round(((b.chitin ?? 0) + (clean ? waveOf(ctx) * B.wave.clearBonus : 0)) * (1 + H.harvest.per * hl(ctx, 'harvest')));
-  const w = waveOf(ctx);
-  const honours = clean ? (WAR.honours.perWave + Math.floor(w / 5) * WAR.honours.perFive) * (hasMilestone(ctx, 'endless') ? 2 : 1) : 0;
+  const w = b.lvl ?? threat(ctx), sp = b.spoils ?? 1;
+  const chitin = Math.round(((b.chitin ?? 0) + (clean ? w * B.wave.clearBonus * sp : 0)) * (1 + H.harvest.per * hl(ctx, 'harvest')));
+  const honours = clean ? Math.max(1, Math.round((WAR.honours.perWave + Math.floor(w / 5) * WAR.honours.perFive) * (hasMilestone(ctx, 'endless') ? 2 : 1) * sp)) : 0;
   if (chitin) ctx.res.add('chitin', chitin);
   s.rivalArmy = Math.max(5, s.rivalArmy - b.kills);
   const parts = [`${b.kills} raiders killed (+${chitin} chitin)`];
   if (b.breaches) parts.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   if (lost) parts.push(`${lost} of ours fell`);
   if (rescued) parts.push(`${rescued} wounded carried home`);
-  const chest = clean ? chestOf(w) : null;
+  const chest = clean && sp >= 1 ? chestOf(w) : null; // light bait brings no chest
   if (chest) { giveChest(ctx, chest); parts.push(`A ${WAR.chests.kinds[chest].name.toLowerCase()} is carried in`); }
-  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: s.wave - 1 }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Wave cleared. Next: wave ${s.wave}, ${describeWave(s.wave)}`); }
-  else parts.push(`Some got through, so wave ${waveOf(ctx)} must be fought again`);
+  // s.wave now counts raids repelled (plus one): milestones and research read it
+  if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: w }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Raid repelled (${s.wave - 1} so far)`); }
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];
   if (honours) lines.push(`+${honours} war honour${honours > 1 ? 's' : ''}`);
@@ -448,7 +481,7 @@ function endBattle(ctx: Context) {
   if (rescued) lines.push(`${rescued} wounded carried home`);
   if (b.breaches) lines.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   if (chest) lines.push(`A ${WAR.chests.kinds[chest].name.toLowerCase()}`);
-  lines.push(clean ? `Next: wave ${s.wave}` : `Wave ${waveOf(ctx)} must be fought again`);
+  lines.push(`${WAR.raidKinds[b.kind ?? 'plain']?.name ?? 'A raid'}, threat ${fmt(w)}`);
   showResult(ctx, 'The raid', { win: clean, title: clean ? 'Victory' : 'They got through', lines });
   ctx.log((b.breaches ? 'The raid is over. ' : 'The raid is broken at the entrance. ') + s.lastReport, b.breaches ? 'warn' : 'story');
   s.nextRaid = WAR.provokeCooldown * Math.max(0.2, 1 + H.regroup.per * hl(ctx, 'regroup'));
@@ -682,8 +715,8 @@ function endBoss(ctx: Context, win: boolean) {
   if (t) ctx.bus.emit('map:capture', { x: boss.target % MAP.cols, y: Math.floor(boss.target / MAP.cols) });
   s.rivalDefeated = true; ctx.flags.add('rival:defeated');
   addTrophy(ctx, 'queen');
-  ctx.log(`The rival queen is dead. Her mound is ours, and the raids stop. ${got.join(', ')}, +${hon} war honours, and a royal chest.`, 'story');
-  showResult(ctx, 'The rival queen', { win: true, title: 'The queen is dead', lines: ['Her mound is ours. The raids stop.', ...got, `+${hon} war honours`, 'A royal chest', ...(lost ? [`${lost} soldiers fell`] : [])] });
+  ctx.log(`The rival queen is dead. Her mound is ours. Her raids stop, but wandering colonies will still come. ${got.join(', ')}, +${hon} war honours, and a royal chest.`, 'story');
+  showResult(ctx, 'The rival queen', { win: true, title: 'The queen is dead', lines: ['Her mound is ours. Wanderers will still raid.', ...got, `+${hon} war honours`, 'A royal chest', ...(lost ? [`${lost} soldiers fell`] : [])] });
 }
 
 export const war: GameSystem = {
@@ -721,8 +754,9 @@ export const war: GameSystem = {
     if (s.battle) stepBattle(ctx, dt);
     ctx.mods.set('noWipe', 'wasps', manned(ctx, 'wasp') ? 1 : 0);
     s.sap = manned(ctx, 'antlion') ? Math.min(SK.antlion.sapMax, (s.sap ?? 0) + (SK.antlion.sapMax / SK.antlion.sapTime) * dt) : 0;
-    if (!s.rivalDefeated) {
-      s.rivalArmy = Math.min(rivalTiles(ctx) * WAR.rivalArmyPerTile, s.rivalArmy + WAR.rivalGrowthPerSecond * dt);
+    if (!s.rivalDefeated) s.rivalArmy = Math.min(rivalTiles(ctx) * WAR.rivalArmyPerTile, s.rivalArmy + WAR.rivalGrowthPerSecond * dt);
+    if (ctx.flags.has('tech:martial')) s.warTime = (s.warTime ?? 0) + dt;
+    {
       if (!s.battle) {
         s.nextRaid = Math.max(0, s.nextRaid - dt); // now: cooldown before you can provoke again
         if (s.autoProvoke && hasMilestone(ctx, 'drums') && s.nextRaid <= 0 && !s.campaign && ctx.res.canAfford(WAR.provokeCost)) {
@@ -732,9 +766,11 @@ export const war: GameSystem = {
           // the rival raids on its own every so often (the first one waits a grace period after the War tab opens)
           const before = s.attackIn ??= WAR.attack.grace;
           s.attackIn = Math.max(0, before - dt);
-          if (before > WAR.attack.march && s.attackIn <= WAR.attack.march) ctx.log(`A rival column has left their mound and is marching on the nest. Watch it on the Map. It arrives in about ${Math.round(WAR.attack.march / 60)} minutes.`, 'warn');
-          if (before > WAR.attack.warn && s.attackIn <= WAR.attack.warn) ctx.log(`The rival column is almost at the entrance: about ${WAR.attack.warn} seconds.`, 'warn');
-          if (s.attackIn <= 0) { ctx.log('The rival raids the nest!', 'warn'); startBattle(ctx); }
+          s.next ??= { kind: rollKind(ctx), luck: rollLuck() };
+          const nk = WAR.raidKinds[s.next.kind] ?? WAR.raidKinds.plain, who = s.rivalDefeated ? 'A wandering colony' : 'The rival';
+          if (before > WAR.attack.march && s.attackIn <= WAR.attack.march) ctx.log(`${who} is marching on the nest: ${nk.hint} Watch it on the Map. It arrives in about ${Math.round(WAR.attack.march / 60)} minutes.`, 'warn');
+          if (before > WAR.attack.warn && s.attackIn <= WAR.attack.warn) ctx.log(`The column is almost at the entrance: about ${WAR.attack.warn} seconds.`, 'warn');
+          if (s.attackIn <= 0) startBattle(ctx, { ...s.next });
         }
       }
     }
@@ -743,6 +779,7 @@ export const war: GameSystem = {
 
   panel: (() => {
     let spoilsSection: HTMLElement, spoilsText: HTMLElement, openBtn: HTMLButtonElement, trophySection: HTMLElement, trophyList: HTMLElement;
+    let baitWrap: HTMLElement;
     let fortSection: HTMLElement, campSection: HTMLElement, honourSection: HTMLElement, honourHead: HTMLElement, mileList: HTMLElement, autoWrap: HTMLElement, autoBox: HTMLInputElement;
     let honourUps: ReturnType<typeof upgradeList>;
     const field = battleField();
@@ -758,9 +795,14 @@ export const war: GameSystem = {
         provokeBtn = actionButton({
           ctx, label: 'Provoke a raid', costs: () => WAR.provokeCost,
           desc: 'Lay a false trail to the rival mound. Their raiders follow it to your entrance, where you are waiting. Kills give chitin.',
-          enabled: (c) => !S(c).battle && !S(c).rivalDefeated && !S(c).campaign && S(c).nextRaid <= 0,
+          enabled: (c) => !S(c).battle && !S(c).campaign && S(c).nextRaid <= 0,
           onBuy: (c) => startBattle(c),
         });
+        const baitSel = el('select', { title: 'How big a raid Provoke lures. Bigger raids bring more chitin and honours; light bait brings no chest.' },
+          ...Object.entries(WAR.bait).map(([id, b]) => el('option', { value: id }, `${b.name} (x${b.spoils} spoils)`))) as HTMLSelectElement;
+        baitSel.value = S(ctx).bait ?? 'normal';
+        baitSel.addEventListener('change', () => { S(ctx).bait = baitSel.value; });
+        baitWrap = baitSel;
         rallyBtn = actionButton({
           ctx, label: 'War cry', desc: () => `Every fighter bites ${B.warCry.boost * 100}% harder for ${cryTime(ctx)}s. Ready again ${B.warCry.cooldown}s after it sounds. The Standing alarm sounds it by itself.`,
           enabled: (c) => !!S(c).battle && S(c).rallyCd <= 0, onBuy: (c) => warCry(c),
@@ -792,9 +834,9 @@ export const war: GameSystem = {
         root.append(
           el('p.flavor', {}, 'They know where we are now. Hold the entrance, then take the fight to them.'),
           el('details.info', {}, el('summary', {}, 'Information'),
-          el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and every wave cleared without losses earns war honours. Deeper waves reach war milestones, each a lasting reward for this colony. Chitin builds fortifications, husk halls, training grounds and majors; honours buy honour upgrades.'),
+          el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and every raid repelled without losses earns war honours and a chest. Raids repelled reach war milestones, each a lasting reward for this colony. Chitin builds fortifications, husk halls, training grounds and majors; honours buy honour upgrades.'),
           el('p.muted', {}, 'How it works: every ant on both sides fights at once, so numbers and strength are what count. Each side bites the first group of the other: raiders take our majors first, then soldiers, then rallied workers; we cut down raiders first, then brutes. Nest defence (guard posts, stone tiles, husk halls) bites from the walls the whole fight. The War cry makes every fighter bite harder for a few seconds. If nobody is left at the entrance, raiders slip in one by one and steal food.')),
-          field.root, status, el('div.row', {}, provokeBtn.root, rallyBtn.root, refillWrap, autoWrap), ledger,
+          field.root, status, el('div.row', {}, provokeBtn.root, baitWrap, rallyBtn.root, refillWrap, autoWrap), ledger,
           spoilsSection = el('div.section', {}, el('h3', {}, 'Spoils'), spoilsText, el('div.row', {}, openBtn)),
           trophySection = el('div.section', {}, el('h3', {}, 'Trophies'), el('p.muted', {}, 'The first kill of each kind of foe gives a skull. Skulls work once they hang in a Hall of husks.'), trophyList),
           honourSection = el('div.section', {}, el('h3', {}, 'War honours'), honourHead, mileList, honourUps.root),
@@ -816,7 +858,7 @@ export const war: GameSystem = {
         spoilsSection.hidden = !total && !s.won;
         spoilsText.textContent = total
           ? 'Waiting to be opened: ' + (Object.entries(ch) as [ChestKind, number][]).filter(([, n]) => n).map(([k, n]) => `${n} ${WAR.chests.kinds[k].name.toLowerCase()}${n > 1 ? 's' : ''}`).join(', ') + '.'
-          : `Every wave cleared without losses leaves a chest. From wave ${WAR.chests.rareFrom} they are rare chests, from wave ${WAR.chests.royalFrom} royal ones.`;
+          : `Every raid repelled without losses leaves a chest. Raids of threat ${WAR.chests.rareFrom} or more leave rare chests, ${WAR.chests.royalFrom} or more royal ones.`;
         openBtn.disabled = !total;
         trophySection.hidden = !skullCount(ctx);
         const hall = (ctx.state.nest?.built?.husks ?? 0) > 0;
@@ -831,7 +873,7 @@ export const war: GameSystem = {
           );
         }
         honourSection.hidden = !ctx.flags.has('rival');
-        honourHead.textContent = `Deepest wave cleared: ${bestWave(ctx)}. Honours earned: ${honoured(ctx)}. Each milestone is a lasting reward for this colony.`;
+        honourHead.textContent = `Raids repelled: ${bestWave(ctx)}. Honours earned: ${honoured(ctx)}. Each milestone is a lasting reward for this colony.`;
         const next = WAR.milestones.find((m) => !hasMilestone(ctx, m.id));
         const shown = WAR.milestones.filter((m) => hasMilestone(ctx, m.id)).map((m) => ({ m, done: true }));
         if (next) shown.push({ m: next, done: false });
@@ -839,26 +881,25 @@ export const war: GameSystem = {
         if (mileList.dataset.key !== key) {
           mileList.dataset.key = key;
           mileList.replaceChildren(...shown.map(({ m, done }) => el('div', { class: done ? '' : 'next' },
-            el('span', { class: done ? '' : 'muted' }, `${done ? '✓' : '○'} Wave ${m.wave}: ${m.name}`),
-            el('span', { class: done ? 'muted' : '' }, done ? m.desc : `${m.desc} (${bestWave(ctx)} of ${m.wave})`))));
+            el('span', { class: done ? '' : 'muted' }, `${done ? '✓' : '○'} ${m.wave} raids: ${m.name}`),
+            el('span', { class: done ? 'muted' : '' }, done ? m.desc : `${m.desc} (${bestWave(ctx)} of ${m.wave} raids)`))));
         }
         provokeBtn.update(ctx); rallyBtn.update(ctx); campBtn.update(ctx); forts.update(ctx);
         if (s.battle?.boss) {
           const b = s.battle, sum = (xs: Stack[]) => xs.reduce((t, x) => t + x.n, 0), q = b.them.find((x) => x.kind === 'rqueen');
           status.textContent = `Inside the rival mound: ${sum(b.us)} of ${b.soldiersAtStart} fighters standing, ${b.them.find((x) => x.kind === 'raider')?.n ?? 0} guards left, ` + (q && q.n ? `the queen at ${Math.ceil((q.hp / q.max) * 100)}% health.` : 'the queen is down.');
-        } else if (s.rivalDefeated) status.textContent = 'The rival is gone. The entrance is quiet.';
-        else if (s.battle) {
+        } else if (s.battle) {
           const b = s.battle, sum = (xs: Stack[]) => xs.reduce((t, x) => t + x.n, 0);
           const fighters = sum(b.us.filter((x) => x.kind !== 'worker' && x.kind !== 'wall' && x.kind !== 'mound')), helpers = b.us.find((x) => x.kind === 'worker')?.n ?? 0;
           status.textContent = `Raid in progress: ${sum(b.them)} of them left, ${fighters} of ${b.soldiersAtStart} fighters standing` + (helpers ? `, ${helpers} workers helping` : '') + `, ${b.kills} killed` + (b.rescued ? `, ${b.rescued} wounded carried in` : '') + (b.breaches ? `, ${b.breaches} got in` : '') + '.' + (b.cry ? ` War cry: ${Math.ceil(b.cry / ctx.speed)}s left.` : s.rallyCd > 0 ? ` War cry ready in ${Math.ceil(s.rallyCd / ctx.speed)}s.` : '');
-        } else if (s.attackIn != null && s.attackIn <= WAR.attack.march && ctx.flags.has('tech:martial')) status.textContent = `A rival column is marching on the nest (see the Map). It reaches the entrance in about ${Math.ceil(s.attackIn / ctx.speed)}s. ` + (s.lastReport ? 'Last raid: ' + s.lastReport : '');
-        else status.textContent = `The rival raids on its own every ${Math.round(WAR.attack.every[0] / 60)} to ${Math.round(WAR.attack.every[1] / 60)} minutes${s.attackIn != null ? ` (next in about ${Math.ceil(s.attackIn / 60)} min)` : ''}, or sooner if you provoke it. ` +
+        } else if (s.attackIn != null && s.attackIn <= WAR.attack.march && ctx.flags.has('tech:martial')) status.textContent = `${s.rivalDefeated ? 'Wanderers are' : 'The rival is'} marching on the nest: ${WAR.raidKinds[s.next?.kind ?? 'plain']?.hint ?? ''} (see the Map). It reaches the entrance in about ${Math.ceil(s.attackIn / ctx.speed)}s. ` + (s.lastReport ? 'Last raid: ' + s.lastReport : '');
+        else status.textContent = `${s.rivalDefeated ? 'Wandering colonies raid' : 'The rival raids'} on its own every ${Math.round(WAR.attack.every[0] / 60)} to ${Math.round(WAR.attack.every[1] / 60)} minutes${s.attackIn != null ? ` (next in about ${Math.ceil(s.attackIn / 60)} min)` : ''}, or sooner if you provoke it. ` +
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
           (s.lastReport ? 'Last raid: ' + s.lastReport : '');
         const hold = soldiers(ctx) * B.soldier.atk * power(ctx) + defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
         ledger.replaceChildren(...[
           ['Rival army', `about ${Math.round(s.rivalArmy)}`],
-          ['Next fight', s.rivalDefeated ? 'none' : `wave ${waveOf(ctx)}: ${describeWave(waveOf(ctx))}` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '')],
+          ['Threat', `${threatWord(threat(ctx))} (${fmt(threat(ctx))}). A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '')],
           ['Your soldiers', `${soldiers(ctx)} (assign them on the Jobs tab)`],
           ['Nest defence', `${defence(ctx)} (guard posts, stone tiles, husk halls)`],
           ...(wallMax(ctx) ? [['Husk barricade', `${Math.floor(s.battle && !s.battle.boss ? (s.battle.us.find((x) => x.kind === 'wall')?.n ? s.battle.us.find((x) => x.kind === 'wall')!.hp : 0) : wallHp(ctx))} of ${wallMax(ctx)}`]] : []),
@@ -996,8 +1037,8 @@ function fighterInfo(ctx: Context, x: Stack, theirs: boolean, boss: boolean): (N
   out.push(x.max > 0 && (x.kind === 'queen' || x.kind === 'rqueen') ? `Health: ${fmt(x.n ? x.hp : 0)} of ${fmt(x.max)}` : `${x.n} ${x.n === 1 ? 'ant' : 'ants'}, ${fmt(x.max)} health each`, `Bite: ${fmt(bite)}${x.kind === 'queen' || x.kind === 'rqueen' ? '' : ' each'}`);
   const why: string[] = [];
   if (theirs) {
-    const w = waveOf(ctx);
-    if (!boss && w > 1) why.push(`Wave ${w}: ${pct(toughness(w) - 1)} health and bite`);
+    const b = S(ctx).battle, w = b?.lvl ?? threat(ctx), tk = WAR.raidKinds[b?.kind ?? 'plain']?.tough ?? 1;
+    if (!boss && w * tk > 1) why.push(`Threat ${fmt(w)}: ${pct(toughness(w) * tk - 1)} health and bite`);
     if (!boss && fl(ctx, 'thorns')) why.push(`Thorn barricade: their bites ${pct(-Math.min(0.8, F.thorns.per * fl(ctx, 'thorns')))}`);
     if (boss && x.kind === 'rqueen') why.push('Kill her and the raids stop for good.');
     if (x.kind === 'brute') why.push(skullWorks(ctx, 'brute') ? `Drops ${B.brute.chitin * 2} chitin (Brute skull)` : `Drops ${B.brute.chitin} chitin`);
@@ -1071,9 +1112,9 @@ function battleField() {
         if (wallMax(ctx)) { const w = stack('wall', 1, wallMax(ctx), 0); w.hp = wallHp(ctx); ours.push(w); }
         ours.push(...army(ctx));
         if (!ours.some((x) => x.kind === 'soldier') && !majors(ctx)) ours.push(stack('soldier', 0, B.soldier.hp, B.soldier.atk));
-        const comp = raidComp(ctx), tough = toughness(waveOf(ctx));
-        theirs = s.rivalDefeated ? [] : [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
-        if (comp.brutes && !s.rivalDefeated) theirs.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
+        const comp = raidComp(ctx), tough = toughness(threat(ctx));
+        theirs = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
+        if (comp.brutes) theirs.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
       }
       const k = (b ? 'b' : 'i') + ours.map((x) => x.kind).join() + '|' + theirs.map((x) => x.kind).join();
       if (k !== key) {

@@ -76,7 +76,7 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'sky', name: 'Daylight', desc: 'Break through to the surface.', test: (c) => c.flags.has('surface') },
   { id: 'rival', name: 'Neighbours', desc: 'Find the rival colony.', test: (c) => c.flags.has('rival') },
   { id: 'deep', name: 'Deep digging', desc: 'Dig 50 chambers in one colony.', test: (c) => (st(c).nest?.order?.length ?? 0) >= 50 },
-  { id: 'wave25', name: 'Holding the line', desc: 'Win 25 raid waves, across all colonies.', test: (c) => archiveTotal(c, 'iron') >= 25 },
+  { id: 'wave25', name: 'Holding the line', desc: 'Repel 25 raids, across all colonies.', test: (c) => archiveTotal(c, 'iron') >= 25 },
   { id: 'flight1', name: 'The wedding flight', desc: 'Make your first nuptial flight.', test: (c) => flights(c) >= 1 },
   { id: 'flight5', name: 'An old line', desc: 'Make 5 nuptial flights.', test: (c) => flights(c) >= 5 },
   { id: 'flight10', name: 'A dynasty', desc: 'Make 10 nuptial flights.', test: (c) => flights(c) >= 10 },
@@ -128,10 +128,10 @@ const FEATS: { id: string; name: string; desc: string; hidden?: boolean; test: (
   { id: 'goliath', name: 'David and Goliath', desc: 'The champion beats a foe 10 or more levels above its own.', test: () => false },
   { id: 'feet', name: 'Back on its feet', desc: 'The champion is beaten 10 times and keeps hunting.', test: (c) => (st(c).champion?.defeats ?? 0) >= 10 },
   { id: 'patched', name: 'Patched up', desc: 'The champion recovers with Wound care doing all it can.', test: (c) => (st(c).champion?.recover ?? 0) > 0 && c.mods.get('nurseHeal') >= BROOD.healCap - 1e-6 },
-  { id: 'nottoday', name: 'Not today', desc: 'Win a raid wave with 5 or fewer soldiers.', test: () => false },
-  { id: 'flawless', name: 'Flawless', desc: 'Win 10 raid waves in a row without losses.', test: (c) => T(c).cleanInRow >= 10 },
+  { id: 'nottoday', name: 'Not today', desc: 'Repel a raid with 5 or fewer soldiers.', test: () => false },
+  { id: 'flawless', name: 'Flawless', desc: 'Repel 10 raids in a row without losses.', test: (c) => T(c).cleanInRow >= 10 },
   { id: 'husks', name: 'Shell collector', desc: 'Build a Hall of husks from raider chitin.', test: (c) => chambers(c, 'husks') >= 1 },
-  { id: 'nowalls', name: 'No walls needed', desc: 'Win a raid wave with no nest defence.', hidden: true, test: () => false },
+  { id: 'nowalls', name: 'No walls needed', desc: 'Repel a raid with no nest defence.', hidden: true, test: () => false },
   { id: 'peace', name: 'Peace in our time', desc: 'Go 30 minutes without a raid after finding the rival.', test: (c) => T(c).quiet >= 1800 },
   { id: 'streak10', name: 'Ten in a row', desc: 'The champion wins 10 fights in a row.', test: (c) => (st(c).champion?.streak ?? 0) >= 10 },
   // Research, lineage and the wider world
@@ -337,7 +337,7 @@ export const stats: GameSystem = {
           ...opt(archiveTotal(ctx, 'earth') > 0, ['Chambers dug', fmt(archiveTotal(ctx, 'earth'))]),
           ...opt(archiveTotal(ctx, 'lore') > 0, ['Techs learned', fmt(archiveTotal(ctx, 'lore'))]),
           ...opt(archiveTotal(ctx, 'trails') > 0, ['Expeditions home', fmt(archiveTotal(ctx, 'trails'))]),
-          ...opt(archiveTotal(ctx, 'iron') > 0, ['Raid waves won', fmt(archiveTotal(ctx, 'iron'))]),
+          ...opt(archiveTotal(ctx, 'iron') > 0, ['Raids repelled', fmt(archiveTotal(ctx, 'iron'))]),
           ...opt(archiveTotal(ctx, 'tide') > 0, ['Voyages', fmt(archiveTotal(ctx, 'tide'))]),
           ...opt(archiveTotal(ctx, 'hunt') > 0, ['Champion kills', fmt(archiveTotal(ctx, 'hunt'))]),
           ...opt(!!a.champion?.name, ['Champion', `${a.champion?.name}, level ${a.champion?.level}, fights up to level ${(a.champion?.top ?? 0) + 10}`]),
@@ -352,7 +352,7 @@ export const stats: GameSystem = {
           ...opt((a.brood?.born ?? 0) > 0, ['Workers born', fmt(a.brood?.born ?? 0)]),
           ['Workers starved', String(starvedNow(ctx))],
           ...opt((a.expeditions?.runs ?? 0) > 0, ['Expeditions', String(a.expeditions?.runs ?? 0)]),
-          ...opt((a.war?.won ?? 0) > 0, ['Raid waves won', String(a.war?.won ?? 0)]),
+          ...opt((a.war?.won ?? 0) > 0, ['Raids repelled', String(a.war?.won ?? 0)]),
         ]);
         (runsBox.previousElementSibling as HTMLElement).hidden = !s.runs.length;
         runsBox.hidden = !s.runs.length;
