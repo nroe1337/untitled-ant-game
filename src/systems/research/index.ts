@@ -37,6 +37,20 @@ function counter(ctx: Context, what: string) {
       if (what.startsWith('full:')) { const r = what.slice(5); return ctx.res.has(r) && ctx.res.cap(r) > 0 ? ctx.res.amt(r) / ctx.res.cap(r) * 100 : 0; } return ctx.res.has(what) ? ctx.res.amt(what) : 0;
   }
 }
+/** A hint for a research the colony hasn't thought of yet: who has the idea, and what brings it on. */
+const HINTS: Record<string, string> = {
+  rooms: 'dig more chambers', born: 'raise more workers', starved: 'it comes from hard times', runs: 'send more expeditions',
+  rumours: 'chase more rumours', spire: 'raise the Swarm Spire higher', tiles: 'hold more land on the Map', raids: 'fight more raids',
+  wave: 'repel more raids', outposts: 'build more outposts', peak: 'grow a bigger colony', techs: 'learn more research',
+};
+function hintOf(id: string) {
+  const m = MS[id];
+  if (!m) return 'The colony needs more workers before anyone thinks of it.';
+  const [what, , who] = m;
+  const how = HINTS[what] ?? (what.startsWith('terrain:') ? 'hold more of a kind of ground on the Map'
+    : what.startsWith('full:') ? `fill your ${what.slice(5)} stores` : `gather more ${what}`);
+  return `${who} are mulling something over. Hint: ${how}.`;
+}
 /** Reveal research whose milestone has been reached (and whose other needs are met), with a Chronicle line. */
 function checkMilestones(ctx: Context) {
   for (const [id, [what, at, who]] of Object.entries(MS)) {
@@ -213,7 +227,8 @@ export const research: GameSystem = {
           });
           const done = el('div.tile.done.technode', { tabindex: 0 }, t.name);
           hoverTip(done, () => [el('div.teffect', {}, t.desc)]);
-          const unknown = el('div.tile.unknown', { title: 'Not yet known. Keep growing.' }, '?');
+          const unknown = el('div.tile.unknown', { tabindex: 0 }, '?');
+          hoverTip(unknown, () => [el('div', {}, 'Not yet known.'), el('div.teffect', {}, revealed(ctx, id) ? 'The colony needs more workers before anyone thinks of it.' : hintOf(id))]);
           const node = el('div.techpos', {}, btn.root, done, unknown);
           (pages.get(t.age) ?? pages.get('dirt')!).list.append(node);
           nodes.set(id, { root: node, done, unknown });
@@ -249,7 +264,6 @@ export const research: GameSystem = {
           const pg = pages.get(age.id)!;
           if (pg.tab.hidden) return;
           const ids = IDS.filter((id) => TECHS[id].age === age.id);
-          const known = ids.filter((id) => done(ctx, id));
           // still to come: not learned, and not shut out by a flag this line hasn't earned
           const left = ids.filter((id) => !done(ctx, id) && (!TECHS[id].flag || ctx.flags.has(TECHS[id].flag!)));
           const waiting = open.get(age.id) ?? 0, hidden = left.length - waiting;
@@ -260,8 +274,8 @@ export const research: GameSystem = {
           pg.tab.title = complete ? 'Everything learned' : waiting ? `${waiting} to research` : 'Nothing to research yet';
           pg.page.hidden = picked !== age.id;
           if (pg.page.hidden) return;
-          pg.status.textContent = complete ? `Everything in this age is learned (${known.length}).`
-            : `Learned ${known.length}. ` + (waiting ? `${waiting} to research now. ` : '') + (hidden > 0 ? 'More ideas will come as the colony grows.' : '');
+          pg.status.textContent = complete ? 'Everything in this age is learned.' : hidden > 0 ? 'More ideas will come as the colony grows.' : '';
+          pg.status.hidden = !pg.status.textContent;
           // the map is only as tall as what is drawn on it
           let bottom = 0;
           for (const id of IDS) if (TECHS[id].age === age.id && !nodes.get(id)!.root.hidden) bottom = Math.max(bottom, parseFloat(nodes.get(id)!.root.style.top) + ROW);

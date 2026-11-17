@@ -362,10 +362,10 @@ export const nest: GameSystem = {
           const i = hitSpots.findIndex((p) => Math.abs(p.x - x) <= 20 && Math.abs(p.y - y) <= 8);
           const order = S(ctx).order;
           selected = i < 0 ? null : order[i]; // the name line shows the last chamber clicked
-          if (i < 0 || i === picked) { picked = null; return; }
+          if (i < 0 || i === picked) { picked = null; selected = null; return; } // clicking the picked chamber again (or empty ground) deselects
           if (picked === null) { picked = i; return; }
           [order[picked], order[i]] = [order[i], order[picked]]; // purely cosmetic: only the drawing reads the order
-          picked = null;
+          picked = null; selected = null;
         });
         roomName = el('p.roomname', {}, ' ');
         const scroller = el('div.nestscroll', { tabindex: '0', 'aria-label': 'Nest view, scrolls when the nest is deep' }, canvas);
