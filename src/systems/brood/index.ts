@@ -76,7 +76,7 @@ const MO = BROOD.mould;
 /** Mould scrubbed away per second by the queen, nurses and Purification chambers. */
 /** Chamber reworks are kept on the nest's state; brood reads them there (Infirmary). */
 const infirmary = (ctx: Context) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.brood;
-export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (1 + ctx.mods.get('job:nurse')) * (infirmary(ctx) ? 1 + NEST.rw.nurseClean : 1);
+export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (infirmary(ctx) ? 1 + NEST.rw.nurseClean : 1) * (1 + ctx.mods.get('job:nurse'));
 export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseClean(ctx) + ctx.mods.get('mouldClean');
 /** Mould added per second by the nest's chambers. */
 /** Chambers in the nest: every one of them gathers a little mould. */
