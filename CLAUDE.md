@@ -29,6 +29,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 - Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
 - Effect and UI text (what a crown, chamber or button does) stays short and plain: say what it does.
+  Cut anything the player can already see elsewhere on the screen (Nate, Nov 17: no "every trip earns marks" when the
+  loot line already lists marks).
 - Flavour text (the Chronicle, italic tab lines, story logs) keeps the game's existing voice. Write new flavour in the
   same style so the game stays consistent; Nate will revise the wording himself later.
 - Think outside the box: don't propose yet another way to make food easier or births faster. Upgrades that are
