@@ -7,7 +7,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
-import { MAP, WONDERS } from '../../data/balance';
+import { MAP, NEST, WONDERS } from '../../data/balance';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { terrainAt, gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
 import { WORLD } from '../../data/balance';
@@ -126,6 +126,8 @@ const bases = (ctx: Context) => {
 };
 /** Forget the cached bases (an outpost was built or abandoned). */
 const basesChanged = () => { baseCache.at = -1; };
+/** Seed bank rework: a held bare-soil tile with no wonder on it can be sown with grass. */
+const canSow = (ctx: Context, t: Tile) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.granary && t.o === 'you' && t.t === 'soil' && !t.w && !t.core;
 /** Steps (diagonals count as one) from tile i to the nearest nest or outpost. */
 const homeDist = (ctx: Context, i: number) => { const [x, y] = xy(i); return Math.min(...bases(ctx).map((b) => { const [bx, by] = xy(b); return Math.max(Math.abs(x - bx), Math.abs(y - by)); })); };
 const reachOf = (ctx: Context) => MAP.reach + ctx.mods.get('reach');
@@ -327,7 +329,7 @@ export const map: GameSystem = {
     const lookBtns = new Map<string, HTMLButtonElement>();
     let cam: Camera, ccam: Camera, lastLooking = -1;
     let wbox: ReturnType<typeof wonderTileBox>;
-    let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement;
+    let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement, plant: ActionButton, plantWrap: HTMLElement;
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement, skyUps: ReturnType<typeof upgradeList>, skyHead: HTMLElement;
     let hoverI: number | null = null;
     const bar = progressBar();
@@ -401,6 +403,14 @@ abandonWrap = el('div.row', {}, abandon);
             return b;
           }), lookText);
         buildWrap = el('div.row', {}, build.root);
+        // Seed bank (a chamber rework): sow a held bare-soil tile and it turns to grass
+        plant = actionButton({
+          ctx, label: 'Sow it with grass', costs: () => ({ seed: NEST.rw.meadowSeed }),
+          desc: 'The seed bank sows this bare soil. It becomes grass for good: grass yields, and grass ground for wonders.',
+          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && canSow(c, t); },
+          onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.t = 'grass'; basesChanged(); c.log('Seeds from the seed bank take root. The bare soil turns green.', 'info'); },
+        });
+        plantWrap = el('div.row', {}, plant.root);
         autoBox = el('input', { type: 'checkbox', id: 'map-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { S(ctx).auto = autoBox.checked; });
         autoWrap = el('label', { for: 'map-auto', style: 'white-space: nowrap', title: 'Send a party to claim the tile nearest the nest whenever no party is out and there are scouts and food for it.' }, autoBox, ' Expand on its own');
@@ -413,7 +423,7 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           el('div.row.camctl', {}, el('p.controls', {}, 'Drag the map or use the arrow keys to look around. Click a tile to inspect it. Click the small map to jump.'), homeBtn),
           cam.root, hover, summary, claimLine, el('div.row', {}, autoWrap), lookBox,
-          el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap, abandonWrap, postWrap, (wbox = wonderTileBox(ctx)).root,
+          el('h3', {}, 'Selected tile'), info, claimWrap, buildWrap, plantWrap, abandonWrap, postWrap, (wbox = wonderTileBox(ctx)).root,
           upsHead, ups.root,
         );
         // ---- the world ----
@@ -519,7 +529,7 @@ abandonWrap = el('div.row', {}, abandon);
         claimLine.hidden = !c;
         if (c) { claimText.textContent = `${c.ants} scouts claiming ${c.cell != null ? 'beyond the garden' : xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
-        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = true; wbox.update(null); return; }
+        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = true; wbox.update(null); return; }
         const t = s.tiles[i];
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
@@ -544,7 +554,8 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
         buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && ctx.flags.has('tech:cartography'));
         wbox.update(i);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
-claim.update(ctx); build.update(ctx);
+        plantWrap.hidden = !canSow(ctx, t); plant.update(ctx);
+        claim.update(ctx); build.update(ctx);
         for (const id of ['bridge', 'nest'] as const) {
           const b = postBtns[id], at = tilePost(ctx, id, i);
           b.hidden = !postOpen(ctx, id) || !(at || postSpot(ctx, id, i));

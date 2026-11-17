@@ -23,6 +23,8 @@ interface BroodState {
   sick?: number;
   mouldWarned?: boolean;
   mouldIntro?: boolean;
+  /** Infirmary: seconds left for each sick worker. */
+  infirm?: number[];
   royal: Record<string, number>;
   /** Brood rhythm research: the larvae's pace, and seconds until it can change again. */
   rhythm?: string;
@@ -30,9 +32,33 @@ interface BroodState {
   /** Night shift: seconds until the queen lays on her own again. */
   nightCd?: number;
   daughterCd?: number;
+  /** Brood temperament (BROOD.temperaments): rolled for each colony, never chosen. */
+  temper?: string;
 }
 
 const S = (ctx: Context) => ctx.state.brood as BroodState;
+
+/** Pick a temperament at random, other than `not` (so two colonies in a row never share one). */
+const rollTemper = (not?: string) => {
+  const ids = Object.keys(BROOD.temperaments).filter((id) => id !== not);
+  return ids[Math.floor(Math.random() * ids.length)];
+};
+/** This colony's brood temperament. None in the first colony, so the early game unfolds the same every time. */
+export const temperOf = (ctx: Context) => (!ctx.flags.has('legacy:flown') ? undefined : BROOD.temperaments[S(ctx)?.temper ?? '']) as (typeof BROOD.temperaments)[string] | undefined;
+/** The temperament's lean on a job: +keen, -loath or 0. */
+export const temperLean = (ctx: Context, job: string) => {
+  const t = temperOf(ctx);
+  return !t ? 0 : t.keen === job ? BROOD.temperKeen : t.loath === job ? -BROOD.temperLoath : 0;
+};
+const JOB_PLURAL: Record<string, string> = { soldier: 'soldiers', nurse: 'nurses', scout: 'scouts', digger: 'diggers', elder: 'elders', forager: 'foragers' };
+const JOB_WORK: Record<string, string> = { soldier: 'fight', nurse: 'lay and scrub', scout: 'make pheromone', digger: 'dig', elder: 'make knowledge', forager: 'gather food' };
+/** One line for the Queen tab and the Chronicle, e.g. "Bold brood: soldiers fight 15% harder, nurses work 10% slower." */
+export const temperLine = (ctx: Context) => {
+  const t = temperOf(ctx);
+  if (!t) return '';
+  return `${t.name} brood. ${t.desc} Keen ${JOB_PLURAL[t.keen]} ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better; ` +
+    `reluctant ${JOB_PLURAL[t.loath]} ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse.`;
+};
 const R = (ctx: Context, id: keyof typeof BROOD.royal) => S(ctx).royal[id] ?? 0;
 const broodCap = (ctx: Context) => ctx.res.cap('egg');
 const broodUsed = (ctx: Context) => ctx.res.amt('egg') + ctx.res.amt('larva');
@@ -48,16 +74,20 @@ const larvaFood = (ctx: Context) => BROOD.larvaFoodPerSecond * rhythm(ctx).eat;
 /** Eggs and larvae the queen and nurses can keep clean. Brood beyond it may rot (from Brood care on). */
 const MO = BROOD.mould;
 /** Mould scrubbed away per second by the queen, nurses and Purification chambers. */
-export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean);
+/** Chamber reworks are kept on the nest's state; brood reads them there (Infirmary). */
+const infirmary = (ctx: Context) => !!(ctx.state.nest as { reworks?: Record<string, boolean> } | undefined)?.reworks?.brood;
+export const nurseClean = (ctx: Context) => (ctx.flags.has('tech:grooming') ? MO.groomedClean : MO.nurseClean) * (infirmary(ctx) ? 1 + NEST.rw.nurseClean : 1) * (1 + ctx.mods.get('job:nurse'));
 export const mouldClean = (ctx: Context) => MO.queenClean + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseClean(ctx) + ctx.mods.get('mouldClean');
 /** Mould added per second by the nest's chambers. */
 /** Chambers in the nest: every one of them gathers a little mould. */
 export const roomCount = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, b) => a + b, 0);
-export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? roomCount(ctx) * MO.perRoom * Math.max(0.3, 1 + ctx.mods.get('mouldMade')) : 0);
+/** Chambers counted for mould: reworks make some gather more (or none). */
+export const mouldRooms = (ctx: Context) => Math.max(0, roomCount(ctx) + ctx.mods.get('mouldRooms'));
+export const mouldMade = (ctx: Context) => (ctx.flags.has('tech:brood') ? mouldRooms(ctx) * MO.perRoom * Math.max(0.3, 1 + ctx.mods.get('mouldMade')) : 0);
 RES_TIPS.mould = (ctx: Context) => {
   const m = ctx.res.amt('mould'), next = [[MO.half, 'the brood grows at half speed'], [MO.rot, 'eggs rot and food spoils'], [MO.weak, 'workers fall sick and slow down'], [MO.sick, 'sick workers die']] as [number, string][];
   const n = next.find(([at]) => m < at);
-  return `${roomCount(ctx)} chambers gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and purification scrub ${fmt(mouldClean(ctx))}/s.\n` +
+  return `${roomCount(ctx)} chambers${mouldRooms(ctx) !== roomCount(ctx) ? ` (gathering like ${Math.round(mouldRooms(ctx))})` : ''} gather ${fmt(mouldMade(ctx))}/s. Queen, nurses and purification scrub ${fmt(mouldClean(ctx))}/s.\n` +
     `Brood speed now: ${Math.round(mouldSpeed(ctx) * 100)}%.` + (n ? ` At ${n[0]}: ${n[1]}.` : '');
 };
 /** Share of full speed the brood grows at, given the mould. */
@@ -67,7 +97,9 @@ export const mouldWork = (ctx: Context) => { const m = ctx.res.amt('mould'); ret
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 /** Eggs or larvae each nurse looks after; Nurses' dens add more. */
 export const nurseTends = (ctx: Context) => BROOD.nurseTends + ctx.mods.get('nurseTends');
-export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity'));
+/** Crowns can slow laying (`layRate`). */
+const layMult = (ctx: Context) => Math.max(0.1, 1 + ctx.mods.get('layRate'));
+export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity')) * (1 + ctx.mods.get('job:nurse')) * layMult(ctx);
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
@@ -76,7 +108,7 @@ export const tendSpeed = (ctx: Context) => {
   const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseTends(ctx));
   return (tended + (brood - tended) * BROOD.untendedSpeed) / brood * mouldSpeed(ctx);
 };
-const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
+const queenRate = (ctx: Context) => (RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay')) * layMult(ctx);
 
 /**
  * How much food the brood will still eat, for the food warning. Larvae eat for a while and then stop,
@@ -124,7 +156,7 @@ export const brood: GameSystem = {
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
     ctx.state.brood = {
       eggProgress: 0, larvaProgress: 0, nurseProgress: 0, queenProgress: 0,
-      firstLarva: false, firstAnt: false, starvingWarned: false, born: 0, royal: {},
+      firstLarva: false, firstAnt: false, starvingWarned: false, born: 0, royal: {}, temper: rollTemper(),
     } satisfies BroodState;
 
     ctx.bus.on('newgame', () => {
@@ -133,8 +165,15 @@ export const brood: GameSystem = {
     });
   },
 
+  // Everything else starts fresh; the next colony's temperament is rolled now, unlike this one's.
+  keep: (ctx) => ({ temper: rollTemper(S(ctx).temper) }),
+
   tick(ctx, dt) {
     const s = S(ctx);
+    // Brood temperament: the keen job works a little better, the reluctant one a little worse
+    s.temper ??= rollTemper();
+    const t = temperOf(ctx);
+    for (const id of Object.keys(JOB_PLURAL)) ctx.mods.set(id === 'soldier' ? 'soldierPower' : 'job:' + id, 'temper', t ? temperLean(ctx, id) : 0);
     if (s.rhythmCd) s.rhythmCd = Math.max(0, s.rhythmCd - dt);
     // older saves: Rich feeding folded into Warm brood, Devoted nurses into Royal rhythm
     if (s.royal.jelly || s.royal.devotion) {
@@ -193,7 +232,17 @@ export const brood: GameSystem = {
     while (s.pupae >= 1 && res.amt('ant') < res.cap('ant')) {
       res.add('larva', -1); res.add('ant', 1); s.pupae--; s.born += 1;
       ctx.bus.emit('ant:born');
-      if (!s.firstAnt) { s.firstAnt = true; ctx.log('The first worker pulls free of its cocoon. The colony has begun.'); }
+      if (!s.firstAnt) {
+        s.firstAnt = true; ctx.log('The first worker pulls free of its cocoon. The colony has begun.');
+        if (t) {
+          ctx.log(`${temperLine(ctx)} (Queen tab)`, 'story');
+          ctx.announce(`A ${t.name.toLowerCase()} brood`, t.desc, {
+            small: true, kicker: 'This colony\'s temperament',
+            lines: [`Keen ${JOB_PLURAL[t.keen]}: ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better`,
+              `Reluctant ${JOB_PLURAL[t.loath]}: ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse`],
+          });
+        }
+      }
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
     }
@@ -217,6 +266,11 @@ export const brood: GameSystem = {
         addEggs(ctx, clutch(ctx));
       }
     }
+    if (s.infirm?.length) {
+      s.infirm = s.infirm.map((t) => t - dt).filter((t) => t > 0);
+      s.infirm = s.infirm.slice(0, Math.max(0, Math.floor(res.amt('ant')) - 1));
+    }
+    ctx.busy.infirmary = s.infirm?.length ?? 0;
     // Mould: chambers gather it, the queen and nurses scrub it. It slows all brood; heavy mould rots eggs.
     if (ctx.flags.has('tech:brood')) {
       if (!s.mouldIntro) { s.mouldIntro = true; ctx.log('Damp creeps into the chambers: mould. Every chamber gathers a little, and it slows the brood. The queen and nurses scrub it away (Environment, in the Stores).', 'story'); }
@@ -240,7 +294,12 @@ export const brood: GameSystem = {
       }
       if (m >= MO.sick && res.amt('ant') >= 2) {
         s.sick = (s.sick ?? 0) + dt / MO.sickEvery;
-        if (s.sick >= 1) { s.sick -= 1; res.add('ant', -1); ctx.log('A worker sickens in the mould and dies.', 'warn'); }
+        if (s.sick >= 1) {
+          s.sick -= 1;
+          // Infirmary: the sick are carried off to rest instead of dying (they count as away until well)
+          if (infirmary(ctx)) { (s.infirm ??= []).push(NEST.rw.infirmaryTime); ctx.log('A worker sickens in the mould and is carried to the infirmary.', 'warn'); }
+          else { res.add('ant', -1); ctx.log('A worker sickens in the mould and dies.', 'warn'); }
+        }
       } else s.sick = 0;
       if (m >= MO.half && !s.mouldWarned) { s.mouldWarned = true; ctx.log('Mould is building up around the brood. The brood grows slower. More nurses would scrub it away.', 'warn'); }
       if (m < MO.half / 2) s.mouldWarned = false;
@@ -263,7 +322,7 @@ export const brood: GameSystem = {
     let eggTxt: HTMLElement, larvaTxt: HTMLElement, pupaTxt: HTMLElement, forageWrap: HTMLElement, layWrap: HTMLElement, nightNote: HTMLElement, hint: HTMLElement;
     let scrub: ActionButton, scrubWrap: HTMLElement;
     let ledger: HTMLElement, royalHead: HTMLElement;
-    let paceBox: HTMLElement, paceNote: HTMLElement;
+    let paceBox: HTMLElement, paceNote: HTMLElement, temperEl: HTMLElement;
     const paceBtns = new Map<string, HTMLButtonElement>();
     let royal: ReturnType<typeof upgradeList>;
     return {
@@ -308,8 +367,10 @@ export const brood: GameSystem = {
         forageWrap = el('div', {}, forage.root);
         layWrap = el('div', {}, lay.root);
         nightNote = el('p.muted', { hidden: true }, 'Night shift: the queen lays on her own while the food stores are over half full.');
+        temperEl = el('p.temper', { hidden: true });
         root.append(
           el('div.queen', {}, icon('queen', 64), el('p.flavor', {}, 'The queen rests in a small earthen cell. Everything begins with her.')),
+          temperEl,
           el('div.row', {}, forageWrap, layWrap, scrubWrap), nightNote,
           el('div.stat', {}, el('span.statlabel', {}, icon('egg', 24), eggTxt), eggBar.root),
           el('div.stat', {}, el('span.statlabel', {}, icon('larva', 24), larvaTxt), larvaBar.root),
@@ -323,6 +384,20 @@ export const brood: GameSystem = {
       update(_root, ctx) {
         const s = S(ctx);
         lay.update(ctx); forage.update(ctx); scrub.update(ctx);
+        temperEl.hidden = !s.firstAnt || !temperOf(ctx);
+        if (!temperEl.hidden) {
+          const txt = temperLine(ctx);
+          if (temperEl.dataset.txt !== txt) {
+            temperEl.dataset.txt = txt;
+            const t = temperOf(ctx)!;
+            temperEl.replaceChildren(
+              el('div.kicker', {}, 'This colony\'s temperament'),
+              el('strong', {}, `${t.name} brood`), el('span.muted', {}, ' ' + t.desc),
+              el('div', {}, el('span.lean.keen', {}, '▲ keen'), ` ${JOB_PLURAL[t.keen]} ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better`),
+              el('div', {}, el('span.lean.loath', {}, '▼ reluctant'), ` ${JOB_PLURAL[t.loath]} ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse`));
+            temperEl.dataset.tip = 'From your second colony on, every brood is born with its own temperament, rolled at random. It is never the same twice running. Shift your workers to suit it.';
+          }
+        }
         scrubWrap.hidden = !ctx.flags.has('mould:scrub');
         // Lay opens after a few forages; it stays open after that
         if (!ctx.flags.has('queen:lays') && ctx.res.amt('food') >= BROOD.layOpensAtFood) { ctx.flags.add('queen:lays'); ctx.log('There is food enough now. The queen is ready to lay.'); }
@@ -356,7 +431,8 @@ export const brood: GameSystem = {
           for (const [id, b] of paceBtns) { b.classList.toggle('on', id === cur); b.disabled = cd > 0 && id !== cur; }
           paceNote.textContent = ' ' + BROOD.rhythm[cur].desc + (cd > 0 ? ` Can change again in ${Math.ceil(cd)}s.` : '');
         }
-        royalHead.hidden = !royal.update(ctx);
+        royal.update(ctx);
+        royalHead.hidden = true; royal.root.hidden = true; // replaced by the Crowns tab; levels already bought keep working
       },
     };
   })(),

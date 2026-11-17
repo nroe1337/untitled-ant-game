@@ -67,6 +67,7 @@ export const GUIDE: GuidePage[] = [
         'Open the {Surface} tab and send expeditions.',
         'They bring back |twig| and |seed|, which are hard to get any other way.',
         'Spend the trail marks they earn on the {Surface} tab.',
+        'Bigger parties bring more, up to the party cap: 20 workers, plus 10 for each [Forager\'s rest] dug.',
       ], tip: 'After a few expeditions, a rival colony notices you. You will deal with it next age.' },
       { head: 'Make pheromone', do: [
         'After a few expeditions, learn [Trail scent]. Put a few workers on Scout.',
@@ -131,6 +132,12 @@ export const GUIDE: GuidePage[] = [
         'Dig [Worker hall]s. Living space is the main limit this age.',
         'More chambers means more |mould|. Learn [Grooming] so each nurse scrubs 12 chambers instead of 8.',
       ] },
+      { head: 'Rework your chambers', do: [
+        'With 60 chambers, [Chamber craft] appears. Learn it to rework a chamber type you have 3 or more of, from the {Nest} tab.',
+        'A rework changes every chamber of that type for good, ones dug later too. It cannot be undone.',
+        'Most reworks make that chamber type gather more |mould|. The cleaners\' reworks (Infirmary, Draught shaft, Mould farm, Flood channel) fight it.',
+        'Some reworks reach other tabs: the Muster hall (winter jobs), the Seed bank (sow tiles on the {Map}) and the Hall of records (keep a research through a flight).',
+      ], tip: 'Rework a cleaner for every two or three other reworks, or the mould gets ahead of you.' },
       { head: 'Take to the water', do: [
         'Learn [Leaf rafts] to open the {Waters} tab.',
         'Send boats on voyages for loot. Some islands can be settled for steady income.',
@@ -142,6 +149,11 @@ export const GUIDE: GuidePage[] = [
     age: 'wings',
     goal: 'Breed new castes, explore the wider world, and send your first nuptial flight.',
     steps: [
+      { head: 'Crown the queen', do: [
+        '[Royal court] opens the {Crowns} tab. Pick one of eight crowns for the queen.',
+        'Each crown boosts a few chambers, adds a rule and has a drawback. Pick the one that fits how you play.',
+        'Spend |jelly| to level crowns up to 10. Levels stay through flights.',
+      ], tip: 'After a change, the queen has to wait 10 minutes before she can change crowns again.' },
       { head: 'Breed castes', do: [
         'Learn [Caste lore] to open the {Castes} tab.',
         'Use |jelly| to breed minims, repletes, majors or weavers.',
@@ -155,7 +167,6 @@ export const GUIDE: GuidePage[] = [
         'Learn [Deep diggers]. Your diggers now also bring up |clay|.',
         'Dig [Clay hall]s for lots of living space.',
         'Big nests need clay too: later Halls of husks, Memory vaults and Paper halls cost some.',
-        'Learn [Chamber craft] to upgrade a kind of chamber you have 3 or more of. Upgrades add no mould, so they beat digging more.',
       ] },
       { head: 'Watch the seasons', do: [
         'From now on the year turns.',
@@ -189,6 +200,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'After your first flight', do: [
         'New research appears: [Teaching], [Leaf culture], [Herding], [The hunt] and [Border nests].',
         'The {Archive} and {Records} tabs start filling up.',
+        'Every new colony\'s brood now has a temperament, rolled at random and shown on the {Queen} tab. It is keen on one job (+15%) and reluctant at another (−10%), so shift your workers to suit it.',
         'Fly again. A second flight opens the {Genome} tab.',
       ] },
     ],

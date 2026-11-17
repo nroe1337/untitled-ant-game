@@ -36,6 +36,19 @@ export const BROOD = {
     lean: { name: 'Lean', grow: 0.7, eat: 0.6, desc: 'Larvae eat 40% less but grow 30% slower.' },
   } as Record<string, { name: string; grow: number; eat: number; desc: string }>,
   rhythmCooldown: 15,       // seconds before the pace can be changed again
+  /** Brood temperament: rolled at random for every colony (never the same twice running), not chosen.
+   *  Workers of this brood are keen on one job and reluctant at another, so the best worker mix shifts a
+   *  little from colony to colony. keen and loath are job ids; soldier leans change fighting power. */
+  temperKeen: 0.15,         // +15% for the job the brood is keen on
+  temperLoath: 0.10,        // -10% for the job it is reluctant at
+  temperaments: {
+    bold:       { name: 'Bold',       keen: 'soldier', loath: 'nurse',   desc: 'They would rather fight than fuss over eggs.' },
+    tender:     { name: 'Tender',     keen: 'nurse',   loath: 'soldier', desc: 'They hover over the brood and shy from a fight.' },
+    restless:   { name: 'Restless',   keen: 'scout',   loath: 'digger',  desc: 'They itch to be out on the surface, not down in the clay.' },
+    burrowing:  { name: 'Burrowing',  keen: 'digger',  loath: 'scout',   desc: 'They love the deep dark and dislike the open sky.' },
+    thoughtful: { name: 'Thoughtful', keen: 'elder',   loath: 'forager', desc: 'They linger over memories and dawdle on the forage runs.' },
+    hungry:     { name: 'Hungry',     keen: 'forager', loath: 'elder',   desc: 'Always out for food, never still long enough to remember.' },
+  } as Record<string, { name: string; keen: string; loath: string; desc: string }>,
   forageClick: 1,           // food per manual forage
   forageCooldown: 2,
   royal: {
@@ -109,8 +122,35 @@ export const NEST = {
   costGrowth: 1.3,          // default; each chamber can set its own growth
   /** Techs that make storage chambers hold more (Evolve-style shelving): tech id -> chambers it boosts by +50%. */
   /** Each storage chamber holds this much more than the one before it, so late ones keep pace with their cost. */
-  /** Chamber craft: upgrade a whole kind of chamber. Costs clay plus that chamber's own late resource. */
-  upgrade: { per: 0.15, max: 5, growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number>, minBuilt: 3, skip: ['harbour'] as string[] },
+  /** Chamber craft reworks (Nate, Nov 17): one per chamber type, bought once for every chamber of that type
+   *  (ones dug later too) and never undone. Each changes a rule, never a flat rate. Most make the type gather more
+   *  mould; the cleaners' reworks scrub enough to pay for a balanced nest. Cost: knowledge plus baseMult times
+   *  one chamber's own dig cost. old: the pre-Nov 17 level costs, only to refund old saves. */
+  rework: { knowledge: 250, baseMult: 15, minBuilt: 3,
+    old: { growth: 1.45, clay: 30, lateMult: 3, fallback: { knowledge: 120 } as Record<string, number> } },
+  /** mould: extra chambers' worth of mould each reworked chamber gathers (1 = like two chambers, -1 = none). */
+  reworks: {
+    brood:     { name: 'Infirmary',      mould: 0,  desc: 'Mould no longer kills workers: the sick are carried here and come back after a while. Nurses scrub 50% more.' },
+    airshaft:  { name: 'Draught shaft',  mould: -1, desc: 'Purifies 3 times as much, blowing the mould out onto your held tiles, where it settles as soil.' },
+    midden:    { name: 'Mould farm',     mould: -1, desc: 'Each one scrubs 0.4 mould/s and feeds it to the fungus: mould scrubbed here comes back as fungus.' },
+    cistern:   { name: 'Flood channel',  mould: -1, desc: 'Opens the Flood button: wash every bit of mould out of the nest at once. The flood drowns the eggs and soaks a quarter of the food.' },
+    hall:      { name: 'Muster hall',    mould: 1,  desc: 'Save a winter job layout on the Jobs tab. When winter comes the workers switch to it, and back again in spring.' },
+    gland:     { name: 'Alarm scent',    mould: 1,  desc: 'When mould passes the line you set, idle workers turn out as nurses. When raiders come, idle workers turn out as soldiers.' },
+    barracks:  { name: 'Gatehouse',      mould: 1,  desc: 'Opens the gate switch. Shut, nest defence doubles, but foragers stay in and no expeditions leave.' },
+    storeroom: { name: 'Spoil walls',    mould: 1,  desc: 'While the soil pits are full, diggers pile the extra soil up at the entrance as walls: nest defence that slowly crumbles.' },
+    granary:   { name: 'Seed bank',      mould: 1,  desc: 'Plant seeds on a held bare-soil tile on the Map to turn it into grass. Shape the ground your wonders need.' },
+    library:   { name: 'Hall of records', mould: 1, desc: 'On the Lineage tab, pick one research. The next colony starts with it already learned.' },
+  } as Record<string, { name: string; mould: number; desc: string }>,
+  /** Numbers for the reworks above. */
+  rw: {
+    infirmaryTime: 90, nurseClean: 0.5,        // seconds a sick worker spends in the Infirmary; nurses scrub +50%
+    draught: 3, draughtSoilTiles: 20,          // purification x3; soil from blown mould is full at this many held tiles
+    farmClean: 0.4, farmFungus: 1,             // mould each Mould farm scrubs a second, fungus per mould
+    floodFood: 0.25, floodCooldown: 300,
+    alarmLines: [100, 250, 500, 750],
+    wallPerDigger: 0.005, wallDecay: 0.005,     // walls a second per digger while soil is full; share lost a second
+    meadowSeed: 20,
+  },
   storeGrowth: 1.08,
   storeGrowthIds: ['store', 'storeroom', 'library', 'memory', 'twigloft', 'seedvault', 'resinvat', 'silkroom', 'gland', 'pantry', 'sporecellar'] as string[],
   storageTechs: { shelving: ['store', 'storeroom', 'silkroom'], songs: ['library'], lining: ['store', 'storeroom', 'silkroom', 'library'] } as Record<string, string[]>,
@@ -147,7 +187,7 @@ export const NEST = {
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 6 } }, needs: 'tech:surface' },
-    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: 'Foragers +4% food', mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
+    rest:      { name: "Forager's rest",   base: { soil: 30, food: 15 }, growth: 1.3,           desc: "Foragers +4% food, +10 to the expedition party cap", mods: { 'job:forager': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 8 } }, needs: 'tech:surface' },
     airshaft:  { name: 'Purification chamber', base: { soil: 30, food: 10 }, growth: 1.36,           desc: 'Fresh air purifies 0.6 mould/s (6 chambers worth)', mods: { mouldClean: 0.6 }, max: 25, later: { at: 7, cost: { resin: 3 } }, needs: 'tech:ventilation' },
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
@@ -184,6 +224,9 @@ export const EXPEDITIONS = {
     { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9], chitin: [2, 4] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
+  /** Soft cap on party size: workers past it still go, but each adds only pastCap of the usual loot bonus.
+   *  The cap is base plus perRest for each Forager's rest. */
+  partyCap: { base: 20, perRest: 10, pastCap: 1 / 3 },
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
   rareChance: 0.05,         // chance of a rare find (amber)
@@ -400,7 +443,7 @@ export const RESEARCH = {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Warming chamber, the Nurses\' den and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
-    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
+    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
@@ -435,7 +478,7 @@ export const RESEARCH = {
     castes:     { name: 'Caste lore',        age: 'wings', cost: { knowledge: 520, food: 350 },        pop: 0.33, needs: ['royal'],     desc: 'Royal jelly shapes larvae into new kinds of ant. Opens the Castes tab.' },
     rafts:      { name: 'Leaf rafts',        age: 'conquest', cost: { knowledge: 520, leaf: 50, twig: 60 }, needs: ['fungus', 'cartography'],  desc: 'Opens the Waters tab: build boats and send them on voyages.' },
     flight:     { name: 'Winged queens',     age: 'wings', cost: { knowledge: 520, jelly: 18 },         pop: 0.5, needs: ['castes', 'campaigns'], desc: 'Young queens can grow wings. Opens the Legacy tab, where the colony builds the Swarm Spire for its flight. The flight ends this colony: the line is meant to fly several times, growing stronger each time.' },
-    renovation: { name: 'Chamber craft',     age: 'wings', cost: { knowledge: 560, clay: 80 },       needs: ['deepdig'], desc: 'Old chambers can be rebuilt with clay. Opens chamber upgrades in the Nest: each level makes every chamber of that kind give 15% more. Upgrades add no mould.' },
+    renovation: { name: 'Chamber craft',     age: 'conquest', cost: { knowledge: 600, soil: 800 },   needs: ['ventilation'], desc: 'Opens chamber reworks in the Nest: rebuild every chamber of a type into something new, for good. Most reworks gather more mould; the cleaners\' reworks fight it.' },
     deepdig:    { name: 'Deep diggers',      age: 'wings', cost: { knowledge: 420, soil: 600 },        needs: ['royal'], desc: 'Diggers tunnel down past the soil into the clay. Each digger also brings up a little clay. Unlocks the Clay hall.' },
     hunting:    { name: 'The hunt',          age: 'forage', cost: { knowledge: 100, food: 120 },          needs: ['worksongs'], flag: 'legacy:flown', desc: 'Raise a champion to hunt the creatures of the surface. Opens the Hunts tab. Your champion is kept from colony to colony.' },
     galleons:   { name: 'Wax hulls',         age: 'conquest', cost: { knowledge: 650, wax: 60 },          needs: ['rafts', 'husbandry'], desc: 'Wax-sealed galleons that can cross open water. Unlocks the Wax galleon and new voyages.' },
@@ -475,7 +518,7 @@ export const RESEARCH = {
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
     packmules: ['runs', 80, 'The expedition leaders'], wonderlore: ['tiles', 25, 'Your scouts'], talltales: ['rumours', 3, 'The expedition leaders'],
-    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'],
+    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'], renovation: ['rooms', 60, 'Your diggers'],
     // Age of Wings: the Swarm Spire. Each stage needs its own research, which shows as the Spire rises.
     packedearth: ['spire', 0, 'Your diggers'], resinvault: ['spire', 1, 'Your builders'], winglore: ['spire', 3, 'Your nurses'], eveningwinds: ['spire', 4, 'Your builders'],
     scaffolding: ['spire', 1, 'Your builders'], pulleys: ['spire', 2, 'Your builders'], weatherwatch: ['spire', 4, 'Your scouts'],
@@ -1043,4 +1086,42 @@ export const KIN = {
       [{ kind: 'flights', n: 2, name: 'A line that has flown', text: 'Your line must have flown twice. They do not join with colonies, only with lines.' }],
     ],
   } as Record<string, KinQuest[][]>,
+};
+
+/** The queen's crowns (Royal court): she wears one at a time. Each boosts a few chambers, adds a rule and has a drawback.
+ *  Levels (1-10) are bought with royal jelly and kept through flights. Boosts rise from `boost.at1` to `boost.at10`;
+ *  the rule grows stronger at the `tiers` levels. Switching is free but needs `swapCooldown` seconds between changes. */
+export const CROWNS = {
+  maxLevel: 10,
+  swapCooldown: 600,
+  boost: { at1: 0.1, at10: 0.2 },
+  tiers: [4, 7, 10],
+  /** jelly for level 2, 3, ... 10 (level 1 comes free with the Royal court) */
+  levelCost: [8, 12, 18, 26, 38, 55, 80, 115, 165],
+  list: [
+    { id: 'chitin', name: 'Chitin crown', theme: 'War', rooms: ['barracks', 'training', 'armory'],
+      rule: 'Soldiers +{v} strength per flawless raid (max +20%).', ruleV: [0.01, 0.015, 0.02, 0.03],
+      bad: 'Hall of elders -10%.', badMods: { 'room:library': -0.1 } },
+    { id: 'clay', name: 'Clay crown', theme: 'The deep nest', rooms: ['spoil', 'clayhall', 'vent'],
+      rule: 'Only {v} raiders can attack at once.', ruleV: [10, 8, 6, 4],
+      bad: 'Expeditions 10% slower.', badMods: { expSpeed: 0.1 } },
+    { id: 'petal', name: 'Petal crown', theme: 'Wandering', rooms: ['chartroom', 'boatshed', 'rest'],
+      rule: 'Expeditions have a {v} chance to bring home a stray worker.', ruleV: [0.1, 0.15, 0.2, 0.3],
+      bad: 'Warming chamber -10%.', badMods: { 'room:warmth': -0.1 } },
+    { id: 'fungus', name: 'Fungus crown', theme: 'The garden', rooms: ['fungus', 'sporecellar', 'stable'],
+      rule: 'Converts {v} mould/s into fungus.', ruleV: [0.1, 0.15, 0.2, 0.3],
+      bad: 'Soldiers 10% weaker.', badMods: { soldierPower: -0.1 } },
+    { id: 'amber', name: 'Amber crown', theme: 'Lore', rooms: ['library', 'memory', 'chartroom'],
+      rule: '+{v} knowledge per worker lost.', ruleV: [4, 6, 8, 12],
+      bad: 'Egg laying -10%.', badMods: { layRate: -0.1 } },
+    { id: 'seed', name: 'Seed crown', theme: 'Hoarding', rooms: ['pantry', 'seedvault', 'resinvat', 'twigloft'],
+      rule: 'Each store over 90% full makes {v} jelly/s.', ruleV: [0.002, 0.003, 0.004, 0.006],
+      bad: 'Chambers cost +10% soil.', badMods: { wonderSoil: 0.1 } },
+    { id: 'silk', name: 'Silk crown', theme: 'Care', rooms: ['warmth', 'nursery', 'sporecellar'],
+      rule: '{v} of nurses fight in raids.', ruleV: [0.25, 0.35, 0.5, 0.75],
+      bad: 'Guard post -10%.', badMods: { 'room:barracks': -0.1 } },
+    { id: 'thorn', name: 'Thorn crown', theme: 'The slaver', rooms: ['husks', 'den', 'midden'],
+      rule: 'Flawless raids capture {v} workers per 5 waves (min 1).', ruleV: [1, 1.5, 2, 3],
+      bad: 'Foragers -15%.', badMods: { 'job:forager': -0.15 } },
+  ] as { id: string; name: string; theme: string; rooms: string[]; rule: string; ruleV: number[]; bad: string; badMods: Record<string, number> }[],
 };

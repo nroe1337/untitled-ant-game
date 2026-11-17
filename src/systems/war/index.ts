@@ -236,6 +236,9 @@ function startBattle(ctx: Context) {
   const us: Stack[] = [];
   if (wallHp(ctx) > 0) { const w = stack('wall', 1, wallMax(ctx), 0); w.hp = wallHp(ctx); us.push(w); }
   us.push(...army(ctx));
+  // Silk crown: some nurses come to the entrance and fight as workers
+  const nurses = Math.floor((ctx.state.jobs?.assigned?.nurse ?? 0) * ctx.mods.get('nurseGuard'));
+  if (nurses > 0) us.push(stack('worker', nurses, B.worker.hp, B.worker.atk));
   const them: Stack[] = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
   s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0 };
@@ -306,7 +309,9 @@ function stepBattle(ctx: Context, dt: number) {
   // War Cairn: chitin plates soften the bites on our fighters (not the barricade)
   const front = alive(b.us)[0];
   const plated = front && (front.kind === 'major' || front.kind === 'soldier') ? 1 - ctx.mods.get('cairnPlates') : 1;
-  const inDmg = theirs.reduce((t, x) => t + x.n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1), 0) * blunt * plated;
+  // Clay crown: a narrow door lets only so many of them bite at once (not in the rival queen's fight)
+  let door = b.boss ? 0 : ctx.mods.get('narrowDoor');
+  const inDmg = theirs.reduce((t, x) => { let n = x.n; if (door > 0) { n = Math.min(n, door); door -= n; if (door <= 0) door = -1; } else if (door < 0) n = 0; return t + n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1); }, 0) * blunt * plated;
   // while she is burrowed our bites can't reach her, only her guard
   const targets = b.boss?.burrow ? b.them.filter((x) => x.kind !== 'rqueen') : b.them;
   biteSide(targets, outDmg * P, (x, n) => {
@@ -384,6 +389,7 @@ function endBattle(ctx: Context) {
   const lost = soldierLoss + workerLoss;
   if (lost) {
     ctx.res.add('ant', -lost);
+    ctx.bus.emit('war:fallen', { n: lost });
     // the dead come off their jobs: majors in the share they fell
     const bigs = fell ? Math.round(soldierLoss * (b.majorsLost ?? 0) / fell) : 0;
     loseFighters(ctx, soldierLoss - bigs);

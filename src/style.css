@@ -497,6 +497,48 @@ p.controls { font-size: 12px; color: var(--muted); margin: 2px 0 10px; letter-sp
 .fx .ring.gold { width: 34px; height: 34px; margin-left: -17px; border-color: #f2c14e; box-shadow: 0 0 8px #f2c14e; }
 .field.stood { box-shadow: inset 0 0 18px rgba(242, 193, 78, .35); }
 
+/* Crowns: the queen's face in the middle, eight crowns in a ring around her */
+.crownscreen { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 20px; align-items: start; margin-top: 12px; }
+.crownring { position: relative; width: 100%; max-width: 420px; aspect-ratio: 1; margin: 0 auto; }
+.crownring::before { content: ""; position: absolute; inset: 13%; border: 1px dashed var(--line); border-radius: 50%; }
+.crownqueen { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.crownpanel canvas { border: 0; max-width: none; }
+.crownface { width: 132px !important; height: 132px !important; image-rendering: pixelated; display: block; }
+.crownwho { text-align: center; font: 400 16px var(--display); color: var(--muted); margin-top: 4px; }
+.crownbtn { position: absolute; transform: translate(-50%, -50%); width: 64px; height: 64px; background: var(--raise); border: 1px solid var(--line);
+  border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.crownbtn canvas { width: 40px !important; height: 40px; image-rendering: pixelated; }
+.crownbtn:hover { border-color: var(--muted); }
+.crownbtn.sel { border: 2px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+.crownbtn.worn::after { content: "worn"; position: absolute; bottom: -9px; font-size: 10px; background: var(--warn); color: var(--bg); padding: 0 5px; font-weight: 600; }
+.crownlv { position: absolute; top: -6px; right: -4px; font-size: 11px; background: var(--panel); border: 1px solid var(--line); padding: 0 4px; color: #e8d27a; }
+.crowncard { background: var(--panel); border: 1px solid var(--line); padding: 14px; }
+.crowncard h4 { font: 400 20px var(--display); margin: 0; }
+.crowntheme { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.crownpips { display: flex; gap: 3px; margin: 6px 0 10px; }
+.crownpips i { width: 12px; height: 6px; background: var(--line); }
+.crownpips i.on { background: #e8d27a; }
+.crownsec { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 10px; }
+.crowncard ul { margin: 2px 0 0; padding-left: 18px; }
+.crowncard .good { color: var(--good); }
+.crowncard .bad { color: var(--accent); }
+.crowncard .small { font-size: 13px; background: none; border: 0; width: auto; height: auto; cursor: auto; }
+.crownact { display: block; width: 100%; margin-top: 10px; background: var(--raise); color: var(--fg); border: 1px solid var(--line); font: 600 14px var(--body); padding: 8px; cursor: pointer; }
+.crownact.main { border-color: var(--accent); }
+.crownact:disabled { opacity: .5; cursor: default; }
+@media (max-width: 680px) {
+  .crownscreen { grid-template-columns: 1fr; }
+  .crownbtn { width: 52px; height: 52px; } .crownbtn canvas { width: 32px !important; height: 32px; }
+  .crownface { width: 112px !important; height: 112px !important; }
+}
+
+/* Brood temperament: the Queen tab line and the keen / reluctant marks on the Jobs tab */
+.temper { margin: 8px 0 12px; padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--raise); line-height: 1.6; }
+.temper .kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.temper .lean { margin: 0 4px 0 0; }
+.lean { font-size: 12px; font-weight: 400; margin-left: 6px; }
+.lean.keen { color: var(--good); }
+.lean.loath { color: var(--warn); }
 /* Castes: one card per caste, a row per post (see the mockup in the project files) */
 .castes { display: grid; gap: 14px; max-width: 720px; margin: 10px 0 18px; }
 .caste { background: var(--panel); border: 1px solid var(--line); }
