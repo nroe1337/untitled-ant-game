@@ -44,8 +44,8 @@ const rollTemper = (not?: string) => {
   const ids = Object.keys(BROOD.temperaments).filter((id) => id !== not);
   return ids[Math.floor(Math.random() * ids.length)];
 };
-/** This colony's brood temperament. */
-export const temperOf = (ctx: Context) => BROOD.temperaments[S(ctx)?.temper ?? ''] as (typeof BROOD.temperaments)[string] | undefined;
+/** This colony's brood temperament. None in the first colony, so the early game unfolds the same every time. */
+export const temperOf = (ctx: Context) => (!ctx.flags.has('legacy:flown') ? undefined : BROOD.temperaments[S(ctx)?.temper ?? '']) as (typeof BROOD.temperaments)[string] | undefined;
 /** The temperament's lean on a job: +keen, -loath or 0. */
 export const temperLean = (ctx: Context, job: string) => {
   const t = temperOf(ctx);
@@ -98,7 +98,9 @@ export const mouldWork = (ctx: Context) => { const m = ctx.res.amt('mould'); ret
 const clutch = (ctx: Context) => 1 + RB.clutch.per * R(ctx, 'clutch');
 /** Eggs or larvae each nurse looks after; Nurses' dens add more. */
 export const nurseTends = (ctx: Context) => BROOD.nurseTends + ctx.mods.get('nurseTends');
-export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity')) * (1 + ctx.mods.get('job:nurse'));
+/** Crowns can slow laying (`layRate`). */
+const layMult = (ctx: Context) => Math.max(0.1, 1 + ctx.mods.get('layRate'));
+export const nurseEggsEach = (ctx: Context) => BROOD.nurseEggsPerSecond * (1 + 0.02 * R(ctx, 'longevity')) * (1 + ctx.mods.get('job:nurse')) * layMult(ctx);
 const nurseRate = (ctx: Context) => (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseEggsEach(ctx);
 /** Share of full speed the brood grows at: the queen and nurses each look after a few, the rest grow slowly. */
 export const tendSpeed = (ctx: Context) => {
@@ -107,7 +109,7 @@ export const tendSpeed = (ctx: Context) => {
   const tended = Math.min(brood, BROOD.queenTends + (ctx.state.jobs?.assigned?.nurse ?? 0) * nurseTends(ctx));
   return (tended + (brood - tended) * BROOD.untendedSpeed) / brood * mouldSpeed(ctx);
 };
-const queenRate = (ctx: Context) => RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay');
+const queenRate = (ctx: Context) => (RB.longevity.per * R(ctx, 'longevity') + ctx.mods.get('queenLay')) * layMult(ctx);
 
 /**
  * How much food the brood will still eat, for the food warning. Larvae eat for a while and then stop,
@@ -233,7 +235,14 @@ export const brood: GameSystem = {
       ctx.bus.emit('ant:born');
       if (!s.firstAnt) {
         s.firstAnt = true; ctx.log('The first worker pulls free of its cocoon. The colony has begun.');
-        if (t) ctx.log(`${temperLine(ctx)} (Queen tab)`, 'story');
+        if (t) {
+          ctx.log(`${temperLine(ctx)} (Queen tab)`, 'story');
+          ctx.announce(`A ${t.name.toLowerCase()} brood`, t.desc, {
+            small: true, kicker: 'This colony\'s temperament',
+            lines: [`Keen ${JOB_PLURAL[t.keen]}: ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better`,
+              `Reluctant ${JOB_PLURAL[t.loath]}: ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse`],
+          });
+        }
       }
       if (s.born === 50) ctx.log('Fifty workers have been born under this queen.');
       if (s.born === 250) ctx.log('Two hundred and fifty. The queen\'s line is becoming a people.');
@@ -381,8 +390,13 @@ export const brood: GameSystem = {
           const txt = temperLine(ctx);
           if (temperEl.dataset.txt !== txt) {
             temperEl.dataset.txt = txt;
-            temperEl.replaceChildren(el('strong', {}, 'Temperament: '), txt);
-            temperEl.dataset.tip = 'Every colony\'s brood is born with its own temperament, rolled at random. It is never the same twice running. Shift your workers to suit it.';
+            const t = temperOf(ctx)!;
+            temperEl.replaceChildren(
+              el('div.kicker', {}, 'This colony\'s temperament'),
+              el('strong', {}, `${t.name} brood`), el('span.muted', {}, ' ' + t.desc),
+              el('div', {}, el('span.lean.keen', {}, '▲ keen'), ` ${JOB_PLURAL[t.keen]} ${JOB_WORK[t.keen]} ${Math.round(BROOD.temperKeen * 100)}% better`),
+              el('div', {}, el('span.lean.loath', {}, '▼ reluctant'), ` ${JOB_PLURAL[t.loath]} ${JOB_WORK[t.loath]} ${Math.round(BROOD.temperLoath * 100)}% worse`));
+            temperEl.dataset.tip = 'From your second colony on, every brood is born with its own temperament, rolled at random. It is never the same twice running. Shift your workers to suit it.';
           }
         }
         scrubWrap.hidden = !ctx.flags.has('mould:scrub');
@@ -418,7 +432,8 @@ export const brood: GameSystem = {
           for (const [id, b] of paceBtns) { b.classList.toggle('on', id === cur); b.disabled = cd > 0 && id !== cur; }
           paceNote.textContent = ' ' + BROOD.rhythm[cur].desc + (cd > 0 ? ` Can change again in ${Math.ceil(cd)}s.` : '');
         }
-        royalHead.hidden = !royal.update(ctx);
+        royal.update(ctx);
+        royalHead.hidden = true; royal.root.hidden = true; // replaced by the Crowns tab; levels already bought keep working
       },
     };
   })(),

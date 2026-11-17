@@ -7,6 +7,7 @@ import { el, progressBar, tileButton } from '../../core/ui';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { fmtCosts } from '../../core/resources';
 import { WATERS } from '../../data/balance';
+import { postCount } from '../castes';
 
 interface Voyage { dest: string; elapsed: number; time: number; eventAt: number; event: number | null; met: boolean; bonus: Record<string, number>; lostCrew: number }
 interface Boat { type: string; hull: number; name: string; voyage: Voyage | null }
@@ -32,17 +33,24 @@ function idle(ctx: Context) {
   return Math.floor(ctx.res.amt('ant')) - assigned - busy - crewAway(ctx);
 }
 
+/** Deck guards ride the first boats in the fleet, one each. */
+const guarded = (ctx: Context, b: Boat) => S(ctx).boats.indexOf(b) < postCount(ctx, 'deck');
+
 /** Events on the water. Each choice changes the voyage and returns what happened. */
-const EVENTS: { text: string; choices: { label: string; act: (ctx: Context, b: Boat, v: Voyage) => string }[] }[] = [
-  { text: 'A water strider skates in circles around the boat, closer each time.', choices: [
+/** major: what a deck guard (a caste post) can do about it. Offered only on a boat with a major aboard. */
+const EVENTS: { text: string; major?: (ctx: Context, b: Boat, v: Voyage) => string; choices: { label: string; act: (ctx: Context, b: Boat, v: Voyage) => string }[] }[] = [
+  { text: 'A water strider skates in circles around the boat, closer each time.',
+    major: (_c, _b, v) => { v.bonus.food = (v.bonus.food ?? 0) + 20; return 'The major takes the strider by a leg and does not let go. The crew eat well.'; }, choices: [
     { label: 'Fight it off', act: (_c, b, v) => { if (Math.random() < 0.5) { v.lostCrew++; b.hull = Math.max(0, b.hull - 1); return 'The strider is driven off, but one of the crew is dragged under.'; } v.bonus.food = (v.bonus.food ?? 0) + 20; return 'The crew kill it. Fresh meat for the colony.'; } },
     { label: 'Paddle away', act: (_c, _b, v) => { v.time += 30; return 'The crew paddle hard and lose it in the reeds. The trip takes longer.'; } },
   ] },
-  { text: 'The current splits around a stone. One way is fast and rough, the other slow and calm.', choices: [
+  { text: 'The current splits around a stone. One way is fast and rough, the other slow and calm.',
+    major: (_c, _b, v) => { v.time *= 0.8; return 'The major braces her head against the stone and shoves the boat clear. The fast channel, and not a scratch.'; }, choices: [
     { label: 'Take the fast channel', act: (_c, b, v) => { v.time *= 0.8; b.hull = Math.max(0, b.hull - 1); return 'The boat scrapes the stone but shoots ahead.'; } },
     { label: 'Take the slow channel', act: (_c, _b, v) => { v.time += 40; return 'A gentle drift. Nothing lost but time.'; } },
   ] },
-  { text: 'A seed pod bobs past, fat and heavy.', choices: [
+  { text: 'A seed pod bobs past, fat and heavy.',
+    major: (_c, _b, v) => { v.bonus.seed = (v.bonus.seed ?? 0) + 3; return 'The major hauls the pod aboard in one pull. No time lost.'; }, choices: [
     { label: 'Haul it aboard', act: (_c, _b, v) => { v.bonus.seed = (v.bonus.seed ?? 0) + 3; v.time += 20; return 'Heavy work, but the pod is full of seeds.'; } },
     { label: 'Let it go', act: () => 'The pod drifts on.' },
   ] },
@@ -225,7 +233,7 @@ export const waters: GameSystem = {
         note.textContent = `${d.name}: about ${Math.round(d.time / 60)} minutes for a raft. Brings back ${Object.keys(d.loot).map((r) => ctx.res.has(r) ? ctx.res.get(r).name.toLowerCase() : r).join(', ')}.` +
           ` Idle workers: ${idle(ctx)}.`;
         // fleet: rebuild only when something structural changes
-        const now = s.boats.map((b) => `${b.name}:${b.hull}:${b.voyage ? b.voyage.dest + (b.voyage.event ?? '') : '-'}`).join('|') + '|' + s.dest;
+        const now = s.boats.map((b) => `${b.name}:${b.hull}:${b.voyage ? b.voyage.dest + (b.voyage.event ?? '') : '-'}`).join('|') + '|' + s.dest + '|' + postCount(ctx, 'deck');
         if (now !== sig) {
           sig = now;
           fleet.replaceChildren(...(s.boats.length ? s.boats.map((b) => boatCard(ctx, b, () => { sig = ''; })) : [el('p.muted', {}, 'No boats yet.')]));
@@ -245,7 +253,7 @@ export const waters: GameSystem = {
 
 function boatCard(ctx: Context, b: Boat, changed: () => void) {
   const def = BOATS[b.type];
-  const head = el('div', {}, el('strong', {}, b.name), ' ', el('span.muted', {}, `${def.name}, hull ${b.hull}/${def.hull}, crew ${def.crew}`));
+  const head = el('div', {}, el('strong', {}, b.name), ' ', el('span.muted', {}, `${def.name}, hull ${b.hull}/${def.hull}, crew ${def.crew}` + (guarded(ctx, b) ? ', a major on deck' : '')));
   const card = el('div.boat', { 'data-boat': b.name }, head);
   const v = b.voyage;
   if (!v) {
@@ -270,6 +278,12 @@ function boatCard(ctx: Context, b: Boat, changed: () => void) {
         changed();
       } }, c.label));
     }
+if (ev.major && guarded(ctx, b)) out.append(el('button.action', { type: 'button', title: 'Your deck guard deals with it.', onclick: () => {
+      const what = ev.major!(ctx, b, v);
+      v.event = null;
+      ctx.log(`${b.name}: ${what}`);
+      changed();
+    } }, 'Send the major'));
     card.append(el('p', {}, ev.text), out);
   }
   return card;

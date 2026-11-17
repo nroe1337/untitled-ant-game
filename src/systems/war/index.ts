@@ -11,6 +11,7 @@ import { WAR, MAP, CASTES, NEST } from '../../data/balance';
 import { reworkLevel } from '../nest';
 import { idleAnts } from '../jobs';
 import { queenGuard } from '../brood';
+import { awayOf, tilePost } from '../castes';
 
 const B = WAR.battle;
 const F = WAR.fortifications;
@@ -166,7 +167,8 @@ function openChests(ctx: Context) {
 const wallMax = (ctx: Context) => F.barricade.per * fl(ctx, 'barricade');
 const wallHp = (ctx: Context) => Math.min(wallMax(ctx), S(ctx).wall ?? wallMax(ctx));
 /** Majors at home: the ones away carrying for expeditions (Pack mules) don't fight. */
-const majors = (ctx: Context) => Math.max(0, (ctx.state.jobs?.assigned?.major ?? 0) - (ctx.busy['job:major'] ?? 0));
+/** Majors at the gate: not out with a party, and not posted elsewhere (see Castes). */
+const majors = (ctx: Context) => Math.max(0, (ctx.state.jobs?.assigned?.major ?? 0) - (ctx.busy['job:major'] ?? 0) - awayOf(ctx, 'major'));
 /** Fighting strength in soldier-equivalents: a major counts as several soldiers. */
 const soldiers = (ctx: Context) => (ctx.state.jobs?.assigned?.soldier ?? 0) + majors(ctx) * CASTES.major.atk * (1 + ctx.mods.get('majorAtk'));
 const power = (ctx: Context) => 1 + ctx.mods.get('soldierPower');
@@ -179,6 +181,8 @@ const waveComp = (w: number) => ({
   raiders: Math.min(WAR.maxRaiders, Math.round(B.wave.base + w * B.wave.perWave)),
   brutes: Math.floor(w / B.wave.bruteEvery),
 });
+/** The wave as it arrives: minims in the rival's walls (a caste post) thin it out. */
+const raidComp = (ctx: Context) => { const c = waveComp(waveOf(ctx)), m = Math.max(0.5, 1 + ctx.mods.get('raidSize')); return { raiders: Math.max(1, Math.round(c.raiders * m)), brutes: Math.round(c.brutes * m) }; };
 const toughness = (w: number) => Math.pow(B.wave.toughness, w - 1);
 const describeWave = (w: number) => { const c = waveComp(w); return `${c.raiders} raiders` + (c.brutes ? ` and ${c.brutes} brute${c.brutes > 1 ? 's' : ''}` : '') + (w > 1 ? `, each ${Math.round((toughness(w) - 1) * 100)}% tougher` : ''); };
 
@@ -229,7 +233,7 @@ function army(ctx: Context): Stack[] {
 }
 function startBattle(ctx: Context) {
   const s = S(ctx);
-  const comp = waveComp(waveOf(ctx));
+  const comp = raidComp(ctx);
   const tough = toughness(waveOf(ctx));
   const plain = ctx.state.jobs?.assigned?.soldier ?? 0;
   const us: Stack[] = [];
@@ -240,6 +244,9 @@ function startBattle(ctx: Context) {
   const barricade0 = us[0]?.kind === 'wall' ? us[0].hp : 0;
   if (spoil > 0) { if (us[0]?.kind === 'wall') { us[0].hp += spoil; us[0].max += spoil; } else us.push(stack('wall', 1, spoil, 0)); }
   us.push(...army(ctx));
+  // Silk crown: some nurses come to the entrance and fight as workers
+  const nurses = Math.floor((ctx.state.jobs?.assigned?.nurse ?? 0) * ctx.mods.get('nurseGuard'));
+  if (nurses > 0) us.push(stack('worker', nurses, B.worker.hp, B.worker.atk));
   const them: Stack[] = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
   s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0, spoil, barricade0 };
@@ -310,7 +317,9 @@ function stepBattle(ctx: Context, dt: number) {
   // War Cairn: chitin plates soften the bites on our fighters (not the barricade)
   const front = alive(b.us)[0];
   const plated = front && (front.kind === 'major' || front.kind === 'soldier') ? 1 - ctx.mods.get('cairnPlates') : 1;
-  const inDmg = theirs.reduce((t, x) => t + x.n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1), 0) * blunt * plated;
+  // Clay crown: a narrow door lets only so many of them bite at once (not in the rival queen's fight)
+  let door = b.boss ? 0 : ctx.mods.get('narrowDoor');
+  const inDmg = theirs.reduce((t, x) => { let n = x.n; if (door > 0) { n = Math.min(n, door); door -= n; if (door <= 0) door = -1; } else if (door < 0) n = 0; return t + n * x.atk * (x.kind === 'raider' || x.kind === 'brute' ? fr : 1); }, 0) * blunt * plated;
   // while she is burrowed our bites can't reach her, only her guard
   const targets = b.boss?.burrow ? b.them.filter((x) => x.kind !== 'rqueen') : b.them;
   biteSide(targets, outDmg * P, (x, n) => {
@@ -393,6 +402,7 @@ function endBattle(ctx: Context) {
   const lost = soldierLoss + workerLoss;
   if (lost) {
     ctx.res.add('ant', -lost);
+    ctx.bus.emit('war:fallen', { n: lost });
     // the dead come off their jobs: majors in the share they fell
     const bigs = fell ? Math.round(soldierLoss * (b.majorsLost ?? 0) / fell) : 0;
     loseFighters(ctx, soldierLoss - bigs);
@@ -442,7 +452,7 @@ const adjacentToYou = (ctx: Context, i: number) => {
   const x = i % MAP.cols, y = Math.floor(i / MAP.cols), T = tiles(ctx);
   return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
     const nx = x + dx, ny = y + dy;
-    return nx >= 0 && ny >= 0 && nx < MAP.cols && ny < MAP.rows && T[ny * MAP.cols + nx].o === 'you';
+    return nx >= 0 && ny >= 0 && nx < MAP.cols && ny < MAP.rows && (T[ny * MAP.cols + nx].o === 'you' || tilePost(ctx, 'bridge', ny * MAP.cols + nx) === 'there');
   });
 };
 const validTarget = (ctx: Context, i: number | null) => {
@@ -746,7 +756,7 @@ export const war: GameSystem = {
         const hold = soldiers(ctx) * B.soldier.atk * power(ctx) + defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
         ledger.replaceChildren(...[
           ['Rival army', `about ${Math.round(s.rivalArmy)}`],
-          ['Next fight', s.rivalDefeated ? 'none' : `wave ${waveOf(ctx)}: ${describeWave(waveOf(ctx))}`],
+          ['Next fight', s.rivalDefeated ? 'none' : `wave ${waveOf(ctx)}: ${describeWave(waveOf(ctx))}` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '')],
           ['Your soldiers', `${soldiers(ctx)} (assign them on the Jobs tab)`],
           ['Nest defence', `${defence(ctx)} (guard posts, stone tiles, husk halls)`],
           ...(wallMax(ctx) ? [['Husk barricade', `${Math.floor(s.battle && !s.battle.boss ? (s.battle.us.find((x) => x.kind === 'wall')?.n ? s.battle.us.find((x) => x.kind === 'wall')!.hp : 0) : wallHp(ctx))} of ${wallMax(ctx)}`]] : []),
@@ -956,7 +966,7 @@ function battleField() {
         if (wallMax(ctx)) { const w = stack('wall', 1, wallMax(ctx), 0); w.hp = wallHp(ctx); ours.push(w); }
         ours.push(...army(ctx));
         if (!ours.some((x) => x.kind === 'soldier') && !majors(ctx)) ours.push(stack('soldier', 0, B.soldier.hp, B.soldier.atk));
-        const comp = waveComp(waveOf(ctx)), tough = toughness(waveOf(ctx));
+        const comp = raidComp(ctx), tough = toughness(waveOf(ctx));
         theirs = s.rivalDefeated ? [] : [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
         if (comp.brutes && !s.rivalDefeated) theirs.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
       }

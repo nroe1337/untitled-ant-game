@@ -13,7 +13,8 @@ interface GardenState { mould: number; ups: Record<string, number>; weeded: numb
 const S = (ctx: Context) => ctx.state.garden as GardenState;
 const lvl = (ctx: Context, id: keyof typeof GARDEN.upgrades) => S(ctx).ups[id] ?? 0;
 const beds = (ctx: Context) => ctx.state.nest?.built?.fungus ?? 0;
-const gardeners = (ctx: Context) => ctx.state.jobs?.assigned?.gardener ?? 0;
+/** Minims at their home post, the garden. The rest are posted elsewhere (see Castes). */
+const gardeners = (ctx: Context) => Math.max(0, (ctx.state.jobs?.assigned?.gardener ?? 0) - (ctx.busy['job:gardener'] ?? 0));
 const tended = (ctx: Context) => Math.min(beds(ctx), Math.floor(gardeners(ctx) * GARDEN.bedsPerGardener * (1 + ctx.mods.get('job:gardener'))));
 const healthy = (ctx: Context) => Math.max(0, beds(ctx) - S(ctx).mould);
 const bedRate = (ctx: Context) => GARDEN.fungusPerBed * (1 + GARDEN.upgrades.compost.per * lvl(ctx, 'compost'));

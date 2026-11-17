@@ -30,14 +30,14 @@ const JOB_DEFS: JobDef[] = [
   { id: 'scout', name: 'Scout', desc: 'Marks trails on the surface. Makes pheromone.', produces: JOBS.scout, requires: 'tech:scouting' },
   { id: 'soldier', name: 'Soldier', desc: 'Guards the nest and marches on campaigns. Between fights, hunts near the nest for half as much food as a forager.', produces: {}, requires: 'tech:martial' },
   { id: 'leafcutter', name: 'Leafcutter', desc: 'Cuts leaves for the fungus beds.', produces: JOBS.leafcutter, requires: 'tech:fungus' },
-  { id: 'gardener', name: 'Gardener', desc: 'A minim. Keeps fungus beds free of mould (2 beds each).', produces: {}, requires: 'caste:minim' },
-  { id: 'replete', name: 'Replete', desc: 'Banks up to 20 surplus food and feeds it back when stores run dry. With the reserve full, makes a little royal jelly from spare food. At most 8.', produces: {}, requires: 'caste:replete' },
-  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers. Between fights, hunts like a soldier. One major per 5 soldiers.', produces: {}, requires: 'caste:major' },
+  { id: 'gardener', name: 'Minim', desc: 'A tiny ant. Keeps fungus beds free of mould (2 beds each), unless you post her elsewhere on the Castes tab.', produces: {}, requires: 'caste:minim' },
+  { id: 'replete', name: 'Replete', desc: 'Banks up to 20 surplus food and feeds it back when stores run dry. With the reserve full, makes a little royal jelly from spare food. At most 8. More posts on the Castes tab.', produces: {}, requires: 'caste:replete' },
+  { id: 'major', name: 'Major', desc: 'A huge-headed fighter. Fights like 3 soldiers. Between fights, hunts like a soldier. One major per 5 soldiers. More posts on the Castes tab.', produces: {}, requires: 'caste:major' },
   { id: 'herder', name: 'Herder', desc: 'Tends the herds and drives off predators.', produces: {}, requires: 'tech:husbandry' },
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
   { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
   { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire and the wonders.', produces: {}, requires: 'tech:flight|tech:wonderlore' },
-  { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats.', produces: JOBS.weaver, requires: 'caste:weaver' },
+  { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats. More posts on the Castes tab.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 
 const T = COLONY.techniques;

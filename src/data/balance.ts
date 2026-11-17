@@ -456,7 +456,7 @@ export const RESEARCH = {
     digging:    { name: 'Tunnelling',        age: 'dirt', cost: { knowledge: 6 },                     needs: [],                      desc: 'Workers learn to dig. Unlocks Diggers and the Nest.' },
     storage:    { name: 'Storage chambers',      age: 'dirt', cost: { knowledge: 12, soil: 20 },          needs: ['digging'],             desc: 'Unlocks the Food store and the Soil pit.' },
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Warming chamber, the Nurses\' den and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
-    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'Unlocks Royal care upgrades for the queen. Worth it once the nest is big.' },
+    royal:      { name: 'Royal court',       age: 'wings', cost: { knowledge: 300, food: 250 },       pop: 0.25, needs: ['husks', 'halls'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge.' },
     surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 10 chambers.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
@@ -610,40 +610,33 @@ export const CASTES = {
     weaver:  { name: 'Weavers',  cost: { jelly: 6, leaf: 30 },    desc: 'Larvae spin silk while weavers hold them. Unlocks the Weaver job and Silk.' },
   } as Record<string, { name: string; cost: Record<string, number>; desc: string }>,
   /**
-   * Caste tracks: a long path of upgrades for each caste, opened when that caste is bred.
-   * Each stage opens once the stage before it is maxed. Stages with max 1 are turning points.
-   * mod: the modifier each level adds `per` to (cap:ant adds living space instead).
+   * Posts (Nate, Nov 16): a caste is a handful of special ants, and the play is where they stand.
+   * Each caste has a home post (everyone not posted elsewhere) and other posts around the game.
+   * A post opens once for royal jelly. Ants moved to a post walk for `walk` seconds before it counts.
+   * size: ants one unit takes. max: most units. per: what each unit gives. where: the tab it works in.
+   * Tile posts (bridge, nest) are placed from the Map; the gift is hung from the Kin tab.
    */
-  tracks: {
-    minim: [
-      { id: 'mi1', name: 'Fine mandibles',  desc: 'Each gardener keeps {p} more beds clean each level.',             mod: 'job:gardener', per: 0.08, base: { jelly: 2, fungus: 30 },  growth: 1.3, max: 10 },
-      { id: 'mi2', name: 'Spore sense',     desc: 'Leafcutters cut {p} more each level.',              mod: 'job:leafcutter', per: 0.05, base: { jelly: 3, leaf: 40 }, growth: 1.3, max: 10 },
-      { id: 'mi3', name: 'Brood minders',   desc: 'Minims tend the eggs too. The brood grows {p} faster.', mod: 'brood', per: 0.1, base: { jelly: 30, fungus: 400 },    growth: 1, max: 1 },
-      { id: 'mi4', name: 'Fungus lore',     desc: 'Each gardener keeps another {p} more beds clean each level.',     mod: 'job:gardener', per: 0.1, base: { jelly: 6, fungus: 120 },  growth: 1.35, max: 10 },
-      { id: 'mi5', name: 'Nanitic foragers', desc: 'Minims ride out on foragers\' backs and guard them. Foragers bring {p} more.', mod: 'job:forager', per: 0.15, base: { jelly: 60, fungus: 900 }, growth: 1, max: 1 },
-    ],
-    replete: [
-      { id: 're1', name: 'Wider crops',     desc: 'Each replete holds {p} more food each level.',      mod: 'repleteHold', per: 0.25, base: { jelly: 2, food: 120 },  growth: 1.3, max: 8 },
-      { id: 're2', name: 'Quick swallow',   desc: 'Repletes fill {p} faster each level.',              mod: 'repleteFill', per: 0.2, base: { jelly: 3, food: 200 },   growth: 1.3, max: 8 },
-      { id: 're3', name: 'Honeypot rows',   desc: 'A gallery of hanging repletes: +{p} more repletes can work.', mod: 'repleteMax', per: 4, base: { jelly: 25, food: 1500, soil: 400 }, growth: 1, max: 1, unit: 'flat' as const },
-      { id: 're4', name: 'Sweet distillers', desc: 'Repletes make {p} more royal jelly each level.',    mod: 'repleteJelly', per: 0.25, base: { jelly: 5, food: 400 }, growth: 1.35, max: 10 },
-      { id: 're5', name: 'Living larder',   desc: 'The whole colony draws on the repletes. Upkeep {p} lower.', mod: 'upkeep', per: -0.1, base: { jelly: 50, food: 4000 }, growth: 1, max: 1 },
-    ],
-    major: [
-      { id: 'ma1', name: 'Heavy heads',     desc: 'Majors bite {p} harder each level.',                mod: 'majorAtk', per: 0.1, base: { jelly: 3, chitin: 15 },   growth: 1.3, max: 10 },
-      { id: 'ma2', name: 'Plated backs',    desc: 'Majors take {p} more punishment each level.',       mod: 'majorHp', per: 0.1, base: { jelly: 3, chitin: 20 },    growth: 1.3, max: 10 },
-      { id: 'ma3', name: 'Officer corps',   desc: 'One more major can serve per 5 soldiers: one per {p} fewer.', mod: 'majorRatio', per: 1, base: { jelly: 30, chitin: 150 }, growth: 1, max: 1, unit: 'flat' as const },
-      { id: 'ma4', name: 'Siege drill',     desc: 'Majors drill the soldiers. All soldiers fight {p} harder each level.', mod: 'soldierPower', per: 0.03, base: { jelly: 6, chitin: 40 }, growth: 1.35, max: 10 },
-      { id: 'ma5', name: 'Shock troops',    desc: 'Majors lead every charge: one per {p} fewer soldiers again.', mod: 'majorRatio', per: 1, base: { jelly: 60, chitin: 400 }, growth: 1, max: 1, unit: 'flat' as const },
-    ],
-    weaver: [
-      { id: 'we1', name: 'Fine silk',       desc: 'Weavers spin {p} more each level.',                 mod: 'job:weaver', per: 0.08, base: { jelly: 2, leaf: 40 },  growth: 1.3, max: 10 },
-      { id: 'we2', name: 'Silk ropes',      desc: 'Ropes for hauling. Expeditions bring back {p} more each level.', mod: 'expLoot', per: 0.03, base: { jelly: 3, silk: 8 }, growth: 1.3, max: 10 },
-      { id: 'we3', name: 'Silk nets',       desc: 'Nets strung over the trails. Soldiers hunt {p} better.', mod: 'hunting', per: 0.3, base: { jelly: 25, silk: 60 },     growth: 1, max: 1 },
-      { id: 'we4', name: 'Woven halls',     desc: 'Silk walls hang in every chamber: +{p} living space each level.', mod: 'cap:ant', per: 2, base: { jelly: 5, silk: 20 }, growth: 1.35, max: 10, unit: 'flat' as const },
-      { id: 'we5', name: 'Silk sails',      desc: 'Expedition parties glide home on silk. They lose {p} fewer workers.', mod: 'expSafety', per: -0.1, base: { jelly: 50, silk: 150 }, growth: 1, max: 1 },
-    ],
-  } as Record<string, { id: string; name: string; desc: string; mod: string; per: number; base: Record<string, number>; growth: number; max: number; unit?: 'pct' | 'flat' }[]>,
+  walk: 30,
+  posts: {
+    minim: { job: 'gardener', how: 'Slots come from fungus beds.', home: { name: 'Garden', where: 'Fungus garden', desc: 'Each minim keeps 2 beds free of mould.' }, posts: [
+      { id: 'walls', name: "Rival's walls", where: 'War', desc: 'They eat the rival\'s eggs. Each minim makes raids 5% smaller.', cost: 'Smaller raids give less chitin.', open: 6, max: 4, per: 0.05, needs: 'tech:martial' },
+      { id: 'trail', name: 'Trail', where: 'Expeditions', desc: 'They slip into cracks along the way. Returning parties hear rumours more often.', open: 12, max: 3, per: 0.005, needs: 'surface' },
+    ] },
+    replete: { job: 'replete', how: 'At most 8, more with research.', home: { name: 'Larder', where: 'Stores', desc: 'Each replete banks 20 food and feeds it back in a famine.' }, posts: [
+      { id: 'pots', name: 'Jelly pots', where: 'Castes', desc: 'Each replete holds 5 royal jelly instead of food.', open: 6, per: 5 },
+      { id: 'gift', name: 'Gift', where: 'Kin', desc: 'Hang one in a kin colony. Trust grows while she is there, and that colony does not cool when you help its enemy. Call her home any time.', open: 15, per: 0.5, place: 'Choose the colony on the Kin tab.' },
+    ] },
+    major: { job: 'major', how: 'One for every 5 soldiers.', home: { name: 'Gate', where: 'War', desc: 'Each major fights like 3 soldiers in raids and on campaigns.' }, posts: [
+      { id: 'deck', name: 'Deck guard', where: 'Waters', desc: 'One rides each boat. Some voyage events get a "Send the major" choice.', open: 10, needs: 'tech:rafts' },
+    ] },
+    weaver: { job: 'weaver', how: 'Slots come from silk lofts.', home: { name: 'Loom', where: 'Stores', desc: 'Each weaver spins silk.' }, posts: [
+      { id: 'bridge', name: 'Living bridge', where: 'Map', desc: '2 weavers hold a bridge on one stream tile next to your land. Scouts and soldiers can cross there, and claims reach out from it like from an outpost.', open: 10, size: 2, needs: 'tech:cartography', place: 'Select a stream tile next to your land on the Map.' },
+      { id: 'nest', name: 'Leaf nest', where: 'Map', desc: '3 weavers hold a leaf nest together over a grass tile you hold. +6 living space that adds no mould.', open: 20, size: 3, per: 6, needs: 'tech:cartography', place: 'Select a grass tile you hold on the Map.' },
+    ] },
+  } as Record<string, { job: string; how: string; home: { name: string; where: string; desc: string }; posts: { id: string; name: string; where: string; desc: string; cost?: string; open: number; size?: number; max?: number; per?: number; needs?: string; place?: string }[] }>,
+  /** Royal jelly once spent on the old caste tracks (first level, growth), so older saves get it back as opened posts. */
+  oldTracks: { mi1: [2, 1.3], mi2: [3, 1.3], mi3: [30, 1], mi4: [6, 1.35], mi5: [60, 1], re1: [2, 1.3], re2: [3, 1.3], re3: [25, 1], re4: [5, 1.35], re5: [50, 1],
+    ma1: [3, 1.3], ma2: [3, 1.3], ma3: [30, 1], ma4: [6, 1.35], ma5: [60, 1], we1: [2, 1.3], we2: [3, 1.3], we3: [25, 1], we4: [5, 1.35], we5: [50, 1] } as Record<string, [number, number]>,
   upgrades: {
     glands: { name: 'Jelly glands', desc: 'Each level, every nurse makes {p} royal jelly per second from fungus.', per: 0.001, base: { jelly: 4, fungus: 30 }, growth: 1.25, max: 20, unit: 'flat' as const },
   },
@@ -1033,6 +1026,7 @@ export const WORLD = {
 export interface KinQuest { kind: string; n?: number; costs?: Record<string, number>; name: string; text: string }
 export const KIN = {
   questTrust: 20,                 // trust for each quest done
+  repleteTrust: 0.5,              // trust a minute while a replete hangs there as a gift (a caste post)
   feudCost: 8,                    // trust the feuding kin loses when you finish a quest for its enemy
   gift: { trust: 4, liked: 2.5, every: 90 }, // a plain gift; a liked one is worth x2.5; one gift per kin per 90s
   tiers: [
@@ -1105,4 +1099,42 @@ export const KIN = {
       [{ kind: 'flights', n: 2, name: 'A line that has flown', text: 'Your line must have flown twice. They do not join with colonies, only with lines.' }],
     ],
   } as Record<string, KinQuest[][]>,
+};
+
+/** The queen's crowns (Royal court): she wears one at a time. Each boosts a few chambers, adds a rule and has a drawback.
+ *  Levels (1-10) are bought with royal jelly and kept through flights. Boosts rise from `boost.at1` to `boost.at10`;
+ *  the rule grows stronger at the `tiers` levels. Switching is free but needs `swapCooldown` seconds between changes. */
+export const CROWNS = {
+  maxLevel: 10,
+  swapCooldown: 600,
+  boost: { at1: 0.1, at10: 0.2 },
+  tiers: [4, 7, 10],
+  /** jelly for level 2, 3, ... 10 (level 1 comes free with the Royal court) */
+  levelCost: [8, 12, 18, 26, 38, 55, 80, 115, 165],
+  list: [
+    { id: 'chitin', name: 'Chitin crown', theme: 'War', rooms: ['barracks', 'training', 'armory'],
+      rule: 'Soldiers +{v} strength per flawless raid (max +20%).', ruleV: [0.01, 0.015, 0.02, 0.03],
+      bad: 'Hall of elders -10%.', badMods: { 'room:library': -0.1 } },
+    { id: 'clay', name: 'Clay crown', theme: 'The deep nest', rooms: ['spoil', 'clayhall', 'vent'],
+      rule: 'Only {v} raiders can attack at once.', ruleV: [10, 8, 6, 4],
+      bad: 'Expeditions 10% slower.', badMods: { expSpeed: 0.1 } },
+    { id: 'petal', name: 'Petal crown', theme: 'Wandering', rooms: ['chartroom', 'boatshed', 'rest'],
+      rule: 'Expeditions have a {v} chance to bring home a stray worker.', ruleV: [0.1, 0.15, 0.2, 0.3],
+      bad: 'Warming chamber -10%.', badMods: { 'room:warmth': -0.1 } },
+    { id: 'fungus', name: 'Fungus crown', theme: 'The garden', rooms: ['fungus', 'sporecellar', 'stable'],
+      rule: 'Converts {v} mould/s into fungus.', ruleV: [0.1, 0.15, 0.2, 0.3],
+      bad: 'Soldiers 10% weaker.', badMods: { soldierPower: -0.1 } },
+    { id: 'amber', name: 'Amber crown', theme: 'Lore', rooms: ['library', 'memory', 'chartroom'],
+      rule: '+{v} knowledge per worker lost.', ruleV: [4, 6, 8, 12],
+      bad: 'Egg laying -10%.', badMods: { layRate: -0.1 } },
+    { id: 'seed', name: 'Seed crown', theme: 'Hoarding', rooms: ['pantry', 'seedvault', 'resinvat', 'twigloft'],
+      rule: 'Each store over 90% full makes {v} jelly/s.', ruleV: [0.002, 0.003, 0.004, 0.006],
+      bad: 'Chambers cost +10% soil.', badMods: { wonderSoil: 0.1 } },
+    { id: 'silk', name: 'Silk crown', theme: 'Care', rooms: ['warmth', 'nursery', 'sporecellar'],
+      rule: '{v} of nurses fight in raids.', ruleV: [0.25, 0.35, 0.5, 0.75],
+      bad: 'Guard post -10%.', badMods: { 'room:barracks': -0.1 } },
+    { id: 'thorn', name: 'Thorn crown', theme: 'The slaver', rooms: ['husks', 'den', 'midden'],
+      rule: 'Flawless raids capture {v} workers per 5 waves (min 1).', ruleV: [1, 1.5, 2, 3],
+      bad: 'Foragers -15%.', badMods: { 'job:forager': -0.15 } },
+  ] as { id: string; name: string; theme: string; rooms: string[]; rule: string; ruleV: number[]; bad: string; badMods: Record<string, number> }[],
 };
