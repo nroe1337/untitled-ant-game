@@ -833,12 +833,14 @@ const marchAt = (p: number): [number, number] => {
 /** The rival's raiding column: a file of ants walking from their mound to our nest. Drawn over the fog, so it is always seen. */
 function drawMarch(c: CanvasRenderingContext2D, p: number, kindId = 'plain') {
   const kind = WAR.raidKinds[kindId] ?? WAR.raidKinds.plain, big = kindId === 'brutes' || kindId === 'warband', col = kindId === 'night' ? '#3a335e' : PAL.rival;
-  const T = 8, len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]), t = performance.now() / 160;
+  const T = 8, len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]), t = performance.now() / 250;
+  const ux = (MAP.nest[0] - marchFrom[0]) / (len || 1), uy = (MAP.nest[1] - marchFrom[1]) / (len || 1);
   for (let k = 0; k < kind.column; k++) {
     const q = p - (k * 0.45) / len;
     if (q < 0) break;
-    const [x, y] = marchAt(q), wob = Math.round(Math.sin(t + k * 1.7));
-    const X = Math.round(x * T) - 1 + wob, Y = Math.round(y * T) - 1 - wob;
+    // a march, not a wriggle: every ant keeps its place in the file and steps forward in time, a pixel at a stride
+    const [x, y] = marchAt(q), step = (Math.floor(t) + k) % 2;
+    const X = Math.round(x * T + ux * step) - 1, Y = Math.round(y * T + uy * step) - 1;
     const sz = big && k % 2 === 0 ? 3 : 2;
     rect(c, X - 1, Y - 1, sz + 2, sz + 2, '#1a1410');
     rect(c, X, Y, sz, sz, col);

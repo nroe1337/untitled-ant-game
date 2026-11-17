@@ -473,21 +473,23 @@ export class Game {
   private storesOpen = false;
   private layoutEl!: HTMLElement;
 
-  /** The ? on a screen: a small button by its italic line that opens a few plain lines, with a link to the Guide. */
+  /** The ? on a screen: a small button by its italic line that opens a popup over the screen, closed with its x. */
   private addHelp(id: string, body: HTMLElement) {
     const lines = HELP[id];
     if (!lines) return;
-    const link = el('button.ghost.small', { type: 'button', onclick: () => { if (this.tabs.has('guide')) this.show('guide'); } }, 'More in the Guide');
-    const box = el('div.helpbox', { hidden: true }, ...lines.map((l) => el('p', {}, l)), link);
-    const btn = el('button.helpbtn', { type: 'button', title: 'What is this screen?', 'aria-label': 'What is this screen?', onclick: () => { box.hidden = !box.hidden; link.hidden = !this.tabs.has('guide'); } }, '?');
+    const title = this.tabs.get(id)?.btn.textContent ?? '';
+    const close = () => { shade.hidden = true; };
+    const link = el('button.ghost.small', { type: 'button', onclick: () => { close(); if (this.tabs.has('guide')) this.show('guide'); } }, 'More in the Guide');
+    const x = el('button.helpx', { type: 'button', 'aria-label': 'Close', title: 'Close', onclick: close }, '×');
+    const box = el('div.helpbox', { role: 'dialog', 'aria-label': title }, x, el('h3', {}, title), ...lines.map((l) => el('p', {}, l)), link);
+    const shade = el('div.helpshade', { hidden: true }, box);
+    shade.addEventListener('click', (e) => { if (e.target === shade) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    document.body.append(shade);
+    const btn = el('button.helpbtn', { type: 'button', title: 'What is this screen?', 'aria-label': 'What is this screen?', onclick: () => { link.hidden = !this.tabs.has('guide'); shade.hidden = false; x.focus(); } }, '?');
     const flavor = body.querySelector('p.flavor');
-    if (flavor) {
-      flavor.classList.add('hashelp'); flavor.append(btn);
-      let top: Element = flavor; // the box goes under the flavour line's block, never beside it in a row
-      while (top.parentElement && top.parentElement !== body) top = top.parentElement;
-      top.after(box);
-    }
-    else body.prepend(el('div.helprow', {}, btn), box);
+    if (flavor) { flavor.classList.add('hashelp'); flavor.append(btn); }
+    else body.prepend(el('div.helprow', {}, btn));
   }
 
   private show(id: string) {

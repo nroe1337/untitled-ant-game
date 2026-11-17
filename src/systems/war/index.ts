@@ -199,11 +199,14 @@ const T = WAR.threat;
 const builtChambers = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, n) => a + (n || 0), 0);
 export function threat(ctx: Context) {
   const s = S(ctx);
-  const size = Math.max(0, ctx.res.amt('ant') / T.perWorkers + builtChambers(ctx) / T.perChambers - T.offset);
+  // the rival sizes you up over its first raids: colony size only counts in full after `ramp` raids (Nate, Nov 17: the first raid was too hard)
+  const ramp = Math.min(1, (s.raids ?? 0) / T.ramp);
+  const size = Math.max(0, ctx.res.amt('ant') / T.perWorkers + builtChambers(ctx) / T.perChambers - T.offset) * ramp;
   return (1 + size + ((s.warTime ?? 0) / 3600) * T.perHour) * (s.rivalDefeated ? T.wanderers : 1);
 }
 const threatWord = (t: number) => T.words.reduce((w, [at, name]) => (t >= at ? name : w), T.words[0][1]);
 function rollKind(ctx: Context) {
+  if ((S(ctx).raids ?? 0) < T.scoutRaids) return 'scouts'; // the rival tests you with scouts first
   const t = threat(ctx), ks = Object.entries(WAR.raidKinds).filter(([, k]) => t >= k.from);
   let r = Math.random() * ks.reduce((a, [, k]) => a + k.weight, 0);
   for (const [id, k] of ks) { r -= k.weight; if (r <= 0) return id; }
