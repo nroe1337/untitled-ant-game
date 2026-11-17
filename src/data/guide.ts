@@ -226,7 +226,7 @@ export const GUIDE: GuidePage[] = [
     steps: [
       { head: 'Raids', do: [
         'The rival raids on its own every 10 to 15 minutes. Its column marches across the {Map} for 2 minutes first; its look hints at what is coming. Then it fights at the entrance.',
-        'Raids never stop: they grow with your colony (workers, chambers) and slowly with time. The {War} tab shows the threat. After the rival queen falls, wandering colonies keep coming.',
+        'Raids never stop: the first few are small, then they grow with your colony (workers, chambers) and slowly with time. The {War} tab shows the threat. After the rival queen falls, wandering colonies keep coming.',
         'Each raid is rolled: plain, a swarm, a brute pack, a night raid (no war cry) or, rarely, a great warband that only a well-prepared nest holds.',
         'Click [Provoke a raid] to lure one now. Light bait lures a smaller raid for half the spoils and no chest; heavy bait a bigger one for double.',
         'Every ant fights at once. Raiders bite your majors first, then soldiers, then workers who rally.',

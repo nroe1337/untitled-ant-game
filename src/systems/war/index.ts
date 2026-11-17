@@ -199,7 +199,9 @@ const T = WAR.threat;
 const builtChambers = (ctx: Context) => Object.values((ctx.state.nest?.built ?? {}) as Record<string, number>).reduce((a, n) => a + (n || 0), 0);
 export function threat(ctx: Context) {
   const s = S(ctx);
-  const size = Math.max(0, ctx.res.amt('ant') / T.perWorkers + builtChambers(ctx) / T.perChambers - T.offset);
+  // the rival sizes you up over its first raids: colony size only counts in full after `ramp` raids (Nate, Nov 17: the first raid was too hard)
+  const ramp = Math.min(1, (s.raids ?? 0) / T.ramp);
+  const size = Math.max(0, ctx.res.amt('ant') / T.perWorkers + builtChambers(ctx) / T.perChambers - T.offset) * ramp;
   return (1 + size + ((s.warTime ?? 0) / 3600) * T.perHour) * (s.rivalDefeated ? T.wanderers : 1);
 }
 const threatWord = (t: number) => T.words.reduce((w, [at, name]) => (t >= at ? name : w), T.words[0][1]);

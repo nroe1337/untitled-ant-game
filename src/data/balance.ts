@@ -345,8 +345,9 @@ export const WAR = {
   /** Threat (Nate, Nov 17): raids are an ongoing pressure you manage, not waves you beat. A raid's strength is
    *  threat x luck x bait, used where the wave number used to be (raider count and toughness).
    *  threat = 1 + max(0, workers/perWorkers + chambers/perChambers - offset) + perHour per hour since the War tab opened.
+   *  The size part counts for raids/ramp of itself until `ramp` raids have been fought, so the first raids are small.
    *  After the rival queen falls, wandering colonies keep raiding at `wanderers` of it. */
-  threat: { perWorkers: 30, perChambers: 30, offset: 2, perHour: 0.5, luck: 0.25, wanderers: 0.8,
+  threat: { perWorkers: 30, perChambers: 30, offset: 2, perHour: 0.5, luck: 0.25, wanderers: 0.8, ramp: 8,
     words: [[0, 'Low'], [4, 'Rising'], [8, 'High'], [14, 'Grave'], [22, 'Dire']] as [number, string][] },
   /** Kinds of raid, rolled by weight once threat reaches `from`. raiders/brutes scale the count, tough the health and bite,
    *  spoils the chitin and honours. cap: most raiders. noCry: the war cry can't be sounded. hint: what the column looks like. */
