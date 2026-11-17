@@ -283,7 +283,10 @@ export const MAP = {
   /** The garden (Nov 14: grown from 40x24 to 64x64; the Map shows it through a camera, view tiles at a time). */
   cols: 64,
   rows: 64,
-  view: [40, 26] as [number, number],
+  /** Zoom levels of the Map's camera, widest first, all the same 8:5 shape (Nov 17). The scroll wheel steps between them. */
+  zooms: [[48, 30], [40, 25], [32, 20], [24, 15]] as [number, number][],
+  /** The level a new player starts on: 32x20 tiles. */
+  zoom: 2,
   nest: [12, 44] as [number, number],
   rival: [50, 16] as [number, number],
   spider: [48, 54] as [number, number],

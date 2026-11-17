@@ -394,7 +394,7 @@ export const map: GameSystem = {
       title: 'Map',
       group: 'World',
       mount(root: HTMLElement, ctx: Context) {
-        cam = makeCamera({ cols: MAP.cols, rows: MAP.rows, view: MAP.view, T: 8, label: 'Map of the garden', onPick: (i) => { S(ctx).selected = i; } });
+        cam = makeCamera({ cols: MAP.cols, rows: MAP.rows, zooms: MAP.zooms, zoom: MAP.zoom, T: 8, label: 'Map of the garden', onPick: (i) => { S(ctx).selected = i; } });
         cam.centre(...MAP.nest);
         cam.paintMini = (c) => paintMini(c, S(ctx));
         const homeBtn = el('button.ghost', { type: 'button' }, 'Back to the nest');
@@ -524,7 +524,7 @@ abandonWrap = el('div.row', {}, abandon);
           wcv, wHover, wSummary, sortieLine,
           el('h3', {}, 'Selected cell'), wInfo, sortieWrap, lookWrap, skyHead, skyUps.root, lmHead, lmList,
         );
-        ccam = makeCamera({ cols: MAP.cols, rows: MAP.rows, view: MAP.view, T: 8, label: 'A cell of the world, close up', onPick: (i) => { cSel = i; } });
+        ccam = makeCamera({ cols: MAP.cols, rows: MAP.rows, zooms: MAP.zooms, zoom: MAP.zoom, T: 8, label: 'A cell of the world, close up', onPick: (i) => { cSel = i; } });
         const back = el('button.action', { type: 'button' }, el('span.label', {}, 'Back to the world'));
         back.addEventListener('click', () => { view = 'world'; });
         cTitle = el('p.flavor'); cInfo = el('div.ledger');

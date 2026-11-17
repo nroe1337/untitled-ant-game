@@ -93,7 +93,7 @@ export const GUIDE: GuidePage[] = [
     steps: [
       { head: 'Claim land', do: [
         'Learn [Mapping] first. It opens the {Map} tab.',
-        'On the {Map} tab, drag to look around. Click a tile next to your land, then claim it.',
+        'On the {Map} tab, drag to look around and scroll to zoom. The minimap in the corner jumps the view. Click a tile next to your land, then claim it.',
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out.',
         'Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',

@@ -1,6 +1,7 @@
 // A camera over a big tile map: the canvas shows a window of the map, drawn from a full-size source
 // canvas the caller paints. Drag to pan (mouse or touch), arrow keys / WASD glide, and a minimap shows
-// the whole map with the view on it (click or drag there to jump). Clicks that didn't drag pick a tile.
+// the whole map with the view on it (click or drag there to jump; it folds away). The scroll wheel, +/- keys
+// or the zoom buttons step between a few zoom levels. Clicks that didn't drag pick a tile.
 import { el } from '../../core/ui';
 import { PAL, rect } from '../../core/pixel';
 
@@ -20,15 +21,54 @@ export interface Camera {
 const DRAG = 5;        // CSS pixels a press may move and still count as a click
 const GLIDE = 28;      // tiles per second when panning with the keys
 
-export function makeCamera(opts: { cols: number; rows: number; view: [number, number]; T: number; label: string; onPick: (i: number | null) => void }): Camera {
+export function makeCamera(opts: { cols: number; rows: number; zooms: [number, number][]; zoom: number; T: number; label: string; onPick: (i: number | null) => void }): Camera {
   const { cols, rows, T } = opts;
-  const [vw, vh] = opts.view;
+  const zooms = opts.zooms;
+  // the zoom level is the player's choice and kept between visits (per browser)
+  let zi = opts.zoom;
+  try { const z = Number(localStorage.getItem('formicarium.mapzoom')); if (localStorage.getItem('formicarium.mapzoom') != null && z >= 0 && z < zooms.length) zi = z; } catch { /* no storage */ }
+  let [vw, vh] = zooms[zi];
   const source = document.createElement('canvas');
   source.width = cols * T; source.height = rows * T;
-  const view = el('canvas.map', { width: vw * T, height: vh * T, tabindex: 0, 'aria-label': opts.label + '. Drag or use the arrow keys to look around.' }) as HTMLCanvasElement;
+  const view = el('canvas.map', { width: vw * T, height: vh * T, tabindex: 0, 'aria-label': opts.label + '. Drag or use the arrow keys to look around, scroll to zoom.' }) as HTMLCanvasElement;
+  view.style.aspectRatio = `${vw} / ${vh}`;
   const mini = el('canvas.minimap', { width: cols, height: rows, 'aria-label': 'Whole map. Click to look there.' }) as HTMLCanvasElement;
-  const root = el('div.camera', {}, el('div.camview', {}, view, mini));
+  let folded = false;
+  try { folded = localStorage.getItem('formicarium.minifold') === '1'; } catch { /* no storage */ }
+  const fold = el('button.minifold', { type: 'button' }) as HTMLButtonElement;
+  const zIn = el('button', { type: 'button', title: 'Zoom in' }, '+') as HTMLButtonElement;
+  const zOut = el('button', { type: 'button', title: 'Zoom out' }, '\u2212') as HTMLButtonElement;
+  const miniBox = el('div.minibox', {}, el('div.minibar', {}, zOut, zIn, fold), mini);
+  const showFold = () => { mini.hidden = folded; fold.textContent = folded ? 'Map' : '\u00d7'; fold.title = folded ? 'Show the minimap' : 'Hide the minimap'; };
+  showFold();
+  fold.addEventListener('click', () => { folded = !folded; showFold(); try { localStorage.setItem('formicarium.minifold', folded ? '1' : '0'); } catch { /* no storage */ } });
+  const root = el('div.camera', {}, el('div.camview', {}, view, miniBox));
   let x = 0, y = 0; // top-left of the view, in tiles
+  let miniAt = 0;    // when the minimap was last painted
+  /** Step the zoom, keeping the tile at (fx, fy) (fractions of the view) where it is on screen. */
+  const zoomTo = (n: number, fx = 0.5, fy = 0.5) => {
+    n = Math.max(0, Math.min(zooms.length - 1, n));
+    if (n === zi) return;
+    const ax = x + fx * vw, ay = y + fy * vh;
+    zi = n; [vw, vh] = zooms[zi];
+    view.width = vw * T; view.height = vh * T; view.style.aspectRatio = `${vw} / ${vh}`;
+    x = ax - fx * vw; y = ay - fy * vh; clamp();
+    zIn.disabled = zi === zooms.length - 1; zOut.disabled = zi === 0;
+    miniAt = 0;
+    try { localStorage.setItem('formicarium.mapzoom', String(zi)); } catch { /* no storage */ }
+  };
+  zIn.disabled = zi === zooms.length - 1; zOut.disabled = zi === 0;
+  zIn.addEventListener('click', () => zoomTo(zi + 1));
+  zOut.addEventListener('click', () => zoomTo(zi - 1));
+  let wheelAt = 0;
+  view.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const now = performance.now();
+    if (now - wheelAt < 180 || Math.abs(e.deltaY) < 1) return; // one step per flick, not per wheel tick
+    wheelAt = now;
+    const r = view.getBoundingClientRect();
+    zoomTo(zi + (e.deltaY < 0 ? 1 : -1), (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+  }, { passive: false });
   const clamp = () => { x = Math.max(0, Math.min(cols - vw, x)); y = Math.max(0, Math.min(rows - vh, y)); };
   const cam: Camera = {
     root, source, paintMini: () => {}, hover: null,
@@ -75,7 +115,10 @@ export function makeCamera(opts: { cols: number; rows: number; view: [number, nu
   // ---- keys: hold to glide ----
   const held = new Set<string>();
   const KEYS: Record<string, [number, number]> = { arrowleft: [-1, 0], a: [-1, 0], arrowright: [1, 0], d: [1, 0], arrowup: [0, -1], w: [0, -1], arrowdown: [0, 1], s: [0, 1] };
-  view.addEventListener('keydown', (e) => { const k = e.key.toLowerCase(); if (KEYS[k] && !e.ctrlKey && !e.metaKey && !e.altKey) { held.add(k); e.preventDefault(); } });
+  view.addEventListener('keydown', (e) => {
+    if (e.key === '+' || e.key === '=') { zoomTo(zi + 1); e.preventDefault(); return; }
+    if (e.key === '-' || e.key === '_') { zoomTo(zi - 1); e.preventDefault(); return; }
+    const k = e.key.toLowerCase(); if (KEYS[k] && !e.ctrlKey && !e.metaKey && !e.altKey) { held.add(k); e.preventDefault(); } });
   view.addEventListener('keyup', (e) => { held.delete(e.key.toLowerCase()); });
   view.addEventListener('blur', () => held.clear());
 
@@ -92,7 +135,7 @@ export function makeCamera(opts: { cols: number; rows: number; view: [number, nu
 
   // ---- every frame while on screen: glide, then draw the window and the minimap ----
   const vc = view.getContext('2d')!, mc = mini.getContext('2d')!;
-  let last = performance.now(), miniAt = 0;
+  let last = performance.now();
   const frame = (now: number) => {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (view.isConnected && view.offsetParent !== null) {
@@ -107,7 +150,7 @@ export function makeCamera(opts: { cols: number; rows: number; view: [number, nu
         const hx = Math.round(((cam.hover % cols) - x) * T), hy = Math.round((Math.floor(cam.hover / cols) - y) * T);
         rect(vc, hx, hy, T, 1, PAL.bone); rect(vc, hx, hy + T - 1, T, 1, PAL.bone); rect(vc, hx, hy, 1, T, PAL.bone); rect(vc, hx + T - 1, hy, 1, T, PAL.bone);
       }
-      if (now - miniAt > 120 || dx || dy || press?.moved || miniDown) {
+      if (!folded && (now - miniAt > 120 || dx || dy || press?.moved || miniDown)) {
         miniAt = now;
         cam.paintMini(mc);
         // the view's outline
