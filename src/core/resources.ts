@@ -81,14 +81,14 @@ export class Resources {
 
   add(id: string, n: number) {
     const r = this.get(id);
-    const before = r.amount;
     if (n > 0 && r.amount + n > this.cap(id)) this.spills.set(id, (this.spills.get(id) ?? 0) + r.amount + n - Math.max(r.amount, this.cap(id)));
     r.amount = Math.max(0, Math.min(this.cap(id), r.amount + n));
     if (r.amount > 0) r.seen = true;
-    if (!this.lumping && r.amount !== before) {
+    // record what each source tried to add or take, not what fit: a full (or empty) store still shows its real flows
+    if (!this.lumping && n !== 0) {
       if (!this.flow.has(id)) this.flow.set(id, new Map());
       const f = this.flow.get(id)!;
-      f.set(this.source, (f.get(this.source) ?? 0) + r.amount - before);
+      f.set(this.source, (f.get(this.source) ?? 0) + n);
     }
     return r.amount;
   }

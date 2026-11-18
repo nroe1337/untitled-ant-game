@@ -803,7 +803,7 @@ export const war: GameSystem = {
   },
 
   panel: (() => {
-    let spoilsSection: HTMLElement, spoilsText: HTMLElement, spoilsCount: HTMLElement, trophyCount: HTMLElement, openBtn: HTMLButtonElement, trophySection: HTMLElement, trophyList: HTMLElement;
+    let honourCount: HTMLElement, trophyCount: HTMLElement, openBtn: HTMLButtonElement, trophySection: HTMLElement, trophyList: HTMLElement;
     let baitWrap: HTMLElement;
     let fortSection: HTMLElement, campSection: HTMLElement, honourSection: HTMLElement, honourHead: HTMLElement, mileList: HTMLElement, autoWrap: HTMLElement, autoBox: HTMLInputElement;
     let honourUps: ReturnType<typeof upgradeList>;
@@ -841,9 +841,9 @@ export const war: GameSystem = {
         autoBox = el('input', { type: 'checkbox', id: 'war-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { S(ctx).autoProvoke = autoBox.checked; });
         autoWrap = el('label', { for: 'war-auto', style: 'white-space: nowrap', title: 'Lure the rival again the moment it will take the bait.' }, autoBox, ' Auto-provoke');
-        openBtn = el('button', {}, 'Open all') as HTMLButtonElement;
+        openBtn = el('button', {}, 'Open chests') as HTMLButtonElement;
         openBtn.addEventListener('click', () => { if (chestTotal(ctx)) openChests(ctx); });
-        spoilsText = el('p.muted'); spoilsCount = el('span.muted'); trophyCount = el('span.muted');
+        honourCount = el('span.count'); trophyCount = el('span.count');
         trophyList = el('div.ledger.trophies');
         honourHead = el('p.muted');
         mileList = el('div.ledger.miles');
@@ -852,10 +852,9 @@ export const war: GameSystem = {
           el('details.info', {}, el('summary', {}, 'Information'),
           el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and every raid repelled without losses earns war honours and a chest. Raids repelled reach war milestones, each a lasting reward for this colony. Chitin builds fortifications, husk halls, training grounds and majors; honours buy honour upgrades.'),
           el('p.muted', {}, 'How it works: every ant on both sides fights at once, so numbers and strength are what count. Each side bites the first group of the other: raiders take our majors first, then soldiers, then rallied workers; we cut down raiders first, then brutes. Nest defence (guard posts, stone tiles, husk halls) bites from the walls the whole fight. The War cry makes every fighter bite harder for a few seconds. If nobody is left at the entrance, raiders slip in one by one and steal food.')),
-          field.root, status, el('div.row', {}, provokeBtn.root, baitWrap, rallyBtn.root, refillWrap, autoWrap), ledger,
-          spoilsSection = el('details.fold', {}, el('summary', { title: `Every raid repelled without losses leaves a chest. Threat ${WAR.chests.rareFrom}+ leaves rare chests, ${WAR.chests.royalFrom}+ royal ones.` }, 'Spoils ', spoilsCount), spoilsText, el('div.row', {}, openBtn)),
+          field.root, status, el('div.row', {}, provokeBtn.root, baitWrap, rallyBtn.root, openBtn, refillWrap, autoWrap), ledger,
           trophySection = el('details.fold', {}, el('summary', { title: 'The first kill of each kind of foe gives a skull. Skulls work once they hang in a Hall of husks.' }, 'Trophies ', trophyCount), trophyList),
-          honourSection = el('div.section', {}, el('h3', {}, 'War honours'), honourHead, mileList, honourUps.root),
+          honourSection = el('details.fold', {}, el('summary', {}, 'War honours ', honourCount), honourHead, mileList, honourUps.root),
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
           campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Launch campaigns from the Map: select an enemy tile next to your land.'),
             campInfo, campBar.root),
@@ -871,13 +870,11 @@ export const war: GameSystem = {
         autoWrap.hidden = !hasMilestone(ctx, 'drums');
         honourUps.update(ctx);
         const ch = s.chests ?? {}, total = chestTotal(ctx);
-        spoilsSection.hidden = !total && !s.won;
-        spoilsText.textContent = total
-          ? (Object.entries(ch) as [ChestKind, number][]).filter(([, n]) => n).map(([k, n]) => `${n} ${WAR.chests.kinds[k].name.toLowerCase()}${n > 1 ? 's' : ''}`).join(', ') + '.'
-          : '';
-        spoilsText.hidden = !total;
-        spoilsCount.textContent = total ? `(${total} to open)` : '';
-        openBtn.disabled = !total;
+        openBtn.hidden = !total;
+        if (total) {
+          openBtn.textContent = `Open ${total} chest${total > 1 ? 's' : ''}`;
+          openBtn.dataset.tip = (Object.entries(ch) as [ChestKind, number][]).filter(([, n]) => n).map(([k, n]) => `${n} ${WAR.chests.kinds[k].name.toLowerCase()}${n > 1 ? 's' : ''}`).join(', ') + `.\nEvery raid repelled without losses leaves a chest. Threat ${WAR.chests.rareFrom}+ leaves rare chests, ${WAR.chests.royalFrom}+ royal ones.`;
+        }
         trophySection.hidden = !skullCount(ctx);
         const hall = (ctx.state.nest?.built?.husks ?? 0) > 0;
         const tkey = (s.skulls ?? []).join() + hall;
@@ -892,6 +889,7 @@ export const war: GameSystem = {
         }
         honourSection.hidden = !ctx.flags.has('rival');
         honourHead.textContent = `${bestWave(ctx)} raids repelled, ${honoured(ctx)} honours earned.`;
+        honourCount.textContent = `(${WAR.milestones.filter((m) => hasMilestone(ctx, m.id)).length} of ${WAR.milestones.length})`;
         const next = WAR.milestones.find((m) => !hasMilestone(ctx, m.id));
         const shown = WAR.milestones.filter((m) => hasMilestone(ctx, m.id)).map((m) => ({ m, done: true }));
         if (next) shown.push({ m: next, done: false });

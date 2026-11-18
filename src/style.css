@@ -339,7 +339,7 @@ details.info > summary { cursor: pointer; font-size: 13px; color: var(--muted, i
 details.info[open] > summary { margin-bottom: 6px; }
 details.fold { margin-top: 18px; }
 details.fold > summary { cursor: pointer; user-select: none; font: 400 20px var(--display); }
-details.fold > summary > span { font: 13px var(--body); }
+details.fold > summary > .count { font: 13px var(--body); color: var(--muted); }
 details.fold[open] > summary { margin-bottom: 8px; }
 /* war milestones: name over its reward */
 .ledger.miles > div { flex-direction: column; gap: 0; }
