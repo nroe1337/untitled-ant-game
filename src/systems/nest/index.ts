@@ -734,11 +734,10 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
 
   const shaftX = W / 2;
   const bottom = 30 + rows * ROW_H + 8;
+  maskInto(mask, PAL.hole); // every hollow drawn from here (shaft, tunnels, chambers), as it is this frame, is where mould can sit
   rect(c, shaftX - 3, surface ? 0 : 16, 6, bottom - (surface ? 0 : 16), PAL.hole);
   const qy = bottom + 2 + Math.ceil(qs.h / 2);
-  maskInto(mask, PAL.hole);
   blob(c, shaftX, qy, Math.max(18, Math.ceil(qs.w / 2) + 4), Math.max(6, Math.ceil(qs.h / 2) + 2), PAL.hole); // the queen's cell
-  maskInto(null);
   // the Undercroft: the deep reserve under the nest fills and drains; a daughter queen keeps her own cell
   const deepT = ctx.mods.get('storesTier');
   if (deepT) {
@@ -777,7 +776,6 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       if (propT > 2) rect(c, x + 1, top - 2, 1, 1, '#8a6a3e');
     }
   });
-  maskInto(mask, PAL.hole); // each chamber's hollow, as drawn this frame, is where mould can sit
   placed.forEach((id, i) => {
     const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
     const lane = LANES[i % LANES.length];
@@ -1138,7 +1136,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
     }
     rect(c, x, y, 2, 2, ANT_TINT);
   }
-  drawMould(c, ctx, rooms, t);
+  drawMould(c, ctx, rooms, shaftX, t);
 }
 
 const SPORES = ['#f08cc0', '#7cb4f0', '#8ee07a'];
@@ -1153,8 +1151,8 @@ function mouldMask(W: number, H: number) {
   return m;
 }
 /** Mould as a see-through film over every room, with pink, blue and green spores that thicken as it grows.
- *  It is cut to each chamber's hollow, so it matches the room's shape and size exactly. */
-function drawMould(c: CanvasRenderingContext2D, ctx: Context, rooms: { x: number; y: number; w: number }[], t: number) {
+ *  It is cut to the hollows (shaft, tunnels, chambers), so it matches each room's shape and size exactly. */
+function drawMould(c: CanvasRenderingContext2D, ctx: Context, rooms: { x: number; y: number; w: number }[], shaftX: number, t: number) {
   if (!ctx.res.has('mould') || !maskCv || !layerCv) return;
   const f = Math.min(1, ctx.res.amt('mould') / BROOD.mould.weak);
   if (f < 0.02) return;
@@ -1164,11 +1162,20 @@ function drawMould(c: CanvasRenderingContext2D, ctx: Context, rooms: { x: number
   l.clearRect(0, 0, layerCv.width, layerCv.height);
   l.globalAlpha = 0.12 + 0.2 * f;
   rect(l, 0, 0, layerCv.width, layerCv.height, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3)));
+  // each chamber's tint reaches along its tunnel: to the shaft for the nearest lane, else halfway to the next chamber
+  const box = (r: { x: number; y: number }, last: boolean) => {
+    if (last) return [r.x - 60, r.y - 14, 120, 40]; // the queen's cell
+    const d = Math.abs(r.x - shaftX), l = LANE_X.indexOf(d), s = Math.sign(r.x - shaftX);
+    const inner = l <= 1 ? 3 : (LANE_X[l - 1] + d) / 2, outer = l >= LANE_X.length - 1 ? d + 30 : (d + LANE_X[l + 1]) / 2;
+    const a = shaftX + s * inner, b = shaftX + s * outer;
+    return [Math.min(a, b), r.y - 11, Math.abs(b - a), ROW_H];
+  };
   rooms.forEach((r, i) => {
+    const [bx, by, bw, bh] = box(r, i === rooms.length - 1);
     l.globalAlpha = 1;
-    l.clearRect(r.x - 25, r.y - 9, 50, 19);
+    l.clearRect(bx, by, bw, bh);
     l.globalAlpha = 0.12 + 0.2 * f;
-    rect(l, r.x - 25, r.y - 9, 50, 19, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3 + i)));
+    rect(l, bx, by, bw, bh, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3 + i)));
     const n = Math.ceil(f * 14);
     for (let e = 0; e < n; e++) {
       const h = Math.imul(i * 97 + e * 131 + 7, 2654435761) >>> 0;
