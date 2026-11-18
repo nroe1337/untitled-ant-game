@@ -311,7 +311,7 @@ export const MAP = {
   /** Scouting for an outpost: a small party picks one of the best few tiles for an outpost and plants a flag there. */
   survey: { cost: { food: 30, pheromone: 10 }, scouts: 2, time: 20, picks: 3 },
   /** Outpost research (Nov 14). */
-  lookout: { every: 10, sight: 3, costs: { pheromone: 25 } as Record<string, number> }, // each outpost clears one patch of fog within reach + sight every few seconds, paid in pheromone (Nate, Nov 18: pheromone only)
+  lookout: { every: 10, sight: 3, costs: { pheromone: 45 } as Record<string, number> }, // each outpost clears one patch of fog within reach + sight every few seconds, paid in pheromone (Nate, Nov 18: pheromone only)
   camps: 1,                 // Foraging camps: held tiles next to an outpost yield this much more (+100%)
   waystations: 3,           // Waystations: outposts' own yield is multiplied by this
   linked: 0.1,              // Linked trails: every outpost linked to the nest adds this to every linked outpost's yield
