@@ -463,6 +463,8 @@ export const map: GameSystem = {
     ctx.mods.set('sortieLoot', 'captmarks', U.keen.per * skyL(ctx, 'keen'));
     ctx.mods.set('sortieRisk', 'captmarks', U.flock.per * skyL(ctx, 'flock'));
     tickWorld(ctx, dt);
+    // scouts out to claim see the ground around them as they go (Nate, Nov 18)
+    if (s.claiming && s.claiming.cell == null) { const [nx, ny] = MAP.nest, [tx, ty] = xy(s.claiming.i), f = Math.min(1, s.claiming.elapsed / (s.claiming.duration || 1)); reveal(ctx, Math.round(nx + (tx - nx) * f), Math.round(ny + (ty - ny) * f), 1); }
     if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
     if (s.survey && (s.survey.elapsed += dt) >= s.survey.duration) finishSurvey(ctx);
     if (s.flag != null && !flagValid(ctx, s.flag)) s.flag = null; // built on, or lost

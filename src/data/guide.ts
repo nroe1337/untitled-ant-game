@@ -97,7 +97,7 @@ export const GUIDE: GuidePage[] = [
         'On the {Map} tab, drag to look around and scroll to zoom. The minimap in the corner jumps the view. Click a tile next to your land, then claim it.',
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out. Outposts go only on a flag. Plant one yourself on a tile you hold, or use "Scout for an outpost" to have scouts flag a good spot; send again for another.',
         'This age\'s research is a chain: [Resin working] leads to housing, war and the Map research, and each branch opens the next. Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
-        'Each tile you hold gives resources. Build outposts on tiles for more.',
+        'Each tile you hold gives resources. Build outposts on tiles for more. Scouts out claiming clear the fog along their way.',
         'Some tiles are a special kind (clay bed, overhang, reed bed, clover...) with a small extra effect. Select a tile to see it.',
         'Caches and relics lie out in the fog. Claim their tile to take them. Relics last until the next flight, and each colony scatters new ones far from the nest.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
