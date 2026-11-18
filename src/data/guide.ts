@@ -77,8 +77,8 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Set up queues', do: [
         'Learn [Digging plans] for a building queue.',
-        'Learn [Study plans] for a research queue.',
-        'Fill both before you step away from the game.',
+        'After your first nuptial flight, [Study plans] adds a research queue.',
+        'Fill your queues before you step away from the game.',
       ] },
       { head: 'Free food', do: [
         'Once you hold a few |seed|s, learn [Seed lore] and dig [Seed granary]s. They make |food| with no workers.',
