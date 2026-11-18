@@ -460,7 +460,7 @@ export const map: GameSystem = {
         });
         survey = actionButton({
           ctx, label: 'Scout for an outpost', costs: () => MAP.survey.cost,
-          desc: `${MAP.survey.scouts} scouts look for a good place for an outpost and plant a flag there. Send again for another spot.`,
+          desc: `${MAP.survey.scouts} scouts look for a good place for an outpost and plant a flag there. Outposts can only be built on the flag. Send again for another spot.`,
           enabled: (c) => canSurvey(c),
           onBuy: (c) => { S(c).survey = { elapsed: 0, duration: MAP.survey.time, ants: MAP.survey.scouts }; },
         });
@@ -470,7 +470,7 @@ export const map: GameSystem = {
         build = actionButton({
           ctx, label: 'Build an outpost', costs: () => outpostCost(ctx),
           desc: `+${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, tile yields x3`,
-          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && t.o === 'you' && !t.core && !t.outpost && !t.sh; },
+          enabled: (c) => { const i = S(c).selected; const t = i == null ? null : S(c).tiles[i]; return !!t && i === S(c).flag && t.o === 'you' && !t.core && !t.outpost && !t.sh; },
           onBuy: (c) => { const t = S(c).tiles[S(c).selected!]; t.outpost = true; basesChanged(); c.log(`An outpost rises on the ${TERRAIN_NAME[t.t].toLowerCase()}.`, 'info'); },
         });
         const abandon = el('button.ghost', { type: 'button', title: 'Pull the workers back. You lose the outpost and what it gives, and its reach for new claims. The land stays yours.' }, 'Abandon outpost') as HTMLButtonElement;
@@ -676,6 +676,7 @@ if (t.sh) {
             : !inReach(ctx, i) ? `Too far from home. Build an outpost within ${reachOf(ctx)} tiles of here to reach it.` : 'Only tiles next to your territory']);
           if (t.o === 'you' && t.outpost) rows.push([t.dm ? 'Daughter mound' : 'Outpost', `Built. Claims reach ${reachOf(ctx)} tiles from here.`]);
           if (i === s.flag && s.flagWhy) rows.push(["Scouts' pick", s.flagWhy.split('\n')[1]]);
+          else if (t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh) rows.push(['Outpost', 'Only on a tile your scouts flag. Use Scout for an outpost.']);
 if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by 2 weavers. Claims reach ${reachOf(ctx)} tiles from here.`]);
           if (tilePost(ctx, 'nest', i) === 'there') rows.push(['Leaf nest', 'Held by 3 weavers. Living space that adds no mould.']);
           if (campAt(ctx) === i) rows.push(['Camp', `The Bivouac's camp. Campaigns reach ${campReach(ctx)} tiles from here.`]);
@@ -684,7 +685,8 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
         }
         info.replaceChildren(...rows.map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
         claimWrap.hidden = !(t.seen && (t.o === null || t.o === 'humans') && openGround(ctx, t));
-        buildWrap.hidden = !(t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
+        // outposts go only where the scouts have planted their flag
+        buildWrap.hidden = !(i === s.flag && t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
         campWrap.hidden = !(t.o === 'you' && campReach(ctx) > 0 && (canPitch(ctx, i) || campWait(ctx) > 0) && campAt(ctx) !== i);
         if (!campWrap.hidden) campBtn.update(ctx);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
