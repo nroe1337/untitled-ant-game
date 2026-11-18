@@ -105,6 +105,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
         'Put workers on Soldier and dig Guard posts: once the {War} tab opens, the rival raids every so often.',
         'Raids give |chitin| and war honours. Campaigns take enemy tiles, and three strongholds wait far out on the {Map}.',
+        'After 3 raids repelled, [Mud bricks] appears: Brickmakers press |soil| into dirt bricks, which replace twigs in Guard posts, Worker halls, armories and Boat sheds.',
       ], tip: 'A War page opens in this Guide (the tabs above). It covers raids, campaigns, the rival queen and the strongholds.' },
       { head: 'Chase rumours', do: [
         'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',
@@ -114,7 +115,6 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Let the nest run itself', do: [
         'After [Grooming] and 300 workers born, [Night shift] appears: the queen lays on her own while food is over half full.',
-        'After [Grooming], with 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
       ] },
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',

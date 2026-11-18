@@ -20,6 +20,8 @@ type ChamberDef = {
   mods?: Record<string, number>;
   /** From the `at`-th chamber of this kind on, it also costs these (growing from there at the same rate). */
   later?: { at: number; cost: Costs };
+  /** With Mud bricks, this many bricks replace the chamber's twigs (growing the same way). */
+  brick?: number;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 /** How the chamber buttons are grouped on the Nest tab. Anything not listed goes in the last group. */
@@ -56,6 +58,8 @@ const costOf = (ctx: Context, id: ChamberId): Costs => {
   if (d.later && n + 1 >= d.later.at) {
     for (const [r, v] of Object.entries(d.later.cost)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * Math.pow(g, n + 1 - d.later.at) * cheaper);
   }
+  // Mud bricks: bricks stand in for twigs
+  if (d.brick && out.twig && ctx.flags.has('tech:bricks')) { delete out.twig; out.brick = Math.ceil(d.brick * Math.pow(g, n) * cheaper); }
   // the Undercroft: Wide tunnels take less soil; Root props make the first few of each chamber free of soil
   if (out.soil) out.soil = n < ctx.mods.get('rootProps') ? 0 : Math.ceil(out.soil * (1 + ctx.mods.get('wonderSoil')));
   if (out.soil === 0) delete out.soil;
@@ -240,7 +244,6 @@ function liveDesc(ctx: Context, id: ChamberId) {
     barracks: ['stoneposts', 'defence doubled (Stone posts)'],
     cistern: ['dewwells', `scrubs ${NEST.terrain.dewwells} mould/s (Dew wells)`],
     warmth: ['warmslabs', `+${NEST.terrain.warmslabs} brood space (Warm slabs)`],
-    midden: ['compost', `turns ${BROOD.compost.share * 100}% of scrubbed mould into soil (Midden compost)`],
   };
   const x = extra[id];
   if (x && ctx.flags.has('tech:' + x[0])) d += `, ${x[1]}`;
