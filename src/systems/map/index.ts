@@ -838,6 +838,30 @@ const SH_ART: Record<Stronghold, { rows: string[]; pal: Record<string, string> }
     'sSSSssss',
     'ssssssss'] },
 };
+/** Our own tiles' art, 8x8 like the strongholds: the home mound with its entrance, and an outpost's small mound under our pennant. */
+const HOME_ART: Record<'nest' | 'outpost', { rows: string[]; pal: Record<string, string> }> = {
+  nest: { pal: { o: '#1c1612', b: '#a8733f', c: '#d9a86a', k: '#0d0a08', r: PAL.you }, rows: [
+    '...oor..',
+    '..obco..',
+    '.obccbo.',
+    '.obkkbor',
+    'obkkkkbo',
+    'obbbbcbo',
+    'rbcbbbbo',
+    'oooooooo'] },
+  outpost: { pal: { o: '#1c1612', b: '#a8733f', c: '#d9a86a', k: '#0d0a08', r: PAL.you, t: PAL.bone }, rows: [
+    '....rrt.',
+    '.....rt.',
+    '......t.',
+    '..ooo.t.',
+    '.obcbot.',
+    'obkkcbo.',
+    'obbbbbbo',
+    'oooooooo'] },
+};
+function drawArt(c: CanvasRenderingContext2D, a: { rows: string[]; pal: Record<string, string> }, X: number, Y: number) {
+  a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
+}
 function drawStronghold(c: CanvasRenderingContext2D, kind: Stronghold, X: number, Y: number) {
   const a = SH_ART[kind];
   a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
@@ -868,7 +892,9 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
       if (n(0, 1) !== tile.o) rect(c, X, Y + T - 1, T, 1, col);
       if (n(-1, 0) !== tile.o) rect(c, X, Y, 1, T, col);
       if (n(1, 0) !== tile.o) rect(c, X + T - 1, Y, 1, T, col);
-      if (tile.core) rect(c, X + 2, Y + 2, 4, 4, col);
+      if (tile.o === 'you' && tile.core) drawArt(c, HOME_ART.nest, X, Y);
+      else if (tile.o === 'you' && tile.outpost) drawArt(c, HOME_ART.outpost, X, Y);
+      else if (tile.core) rect(c, X + 2, Y + 2, 4, 4, col);
       else if (tile.outpost) rect(c, X + 3, Y + 3, 2, 2, col);
       if (tile.o === 'you' && tile.outpost) {
         const [fire, watch] = stones;
