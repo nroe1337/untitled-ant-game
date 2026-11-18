@@ -87,7 +87,8 @@ const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx
 export const capOf = (ctx: Context, id: ChamberId) => {
   const i = Math.max(0, RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id));
   const cap = NEST.ageCap[Math.min(i, NEST.ageCap.length - 1)];
-  return Math.min(DEFS[id].max ?? Infinity, NEST.halfCap.includes(id) ? Math.round(cap / 2) : cap);
+  const c = Math.min(DEFS[id].max ?? Infinity, NEST.halfCap.includes(id) ? Math.round(cap / 2) : cap);
+  return reworkLevel(ctx, id) >= 2 ? Math.max(c, NEST.reworkCap) : c;
 };
 const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && count(ctx, id) < capOf(ctx, id);
 

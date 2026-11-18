@@ -186,7 +186,9 @@ export const NEST = {
   baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20, brick: 40 } as Record<string, number>,
   /** Most chambers of one type the colony may dig, by age (index into RESEARCH.ages). Generous, so it only stops
    *  endless stacking (Nate, Nov 18). A chamber's own `max` still applies when lower. */
-  ageCap: [8, 15, 20, 25, 30, 35, 40, 45],
+  ageCap: [8, 15, 20, 24, 28, 32, 36, 40],
+  /** A chamber whose rework reaches level II may have at least this many, so level III (15 needed) is in reach (Nate, Nov 18). */
+  reworkCap: 15,
   /** Strong chambers get only this share of the age cap (rounded). Chambers with a rework stay at the full cap, since
    *  rework level III needs 15 of a type. */
   halfCap: ['hall', 'gallery', 'vent', 'memory', 'chartroom', 'training', 'armory', 'stable', 'boatshed', 'den', 'nursery'] as string[],
@@ -195,16 +197,16 @@ export const NEST = {
     brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 16, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, max: 10, needs: 'tech:storage' },
     storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, matCap: { brick: 5 }, max: 10, needs: 'tech:storage' },
-    silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
+    silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, max: 10, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: '+0.05 food/s',       foodRate: 0.05, later: { at: 8, cost: { resin: 4 } }, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, later: { at: 8, cost: { pheromone: 20 } }, needs: 'tech:resin' },
-    gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 }, growth: 1.3,       desc: '+15 pheromone storage, scouts +5% speed',  pheroCap: 15, scout: 0.05, later: { at: 8, cost: { seed: 4 } }, needs: 'tech:scouting' },
+    gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 }, growth: 1.3,       desc: '+15 pheromone storage, scouts +5% speed',  pheroCap: 15, scout: 0.05, later: { at: 8, cost: { seed: 4 } }, max: 20, needs: 'tech:scouting' },
     barracks: { name: 'Guard post',      base: { soil: 60, twig: 20 }, brick: 8, growth: 1.3,           desc: '+2 nest defence, +3 living space',        defence: 2, antCap: 3, later: { at: 8, cost: { chitin: 4 } }, needs: 'tech:martial' },
     husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 }, growth: 1.3,          desc: '+6 living space, +2 nest defence', antCap: 6, defence: 2, later: { at: 8, cost: { clay: 6 } }, needs: 'tech:husks' },
-    library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 }, growth: 1.32,           desc: '+40 knowledge storage', knowCap: 40, needs: 'tech:elders' },
+    library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 }, growth: 1.32,           desc: '+40 knowledge storage', knowCap: 40, max: 25, needs: 'tech:elders' },
     fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 }, growth: 1.3,           desc: '+1 fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
     harbour:  { name: 'Harbour',         base: { soil: 80, twig: 20, resin: 6 }, growth: 1.6,  desc: '+1 boat at a time (max 3)', boats: 1, max: 3, needs: 'tech:rafts' },
-    waxworks: { name: 'Wax store',       base: { soil: 40, wax: 5 }, growth: 1.3,             desc: '+40 wax storage',                         waxCap: 40, needs: 'tech:husbandry' },
+    waxworks: { name: 'Wax store',       base: { soil: 40, wax: 5 }, growth: 1.3,             desc: '+80 wax storage',                         waxCap: 80, max: 10, needs: 'tech:husbandry' },
     hall:     { name: 'Worker hall',     base: { soil: 120, twig: 30 }, brick: 12, growth: 1.3,           desc: '+12 living space',  antCap: 12, later: { at: 8, cost: { pheromone: 25 } }, needs: 'tech:halls' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
@@ -222,11 +224,11 @@ export const NEST = {
     chartroom: { name: 'Chart room',       base: { soil: 60, pheromone: 15 }, growth: 1.32,     desc: 'Expeditions +3% loot, party cap +2', mods: { expLoot: 0.03 }, max: 15, later: { at: 7, cost: { knowledge: 40 } }, needs: 'tech:cartography' },
     training:  { name: 'Training ground',  base: { soil: 80, chitin: 4 }, growth: 1.32,         desc: 'Soldiers +3% strength', mods: { soldierPower: 0.03 }, max: 20, later: { at: 8, cost: { chitin: 5 } }, needs: 'tech:martial' },
     armory:    { name: 'Chitin armory',    base: { soil: 70, chitin: 8, twig: 15 }, brick: 6, growth: 1.32, desc: '+1 nest defence, soldiers +2% strength', defence: 1, mods: { soldierPower: 0.02 }, needs: 'tech:fortify' },
-    sporecellar:{ name: 'Spore cellar',    base: { soil: 50, fungus: 15 }, growth: 1.3,         desc: '+30 fungus storage, brood grows 2% faster', fungusCap: 30, mods: { brood: 0.02 }, needs: 'tech:fungus' },
+    sporecellar:{ name: 'Spore cellar',    base: { soil: 50, fungus: 15 }, growth: 1.3,         desc: '+30 fungus storage, brood grows 2% faster', fungusCap: 30, mods: { brood: 0.02 }, max: 15, needs: 'tech:fungus' },
     stable:    { name: 'Aphid stable',     base: { soil: 60, food: 40 }, growth: 1.32,          desc: 'Herds +3% yield', mods: { herdYield: 0.03 }, max: 20, needs: 'tech:husbandry' },
     boatshed:  { name: 'Boat shed',        base: { soil: 70, twig: 20 }, brick: 8, growth: 1.35,          desc: 'Voyages +4% speed', mods: { voyageSpeed: 0.04 }, max: 10, needs: 'tech:rafts' },
     den:       { name: "Champion's den",   base: { soil: 60, chitin: 5 }, growth: 1.35,         desc: 'Champion +4% attack', mods: { champAtk: 0.04 }, max: 15, needs: 'tech:hunting' },
-    pantry:    { name: 'Crumb pantry',     base: { soil: 80, crumbs: 10 }, growth: 1.3,         desc: '+80 food storage', foodCap: 80, later: { at: 8, cost: { clay: 8 } }, needs: 'tech:townlore' },
+    pantry:    { name: 'Crumb pantry',     base: { soil: 80, crumbs: 10 }, growth: 1.3,         desc: '+200 food storage', foodCap: 200, max: 10, later: { at: 8, cost: { clay: 8 } }, needs: 'tech:townlore' },
     paperhall: { name: 'Paper hall',       base: { soil: 150, paper: 10 }, growth: 1.32,        desc: '+10 living space', antCap: 10, later: { at: 6, cost: { clay: 10 } }, needs: 'tech:papercraft' },
     clayhall:  { name: 'Clay hall',        base: { soil: 200, clay: 8 }, growth: 1.32,          desc: '+16 living space. Clay walls hold a big chamber up', antCap: 16, needs: 'tech:deepdig' },
   },
