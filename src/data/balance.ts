@@ -185,7 +185,7 @@ export const NEST = {
   baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20 } as Record<string, number>,
   /** Most chambers of one type the colony may dig, by age (index into RESEARCH.ages). Generous, so it only stops
    *  endless stacking (Nate, Nov 18). A chamber's own `max` still applies when lower. */
-  ageCap: [12, 25, 40, 60, 80, 100, 120, 140],
+  ageCap: [8, 15, 20, 25, 30, 35, 40, 45],
   chambers: {
     tunnel:   { name: 'Resting chamber', base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3, later: { at: 13, cost: { knowledge: 15 } } },
     brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 16, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
