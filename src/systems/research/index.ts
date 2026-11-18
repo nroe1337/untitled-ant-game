@@ -14,9 +14,10 @@ const available = (ctx: Context, id: string) => {
   const t = TECHS[id];
   return !done(ctx, id) && t.needs.every((n) => done(ctx, n)) && (!t.flag || ctx.flags.has(t.flag)) && revealed(ctx, id) && gateOpen(ctx, t.age);
 };
-/** Each early age converges on one gate research (RESEARCH.gates). Nothing of the next age shows until it is learned. */
+/** Each early age converges on one gate research (RESEARCH.gates). Nothing of the next age shows until it is learned
+ *  (Upward tunnels: until the diggers actually reach the surface at 25 chambers). */
 const gateBefore = (age?: string) => { const i = RESEARCH.ages.findIndex((a) => a.id === age); return i > 0 ? RESEARCH.gates[RESEARCH.ages[i - 1].id] : undefined; };
-const gateOpen = (ctx: Context, age?: string) => { const g = gateBefore(age); return !g || done(ctx, g); };
+const gateOpen = (ctx: Context, age?: string) => { const g = gateBefore(age); return !g || (done(ctx, g) && (g !== 'surface' || ctx.flags.has('surface'))); };
 /** Hidden milestones: some research stays out of sight until the colony has done something. */
 const MS = RESEARCH.milestones;
 const revealed = (ctx: Context, id: string) => !MS[id] || ctx.flags.has('idea:' + id);
