@@ -526,6 +526,26 @@ const validTarget = (ctx: Context, i: number | null) => {
   return !!t && t.seen && (t.o === 'rival' || t.o === 'spider' || !!strongholdAt(ctx, i)) && (adjacentToYou(ctx, i) || nearCamp(ctx, i));
 };
 
+/** Campaigns are launched from the Map (Nate, Nov 18: the decision to attack happens on the Map). */
+export const canCampaign = (ctx: Context, i: number | null) => ctx.flags.has('tech:campaigns') && !S(ctx).campaign && !S(ctx).battle && soldiers(ctx) >= 3 && validTarget(ctx, i);
+/** Is this tile something a campaign could go after (enemy ground or a stronghold), whether or not it can go now? */
+export const isWarTarget = (ctx: Context, i: number) => { const t = tiles(ctx)[i]; return !!t && t.seen && (t.o === 'rival' || t.o === 'spider' || !!strongholdAt(ctx, i)); };
+export function launchCampaign(ctx: Context, target: number) {
+  if (!canCampaign(ctx, target)) return;
+  S(ctx).campaign = { target, army: soldiers(ctx), elapsed: 0, duration: WAR.campaignTime * Math.max(0.2, 1 + ctx.mods.get('campaignTime')) };
+  ctx.log(`${soldiers(ctx)} soldiers march out to take enemy ground.`);
+}
+/** Why a war target can't be attacked now, or its strength against ours when it can. */
+export function campaignNote(ctx: Context, i: number): [string, string] {
+  const s = S(ctx);
+  if (!ctx.flags.has('tech:campaigns')) return ['Attack', 'Needs the Campaigns research.'];
+  if (!validTarget(ctx, i)) return ['Attack', 'Claim land next to it first.'];
+  if (s.campaign) return ['Attack', 'A campaign is already under way.'];
+  if (s.battle) return ['Attack', 'Not while a raid is at the gate.'];
+  if (soldiers(ctx) < 3) return ['Attack', 'Needs at least 3 soldiers.'];
+  return ['Strength', `theirs about ${Math.round(enemyStrength(ctx, i))}, yours ${fmt(soldiers(ctx) * power(ctx))}`];
+}
+
 /** The share of an army lost on a campaign or assault: a third less with the rival queen's skull. */
 export const lossMult = (ctx: Context) => (skullWorks(ctx, 'queen') ? 2 / 3 : 1);
 function finishCampaign(ctx: Context) {
@@ -788,7 +808,7 @@ export const war: GameSystem = {
     let fortSection: HTMLElement, campSection: HTMLElement, honourSection: HTMLElement, honourHead: HTMLElement, mileList: HTMLElement, autoWrap: HTMLElement, autoBox: HTMLInputElement;
     let honourUps: ReturnType<typeof upgradeList>;
     const field = battleField();
-    let status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, refillBox: HTMLInputElement, campBtn: ActionButton, campInfo: HTMLElement, provokeBtn: ActionButton;
+    let status: HTMLElement, ledger: HTMLElement, rallyBtn: ActionButton, refillBox: HTMLInputElement, campInfo: HTMLElement, provokeBtn: ActionButton;
     let forts: ReturnType<typeof upgradeList>;
     const campBar = progressBar();
     return {
@@ -816,15 +836,6 @@ export const war: GameSystem = {
         refillBox.addEventListener('change', () => { const s = S(ctx); s.replenish = refillBox.checked; if (!s.replenish) s.refill = undefined; });
         const refillWrap = el('label', { for: 'war-refill', style: 'white-space: nowrap', title: 'When soldiers or majors die, idle workers take their place.' }, refillBox, ' Refill from idle');
         campInfo = el('div.ledger');
-        campBtn = actionButton({
-          ctx, label: 'Launch campaign', desc: 'All soldiers march on the tile selected on the Map.',
-          enabled: (c) => !S(c).campaign && !S(c).battle && soldiers(c) >= 3 && validTarget(c, c.state.map?.selected ?? null),
-          onBuy: (c) => {
-            const target = c.state.map.selected as number;
-            S(c).campaign = { target, army: soldiers(c), elapsed: 0, duration: WAR.campaignTime * Math.max(0.2, 1 + c.mods.get('campaignTime')) };
-            c.log(`${soldiers(c)} soldiers march out to take enemy ground.`);
-          },
-        });
         forts = upgradeList(ctx, () => S(ctx).forts, FORTS);
         honourUps = upgradeList(ctx, () => (S(ctx).ups ??= {}), HONOUR_UPS);
         autoBox = el('input', { type: 'checkbox', id: 'war-auto' }) as HTMLInputElement;
@@ -846,8 +857,8 @@ export const war: GameSystem = {
           trophySection = el('details.fold', {}, el('summary', { title: 'The first kill of each kind of foe gives a skull. Skulls work once they hang in a Hall of husks.' }, 'Trophies ', trophyCount), trophyList),
           honourSection = el('div.section', {}, el('h3', {}, 'War honours'), honourHead, mileList, honourUps.root),
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
-          campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Select an enemy tile next to your territory on the Map, then launch.'),
-            campInfo, el('div.row', {}, campBtn.root), campBar.root),
+          campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Launch campaigns from the Map: select an enemy tile next to your land.'),
+            campInfo, campBar.root),
         );
       },
       update(_root, ctx) {
@@ -891,7 +902,7 @@ export const war: GameSystem = {
             el('span', { class: done ? '' : 'muted' }, `${done ? '✓' : '○'} ${m.wave} raids: ${m.name}`),
             el('span', { class: done ? 'muted' : '' }, done ? m.desc : `${m.desc} (${bestWave(ctx)}/${m.wave})`))));
         }
-        provokeBtn.update(ctx); rallyBtn.update(ctx); campBtn.update(ctx); forts.update(ctx);
+        provokeBtn.update(ctx); rallyBtn.update(ctx); forts.update(ctx);
         if (s.battle?.boss) {
           const b = s.battle, sum = (xs: Stack[]) => xs.reduce((t, x) => t + x.n, 0), q = b.them.find((x) => x.kind === 'rqueen');
           status.textContent = `Inside the rival mound: ${sum(b.us)} of ${b.soldiersAtStart} fighters standing, ${b.them.find((x) => x.kind === 'raider')?.n ?? 0} guards left, ` + (q && q.n ? `the queen at ${Math.ceil((q.hp / q.max) * 100)}% health.` : 'the queen is down.');

@@ -16,6 +16,7 @@ import { makeCamera, type Camera } from './camera';
 import { TOWN } from '../../data/town';
 import { campAt, campReach, nearCamp, canPitch, pitchCamp, campWait } from '../wonders';
 import { tilePost, canPost, sendToPost, recallFrom, postOpen } from '../castes';
+import { canCampaign, isWarTarget, launchCampaign, campaignNote } from '../war';
 const TOWN_SITE_IDS = Object.keys(TOWN.sites);
 
 export type Terrain = 'grass' | 'soil' | 'stone' | 'water' | 'paved';
@@ -418,7 +419,7 @@ export const map: GameSystem = {
 
   panel: (() => {
     let autoBox: HTMLInputElement, autoWrap: HTMLElement;
-    let abandonWrap: HTMLElement, lookBox: HTMLElement, lookCheck: HTMLInputElement, postWrap: HTMLElement;
+    let abandonWrap: HTMLElement, flagWrap: HTMLElement, campWarWrap: HTMLElement, campWar: ActionButton, lookBox: HTMLElement, lookCheck: HTMLInputElement, postWrap: HTMLElement;
     const postBtns = {} as Record<'bridge' | 'nest' | 'fort', HTMLButtonElement>;
     let shArt: HTMLCanvasElement;
     let cam: Camera, ccam: Camera, lastLooking = -1;
@@ -487,6 +488,14 @@ export const map: GameSystem = {
           setTimeout(() => { delete abandon.dataset.armed; abandon.textContent = 'Abandon outpost'; }, 3000);
         });
 abandonWrap = el('div.row', {}, abandon);
+        const flagBtn = el('button.ghost', { type: 'button', title: 'Mark this tile for an outpost yourself. It replaces any flag already planted.' }, 'Plant a flag') as HTMLButtonElement;
+        flagBtn.addEventListener('click', () => { const i = S(ctx).selected; if (i == null || !flagValid(ctx, i)) return; S(ctx).flag = i; S(ctx).flagWhy = 'Your flag.\nPlanted here for an outpost.'; });
+        flagWrap = el('div.row', {}, flagBtn);
+        campWar = actionButton({
+          ctx, label: 'Launch campaign', desc: 'All soldiers march on this tile. Win and it is ours.',
+          enabled: (c) => canCampaign(c, S(c).selected), onBuy: (c) => launchCampaign(c, S(c).selected!),
+        });
+        campWarWrap = el('div.row', {}, campWar.root);
         for (const id of ['bridge', 'nest', 'fort'] as const) {
           const b = el('button.action', { type: 'button', title: id === 'bridge'
             ? 'Two weavers link legs and hold a bridge here. Scouts and soldiers can cross it, and claims reach out from it like from an outpost. Let go at any time and the weavers walk home.'
@@ -537,7 +546,7 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           cam.root,
           el('div.mapkeysrow', {}, el('p.controls.mapkeys', {}, 'Drag or use the arrow keys to look around. Click a tile to inspect it, or the small map to jump.'), homeBtn),
-          el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), survey.root, buildWrap),
+          el('div.row.mapact', {}, claimWrap, flagWrap, campWarWrap, hover, el('span.grow'), survey.root, buildWrap),
           summary, claimLine, surveyLine, el('div.row', {}, autoWrap, lookBox),
           el('h3', {}, 'Selected tile'), shArt, info, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
@@ -656,7 +665,7 @@ abandonWrap = el('div.row', {}, abandon);
         claimLine.hidden = !c;
         if (c) { claimText.textContent = `${c.ants} scouts claiming ${c.cell != null ? 'beyond the garden' : xy(c.i).join(',')}. ${Math.ceil((c.duration - c.elapsed) / ctx.speed)}s left.`; bar.set(c.elapsed / c.duration); }
         const i = s.selected;
-        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = postBtns.fort.hidden = true; shArt.hidden = true; campWrap.hidden = true; return; }
+        if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = postBtns.fort.hidden = true; shArt.hidden = true; campWrap.hidden = true; flagWrap.hidden = true; campWarWrap.hidden = true; return; }
         const t = s.tiles[i];
         const y = MAP.yield[t.t] ?? {};
         const rows: [string, string][] = [['Tile', describe(i)]];
@@ -665,9 +674,10 @@ abandonWrap = el('div.row', {}, abandon);
           const boost = outpostMult(ctx, i, null);
 if (t.sh) {
             const K = WAR.strongholds.kinds[t.sh], on = tilePost(ctx, 'fort', i) === 'there';
-            if (t.o !== 'you') { rows.push(['Stronghold', 'Take it with a campaign from the War tab, once your land touches it.']); rows.push(['The catch', K.catch]); rows.push(['Manned by 2 majors', K.rule]); }
+            if (t.o !== 'you') { rows.push(['Stronghold', 'Take it with a campaign, once your land touches it.']); rows.push(['The catch', K.catch]); rows.push(['Manned by 2 majors', K.rule]); }
             else rows.push([on ? 'Manned' : 'Not manned', on ? K.rule : `Empty, so it does nothing. With 2 majors here: ${K.rule}`]);
           }
+          if (isWarTarget(ctx, i)) rows.push(campaignNote(ctx, i));
           rows.push(['Yield if held', Object.keys(y).length ? yl(1) : t.t === 'stone' ? `+${MAP.stoneDefence} nest defence` : 'nothing']);
           if (!t.core && (t.o === null || t.o === 'you' || t.o === 'humans')) rows.push(['Yield with outpost', (Object.keys(y).length ? yl(boost) + ', ' : '') + `+${MAP.outpost.living} living space, +${MAP.outpost.defence} defence`]);
           if (t.o === null || t.o === 'humans') rows.push(['Can claim?', canClaim(ctx, i)
@@ -675,8 +685,8 @@ if (t.sh) {
             : !openGround(ctx, t) ? (t.t === 'water' ? 'Needs Leaf rafts' : t.o === 'humans' ? 'Needs Street fighting' : 'No')
             : !inReach(ctx, i) ? `Too far from home. Build an outpost within ${reachOf(ctx)} tiles of here to reach it.` : 'Only tiles next to your territory']);
           if (t.o === 'you' && t.outpost) rows.push([t.dm ? 'Daughter mound' : 'Outpost', `Built. Claims reach ${reachOf(ctx)} tiles from here.`]);
-          if (i === s.flag && s.flagWhy) rows.push(["Scouts' pick", s.flagWhy.split('\n')[1]]);
-          else if (t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh) rows.push(['Outpost', 'Only on a tile your scouts flag. Use Scout for an outpost.']);
+          if (i === s.flag && s.flagWhy) rows.push([s.flagWhy.startsWith('Scouts') ? "Scouts' pick" : 'Flag', s.flagWhy.split('\n')[1]]);
+          else if (t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh) rows.push(['Outpost', 'Only on a flagged tile. Plant a flag or use Scout for an outpost.']);
 if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by 2 weavers. Claims reach ${reachOf(ctx)} tiles from here.`]);
           if (tilePost(ctx, 'nest', i) === 'there') rows.push(['Leaf nest', 'Held by 3 weavers. Living space that adds no mould.']);
           if (campAt(ctx) === i) rows.push(['Camp', `The Bivouac's camp. Campaigns reach ${campReach(ctx)} tiles from here.`]);
@@ -691,6 +701,8 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
         campWrap.hidden = !(t.o === 'you' && campReach(ctx) > 0 && (canPitch(ctx, i) || campWait(ctx) > 0) && campAt(ctx) !== i);
         if (!campWrap.hidden) campBtn.update(ctx);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
+        campWarWrap.hidden = !(isWarTarget(ctx, i) && ctx.flags.has('tech:campaigns')); campWar.update(ctx);
+        flagWrap.hidden = !(i !== s.flag && flagValid(ctx, i) && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
         plantWrap.hidden = sowKind(ctx, i) == null; plant.update(ctx);
         claim.update(ctx); build.update(ctx);
         for (const id of ['bridge', 'nest', 'fort'] as const) {

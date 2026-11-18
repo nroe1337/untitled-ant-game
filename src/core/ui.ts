@@ -241,6 +241,17 @@ export function pointTip(owner: HTMLElement, text: string | null, x: number, y: 
   t.style.top = `${y + 18 + t.offsetHeight < window.innerHeight ? y + 18 : Math.max(8, y - t.offsetHeight - 12)}px`;
 }
 
+/** A data-tip that starts with this holds a rate breakdown (JSON) and is drawn as a small table: gains beside costs, net below. */
+export const RATES = 'RATES:';
+export interface RateTip { name: string; gains: [string, string][]; costs: [string, string][]; net: string; eta?: string }
+function rateTable(d: RateTip) {
+  const col = (rows: [string, string][], cls: string) => el('div.rtcol', {}, ...rows.map(([k, v]) => el('div.rtrow', {}, el('span', {}, k), el(`span.${cls}` as 'span', {}, v))));
+  return el('div.rt', {},
+    el('div.rth', {}, d.name),
+    el('div.rtcols', {}, ...(d.gains.length ? [col(d.gains, 'pos')] : []), ...(d.costs.length ? [col(d.costs, 'neg')] : [])),
+    el('div.rtrow.rtfoot', {}, el('span', {}, 'Net'), el('span', {}, d.net)),
+    ...(d.eta ? [el('div.rtrow.rtfoot.rteta', {}, el('span', {}, d.eta.split('|')[0]), el('span', {}, d.eta.split('|')[1]))] : []));
+}
 /** Every element with a data-tip (any el(..., { title })) gets the shared info window, open while hovered. */
 let tipText: string | null = null;
 function showText(node: HTMLElement) {
@@ -248,7 +259,9 @@ function showText(node: HTMLElement) {
   focusIds = [];
   if (!tipText) { if (tipOwner === node) { tipOwner = null; tip().hidden = true; } return; }
   tipOwner = node;
-  tip().replaceChildren(...tipText.split('\n').map((line) => el('div', {}, line)));
+  const rates = tipText.startsWith(RATES);
+  tip().classList.toggle('rates', rates);
+  tip().replaceChildren(...(rates ? [rateTable(JSON.parse(tipText.slice(RATES.length)))] : tipText.split('\n').map((line) => el('div', {}, line))));
   placeTip(node);
 }
 if (typeof document !== 'undefined') {

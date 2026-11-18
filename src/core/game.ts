@@ -1,5 +1,6 @@
 import type { Context, GameSystem } from './types';
 import { Resources, fmt, RES_TIPS } from './resources';
+import { RATES, type RateTip } from './ui';
 import { EventBus } from './events';
 import { Mods } from './mods';
 import { el, costFocus } from './ui';
@@ -52,6 +53,19 @@ const SOURCE_LABELS: Record<string, string> = {
   garden: 'Fungus gardens', castes: 'Castes', waters: 'Boats', lineage: 'Swarm Spire', husbandry: 'Herds',
   champion: 'Hunts', town: 'Town', supercolony: 'Continent', migration: 'Migration',
 };
+/** A rate's hover breakdown: gains and costs, biggest first, with sources under 5% of the biggest folded into Other. */
+function rateTip(name: string, sources: [string, number][], rate: number, amount: number, cap: number): RateTip {
+  const sig = (v: number) => (v > 0 ? '+' : '−') + fmt(Math.abs(v));
+  const big = Math.max(...sources.map(([, v]) => Math.abs(v)), 1e-9);
+  const keep = sources.filter(([, v]) => Math.abs(v) >= big * 0.05), small = sources.filter(([, v]) => Math.abs(v) < big * 0.05);
+  const rows = small.length > 1 ? [...keep, ['Other', small.reduce((t, [, v]) => t + v, 0)] as [string, number]] : sources;
+  const side = (pos: boolean) => rows.filter(([k, v]) => k !== 'Other' && (v > 0) === pos && Math.abs(v) > 1e-9).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([k, v]) => [k, sig(v)] as [string, string]);
+  const other = rows.find(([k]) => k === 'Other'), gains = side(true), costs = side(false);
+  if (other && Math.abs(other[1]) > 1e-9) (other[1] > 0 ? gains : costs).push(['Other', sig(other[1])]);
+  const secs = rate > 1e-6 && isFinite(cap) && amount < cap ? (cap - amount) / rate : rate < -1e-6 && amount > 0 ? amount / -rate : 0;
+  const t = secs < 60 ? `${Math.ceil(secs)}s` : secs < 3600 ? `${Math.floor(secs / 60)}m ${Math.floor(secs % 60)}s` : `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+  return { name, gains, costs, net: Math.abs(rate) < 1e-6 ? '0/s' : sig(rate) + '/s', eta: secs > 0 ? `${rate > 0 ? 'Full in' : 'Empty in'}|${t}` : undefined };
+}
 /** Resource group shown under its own Environment heading in the sidebar. */
 const ENV = 'Environment';
 const GROUP_ORDER = ['Colony', 'Nest', 'Research', 'World', 'War', 'Legacy'];
@@ -366,7 +380,7 @@ export class Game {
       row.row.classList.toggle('full', isFinite(cap) && r.amount >= cap);
       row.row.classList.toggle('costfocus', focus.includes(r.id));
       const held = ctx.res.held(r.id);
-      const rtip = r.sources.length && !r.stepped ? r.sources.map(([k, v]) => `${k}: ${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}/s`).join('\n') : '';
+      const rtip = r.sources.length && !r.stepped ? RATES + JSON.stringify(rateTip(r.name, r.sources, r.rate, r.amount, cap)) : '';
       if ((row.rate.dataset.tip ?? '') !== rtip) row.rate.dataset.tip = rtip;
       const tip = [RES_DESC[r.id] ?? '', RES_TIPS[r.id]?.(ctx) ?? '', held > 0 ? `${fmt(Math.min(held, r.amount), r.integer)} held back for ${ctx.res.holders(r.id).join(' and ')}` : ''].filter(Boolean).join('\n');
       if ((row.row.dataset.tip ?? '') !== tip) { row.row.dataset.tip = tip; row.row.classList.toggle('held', held > 0); }
