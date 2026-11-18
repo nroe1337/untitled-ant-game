@@ -324,8 +324,8 @@ export const expeditions: GameSystem = {
       group: 'World',
       mount(root, ctx) {
         const s = S(ctx);
-        partyEl = el('span.count');
-        capEl = el('span.muted', { title: "The soft cap: past it, each worker carries only a third as much. Each Forager's rest raises it." });
+        partyEl = el('span.count', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 3ch; text-align: center' });
+        capEl = el('span.muted', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 6ch', title: "The soft cap: past it, each worker carries only a third as much. Each Forager's rest raises it." });
         destSel = el('select', { id: 'exp-dest' }) as HTMLSelectElement;
         destSel.addEventListener('change', () => { s.dest = destSel.value; if (!isRumour(s.dest)) s.homeDest = s.dest; });
         rumourList = el('div.rumours');
@@ -365,22 +365,22 @@ export const expeditions: GameSystem = {
         markWrap = el('label', { for: 'exp-automark', title: 'Mark the trail before every trip, whenever you have the pheromone for it.' }, markBox, ' Mark every trip');
         reserveBox = el('input', { type: 'checkbox', id: 'exp-reserve' }) as HTMLInputElement;
         reserveBox.addEventListener('change', () => { s.reserve = reserveBox.checked; if (!s.reserve) { s.reserved = 0; s.short = 0; } });
-        reserveWrap = el('label', { for: 'exp-reserve', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced by idle workers, and by new workers as they hatch, before the default job gets any." },
-          reserveBox, ' reserve workers', reserveCount = el('span.muted'));
+        reserveWrap = el('label', { for: 'exp-reserve', style: 'white-space: nowrap', title: "Workers who come back from a trip wait for the next one instead of going idle, so jobs can't take them. Workers lost on the trail are replaced by idle workers, and by new workers as they hatch, before the default job gets any." },
+          reserveBox, ' reserve workers', reserveCount = el('span.muted', { style: 'margin-left: 4px; display: inline-block; font-variant-numeric: tabular-nums; min-width: 11ch' }));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
         hoverTip(destSel, () => { const d = destOf(S(ctx).dest); return d ? [brings(ctx, d), ...(isRumour(d.id) ? ['A rumoured place: only a few trips before it is picked clean.'] : [])] : []; });
         nextTxt = el('span');
         nextBox = el('div.nextplace', { title: 'Trail marks open new, richer places.' }, nextTxt, nextBar.root);
         partyHint = el('p.muted');
-        idleEl = el('strong');
+        idleEl = el('strong', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 3ch' });
         upsHead = el('h3', {}, 'Trail upgrades');
         root.append(
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
           rumourBox,
           nextBox,
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
-          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, bonusEl = el('span.muted', { style: 'margin-left: 8px', title: `Each worker past ${X.minParty} adds ${Math.round(X.lootPerAnt * 100)}% loot.` }), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
+          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, bonusEl = el('span.muted', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 9ch', title: `Each worker past ${X.minParty} adds ${Math.round(X.lootPerAnt * 100)}% loot.` }), el('span', { title: 'Workers with no job, free to go.' }, 'Idle: ', idleEl), reserveWrap),
           mulesRow,
           el('div.row', {}, sendBtn.root, markBtn.root, markWrap, autoWrap),
           el('div.viewerwrap', {}, viewer, captions),
