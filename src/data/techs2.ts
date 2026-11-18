@@ -57,7 +57,6 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['faminelaw', 'Famine law', ['brood'], { knowledge: 20, food: 20 }, {}, {}, { lead: 'When the colony starves, nurses feed eggs and then larvae to the workers before any worker dies.' }],
   ],
   conquest: [
-    ['bricks', 'Mud bricks', ['martial'], { knowledge: 320, soil: 300 }, {}, {}, { lead: 'Unlocks Brickmakers, who press soil into dirt bricks. Guard posts, Worker halls, Chitin armories and Boat sheds are built with bricks instead of twigs.' }],
     // Outposts (Nov 14): they push the colony's reach out across the bigger garden, and these make them worth it.
     ['lookouts', 'Lookouts', ['resin'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with pheromone.' }],
     ['foragingcamps', 'Foraging camps', ['lookouts'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
