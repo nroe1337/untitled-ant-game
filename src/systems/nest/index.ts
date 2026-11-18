@@ -80,7 +80,8 @@ const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx
 /** The most of this chamber the colony may have now: its own max, or the age's cap (NEST.ageCap), whichever is lower. */
 export const capOf = (ctx: Context, id: ChamberId) => {
   const i = Math.max(0, RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id));
-  return Math.min(DEFS[id].max ?? Infinity, NEST.ageCap[Math.min(i, NEST.ageCap.length - 1)]);
+  const cap = NEST.ageCap[Math.min(i, NEST.ageCap.length - 1)];
+  return Math.min(DEFS[id].max ?? Infinity, NEST.halfCap.includes(id) ? Math.round(cap / 2) : cap);
 };
 const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && count(ctx, id) < capOf(ctx, id);
 
