@@ -241,7 +241,7 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Campaigns', do: [
         'Learn [Campaigning]. It appears once you have repelled 2 raids.',
-        'Select an enemy tile next to your land on the {Map}, then launch from the {War} tab. All your soldiers march.',
+        'Select an enemy tile next to your land on the {Map} and press Launch campaign there. All your soldiers march.',
         'Every tile you take makes the rival army smaller.',
       ] },
       { head: 'The rival queen', do: [
