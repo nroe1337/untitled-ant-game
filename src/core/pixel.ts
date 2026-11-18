@@ -30,17 +30,26 @@ export function setup(cv: HTMLCanvasElement) {
   return c;
 }
 
+/** While set, every rect and blob in the colour `only` is also stamped into this mask
+ *  (the nest uses it to learn each chamber's hollow, frame by frame, whatever its size). */
+let sink: CanvasRenderingContext2D | null = null, only = '';
+export function maskInto(m: CanvasRenderingContext2D | null, colour = '') { sink = m; only = colour; if (m) m.fillStyle = '#fff'; }
+const stamp = (color: string) => (sink && color === only ? sink : null);
+
 export function rect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string) {
   c.fillStyle = color;
   c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  stamp(color)?.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 }
 
 /** A pixel-stepped oval made of whole-pixel rows (no anti-aliasing). */
 export function blob(c: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, color: string) {
   c.fillStyle = color;
+  const m = stamp(color);
   cx = Math.round(cx); cy = Math.round(cy);
   for (let dy = -ry; dy <= ry; dy++) {
     const half = Math.round(rx * Math.sqrt(1 - (dy * dy) / ((ry + 0.5) * (ry + 0.5))));
     c.fillRect(cx - half, cy + dy, half * 2 + 1, 1);
+    m?.fillRect(cx - half, cy + dy, half * 2 + 1, 1);
   }
 }
