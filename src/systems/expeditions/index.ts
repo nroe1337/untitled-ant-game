@@ -378,6 +378,7 @@ export const expeditions: GameSystem = {
         root.append(
           el('p.flavor', {}, 'Above the nest the world is enormous. Send parties out and see what they bring home.'),
           rumourBox,
+          nextBox,
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
           el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, bonusEl = el('span.muted', { style: 'margin-left: 8px', title: `Each worker past ${X.minParty} adds ${Math.round(X.lootPerAnt * 100)}% loot.` }), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
           mulesRow,
@@ -385,7 +386,6 @@ export const expeditions: GameSystem = {
           el('div.viewerwrap', {}, viewer, captions),
           statusEl,
           partyHint,
-          nextBox,
           ledger,
           upsHead,
           ups.root,
