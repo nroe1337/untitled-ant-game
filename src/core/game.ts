@@ -64,7 +64,9 @@ function rateTip(name: string, sources: [string, number][], rate: number, amount
   if (other && Math.abs(other[1]) > 1e-9) (other[1] > 0 ? gains : costs).push(['Other', sig(other[1])]);
   const secs = rate > 1e-6 && isFinite(cap) && amount < cap ? (cap - amount) / rate : rate < -1e-6 && amount > 0 ? amount / -rate : 0;
   const t = secs < 60 ? `${Math.ceil(secs)}s` : secs < 3600 ? `${Math.floor(secs / 60)}m ${Math.floor(secs % 60)}s` : `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
-  return { name, gains, costs, net: Math.abs(rate) < 1e-6 ? '0/s' : sig(rate) + '/s', eta: secs > 0 ? `${rate > 0 ? 'Full in' : 'Empty in'}|${t}` : undefined };
+  // net is what the sources add up to, so a full store still shows its surplus and an empty one its shortfall
+  const sum = sources.reduce((t, [, v]) => t + v, 0);
+  return { name, gains, costs, net: Math.abs(sum) < 1e-6 ? '0/s' : sig(sum) + '/s', eta: secs > 0 ? `${rate > 0 ? 'Full in' : 'Empty in'}|${t}` : undefined };
 }
 /** Resource group shown under its own Environment heading in the sidebar. */
 const ENV = 'Environment';
