@@ -6,7 +6,7 @@
 // Costs here are base costs; balance.ts scales them by age like every other tech.
 
 export interface TechDef {
-  name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; pop?: number; desc: string;
+  name: string; age: string; cost: Record<string, number>; needs: string[]; flag?: string; pop?: number; rooms?: number; desc: string;
   /** Shared mods this tech adds while learned (summed with every other source). */
   mods?: Record<string, number>;
   /** Flat storage added while learned. */

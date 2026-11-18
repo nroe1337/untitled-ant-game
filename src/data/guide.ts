@@ -45,7 +45,7 @@ export const GUIDE: GuidePage[] = [
         '[Famine law] appears after a worker first starves. From then on, the nurses give up eggs and larvae before any worker dies.',
       ] },
     ],
-    next: 'Learn [Upward tunnels] and reach 25 chambers. The Age of Forage begins.',
+    next: 'Dig 25 chambers, then learn [Upward tunnels]. The Age of Forage begins.',
   },
   {
     age: 'forage',
