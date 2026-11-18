@@ -445,7 +445,7 @@ export const map: GameSystem = {
         cam = makeCamera({ cols: MAP.cols, rows: MAP.rows, zooms: MAP.zooms, zoom: MAP.zoom, T: 8, label: 'Map of the garden', onPick: (i) => { S(ctx).selected = i; } });
         cam.centre(...MAP.nest);
         cam.paintMini = (c) => { paintMini(c, S(ctx)); const m = marchOf(ctx); if (m != null) { const [x, y] = marchAt(m); c.fillStyle = PAL.rival; c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } };
-        const homeBtn = el('button.ghost', { type: 'button' }, 'Back to the nest');
+        const homeBtn = el('button.ghost', { type: 'button' }, 'Focus on nest');
         homeBtn.addEventListener('click', () => cam.centre(...MAP.nest));
         hover = el('p.muted.mono');
         info = el('div.ledger');
@@ -537,7 +537,7 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           cam.root,
           el('div.mapkeysrow', {}, el('p.controls.mapkeys', {}, 'Drag or use the arrow keys to look around. Click a tile to inspect it, or the small map to jump.'), homeBtn),
-          el('div.row.mapact', {}, claimWrap, survey.root, hover),
+          el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), survey.root),
           summary, claimLine, surveyLine, el('div.row', {}, autoWrap), lookBox,
           el('h3', {}, 'Selected tile'), shArt, info, buildWrap, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
