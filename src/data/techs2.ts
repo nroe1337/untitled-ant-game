@@ -58,7 +58,7 @@ const AGE_ROWS: Record<string, Row[]> = {
   ],
   conquest: [
     // Outposts (Nov 14): they push the colony's reach out across the bigger garden, and these make them worth it.
-    ['lookouts', 'Lookouts', ['resin'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with a resource you choose on the Map.' }],
+    ['lookouts', 'Lookouts', ['resin'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with pheromone.' }],
     ['foragingcamps', 'Foraging camps', ['lookouts'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
     ['terrainworks', 'Terrain works', ['lookouts'], { knowledge: 420, twig: 40 }, {}, {}, { lead: 'Each outpost works its own ground: stone gives resin, grass twigs, bare soil seeds, streams pheromone, patio slabs food.' }],
     ['waystations', 'Waystations', ['terrainworks'], { knowledge: 480, soil: 300 }, {}, {}, { lead: 'Outposts become waystations: an outpost\'s own tile yields three times as much again.' }],
