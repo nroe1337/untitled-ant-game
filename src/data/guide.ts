@@ -32,7 +32,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Dig chambers', do: [
         'On the {Nest} tab, dig [Resting chamber]s for living space.',
         'When living space is full, no new workers hatch. Dig ahead.',
-        'Each chamber type has a cap (the badge shows it). Every new age raises it. Storage chambers stop at 10.',
+        'Each chamber type has a cap (the badge shows it). Every new age raises it. Storage chambers stop at 10. A chamber whose rework reaches level II can go to 15.',
       ] },
       { head: 'Research the basics', do: [
         'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (after 6 chambers).',
@@ -85,6 +85,9 @@ export const GUIDE: GuidePage[] = [
         'Once you hold a few |seed|s, learn [Seed lore] and dig [Seed granary]s. They make |food| with no workers.',
         'Learn [Sanitation] and dig a [Midden]. It lowers how much the colony eats.',
       ] },
+      { head: 'Bricks', do: [
+        'At 20 chambers, [Mud bricks] appears: Brickmakers press |soil| into dirt bricks. Guard posts, Worker halls, armories and Boat sheds are built with bricks, so learn it before war.',
+      ] },
     ],
     next: 'Every road in this age leads to [Mapping], its last research: it needs [Ventilation], [Digging plans] and [Sanitation]. Learn it and the Age of Conquest begins with the {Map} open.',
   },
@@ -107,7 +110,6 @@ export const GUIDE: GuidePage[] = [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
         'Put workers on Soldier and dig Guard posts: once the {War} tab opens, the rival raids every so often.',
         'Raids give |chitin| and war honours. Campaigns take enemy tiles, and three strongholds wait far out on the {Map}.',
-        'After 3 raids repelled, [Mud bricks] appears: Brickmakers press |soil| into dirt bricks, which replace twigs in Guard posts, Worker halls, armories and Boat sheds.',
       ], tip: 'A War page opens in this Guide (the tabs above). It covers raids, campaigns, the rival queen and the strongholds.' },
       { head: 'Chase rumours', do: [
         'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',

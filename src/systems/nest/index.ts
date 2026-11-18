@@ -20,7 +20,7 @@ type ChamberDef = {
   mods?: Record<string, number>;
   /** From the `at`-th chamber of this kind on, it also costs these (growing from there at the same rate). */
   later?: { at: number; cost: Costs };
-  /** With Mud bricks, this many bricks replace the chamber's twigs (growing the same way). */
+  /** Bricks this chamber costs in place of its twigs (growing the same way). */
   brick?: number;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
@@ -60,8 +60,8 @@ const costOf = (ctx: Context, id: ChamberId): Costs => {
   if (d.later && n + 1 >= d.later.at) {
     for (const [r, v] of Object.entries(d.later.cost)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * Math.pow(g, n + 1 - d.later.at) * cheaper);
   }
-  // Mud bricks: bricks stand in for twigs
-  if (d.brick && out.twig && ctx.flags.has('tech:bricks')) { delete out.twig; out.brick = Math.ceil(d.brick * Math.pow(g, n) * cheaper); }
+  // brick chambers are always built with bricks, not twigs
+  if (d.brick && out.twig) { delete out.twig; out.brick = Math.ceil(d.brick * Math.pow(g, n) * cheaper); }
   // the Undercroft: Wide tunnels take less soil; Root props make the first few of each chamber free of soil
   if (out.soil) out.soil = n < ctx.mods.get('rootProps') ? 0 : Math.ceil(out.soil * (1 + ctx.mods.get('wonderSoil')));
   if (out.soil === 0) delete out.soil;
@@ -87,7 +87,8 @@ const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx
 export const capOf = (ctx: Context, id: ChamberId) => {
   const i = Math.max(0, RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id));
   const cap = NEST.ageCap[Math.min(i, NEST.ageCap.length - 1)];
-  return Math.min(DEFS[id].max ?? Infinity, NEST.halfCap.includes(id) ? Math.round(cap / 2) : cap);
+  const c = Math.min(DEFS[id].max ?? Infinity, NEST.halfCap.includes(id) ? Math.round(cap / 2) : cap);
+  return reworkLevel(ctx, id) >= 2 ? Math.max(c, NEST.reworkCap) : c;
 };
 const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && count(ctx, id) < capOf(ctx, id);
 
