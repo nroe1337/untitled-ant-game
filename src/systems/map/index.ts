@@ -418,10 +418,9 @@ export const map: GameSystem = {
 
   panel: (() => {
     let autoBox: HTMLInputElement, autoWrap: HTMLElement;
-    let abandonWrap: HTMLElement, lookBox: HTMLElement, lookText: HTMLElement, postWrap: HTMLElement;
+    let abandonWrap: HTMLElement, lookBox: HTMLElement, lookCheck: HTMLInputElement, postWrap: HTMLElement;
     const postBtns = {} as Record<'bridge' | 'nest' | 'fort', HTMLButtonElement>;
     let shArt: HTMLCanvasElement;
-    const lookBtns = new Map<string, HTMLButtonElement>();
     let cam: Camera, ccam: Camera, lastLooking = -1;
     let campWrap: HTMLElement, campBtn: ActionButton;
     let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement, plant: ActionButton, plantWrap: HTMLElement;
@@ -508,14 +507,9 @@ abandonWrap = el('div.row', {}, abandon);
           enabled: (c) => canPitch(c, S(c).selected), onBuy: (c) => { pitchCamp(c, S(c).selected!); basesChanged(); },
         });
         campWrap = el('div.row', { hidden: true }, campBtn.root);
-        lookText = el('span.muted');
-        lookBox = el('div.row.lookouts', { hidden: true }, el('strong', {}, 'Lookouts burn'),
-          ...[null, ...Object.keys(MAP.lookout.costs)].map((r) => {
-            const b = el('button.ghost', { type: 'button' }, r ? `${MAP.lookout.costs[r]} ${r}` : 'Nothing') as HTMLButtonElement;
-            b.addEventListener('click', () => { S(ctx).lookout = r; });
-            lookBtns.set(String(r), b);
-            return b;
-          }), lookText);
+        lookCheck = el('input', { type: 'checkbox', id: 'map-look' }) as HTMLInputElement;
+        lookCheck.addEventListener('change', () => { S(ctx).lookout = lookCheck.checked ? 'pheromone' : null; });
+        lookBox = el('label', { for: 'map-look', style: 'white-space: nowrap', hidden: true }, lookCheck, ' Lookouts');
         buildWrap = el('div.row', {}, build.root);
         // Seed bank (a chamber rework): sow a held bare-soil tile and it turns to grass
         const kind = () => sowKind(ctx, S(ctx).selected) ?? 'grass';
@@ -544,7 +538,7 @@ abandonWrap = el('div.row', {}, abandon);
           cam.root,
           el('div.mapkeysrow', {}, el('p.controls.mapkeys', {}, 'Drag or use the arrow keys to look around. Click a tile to inspect it, or the small map to jump.'), homeBtn),
           el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), survey.root, buildWrap),
-          summary, claimLine, surveyLine, el('div.row', {}, autoWrap), lookBox,
+          summary, claimLine, surveyLine, el('div.row', {}, autoWrap, lookBox),
           el('h3', {}, 'Selected tile'), shArt, info, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
         );
@@ -625,8 +619,8 @@ abandonWrap = el('div.row', {}, abandon);
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
-          for (const [r, b] of lookBtns) b.classList.toggle('on', String(s.lookout ?? null) === r);
-          lookText.textContent = s.lookout ? ` Each outpost clears a patch of fog every ${MAP.lookout.every}s, up to ${reachOf(ctx) + MAP.lookout.sight + ctx.mods.get('lookoutSight')} tiles out.` : ' Lookouts are idle.';
+          lookCheck.checked = !!s.lookout;
+          lookBox.dataset.tip = `Each outpost clears one fog tile every ${MAP.lookout.every}s, up to ${reachOf(ctx) + MAP.lookout.sight + ctx.mods.get('lookoutSight')} tiles out. Each tile costs ${MAP.lookout.costs.pheromone} pheromone.`;
         }
         autoBox.checked = !!s.auto;
         const describe = (i: number | null) => {
