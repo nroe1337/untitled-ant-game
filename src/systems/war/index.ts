@@ -841,8 +841,8 @@ export const war: GameSystem = {
           el('p.muted', {}, 'Why fight: every raider killed leaves chitin, and every raid repelled without losses earns war honours and a chest. Raids repelled reach war milestones, each a lasting reward for this colony. Chitin builds fortifications, husk halls, training grounds and majors; honours buy honour upgrades.'),
           el('p.muted', {}, 'How it works: every ant on both sides fights at once, so numbers and strength are what count. Each side bites the first group of the other: raiders take our majors first, then soldiers, then rallied workers; we cut down raiders first, then brutes. Nest defence (guard posts, stone tiles, husk halls) bites from the walls the whole fight. The War cry makes every fighter bite harder for a few seconds. If nobody is left at the entrance, raiders slip in one by one and steal food.')),
           field.root, status, el('div.row', {}, provokeBtn.root, baitWrap, rallyBtn.root, refillWrap, autoWrap), ledger,
-          spoilsSection = el('div.section', {}, el('h3', {}, 'Spoils'), spoilsText, el('div.row', {}, openBtn)),
-          trophySection = el('div.section', {}, el('h3', {}, 'Trophies'), el('p.muted', {}, 'The first kill of each kind of foe gives a skull. Skulls work once they hang in a Hall of husks.'), trophyList),
+          spoilsSection = el('div.section', {}, el('h3', { title: `Every raid repelled without losses leaves a chest. Threat ${WAR.chests.rareFrom}+ leaves rare chests, ${WAR.chests.royalFrom}+ royal ones.` }, 'Spoils'), spoilsText, el('div.row', {}, openBtn)),
+          trophySection = el('div.section', {}, el('h3', { title: 'The first kill of each kind of foe gives a skull. Skulls work once they hang in a Hall of husks.' }, 'Trophies'), trophyList),
           honourSection = el('div.section', {}, el('h3', {}, 'War honours'), honourHead, mileList, honourUps.root),
           fortSection = el('div.section', {}, el('h3', {}, 'Fortifications'), forts.root),
           campSection = el('div.section', {}, el('h3', {}, 'Campaign'), el('p.muted', {}, 'Select an enemy tile next to your territory on the Map, then launch.'),
@@ -862,7 +862,7 @@ export const war: GameSystem = {
         spoilsSection.hidden = !total && !s.won;
         spoilsText.textContent = total
           ? 'Waiting to be opened: ' + (Object.entries(ch) as [ChestKind, number][]).filter(([, n]) => n).map(([k, n]) => `${n} ${WAR.chests.kinds[k].name.toLowerCase()}${n > 1 ? 's' : ''}`).join(', ') + '.'
-          : `Every raid repelled without losses leaves a chest. Raids of threat ${WAR.chests.rareFrom} or more leave rare chests, ${WAR.chests.royalFrom} or more royal ones.`;
+          : 'No chests waiting.';
         openBtn.disabled = !total;
         trophySection.hidden = !skullCount(ctx);
         const hall = (ctx.state.nest?.built?.husks ?? 0) > 0;
@@ -872,12 +872,12 @@ export const war: GameSystem = {
           const got = WAR.trophies.filter((t) => hasSkull(ctx, t.id));
           const left = WAR.trophies.length - got.length;
           trophyList.replaceChildren(
-            ...got.map((t) => el('div', {}, el('span', {}, (hall ? '☠ ' : '○ ') + t.name), el('span', { class: hall ? '' : 'muted' }, t.desc + (hall ? '' : ' (needs a Hall of husks)')))),
+            ...got.map((t) => el('div', {}, el('span', {}, (hall ? '☠ ' : '○ ') + t.name), el('span', { class: hall ? '' : 'muted' }, t.desc + (hall ? '' : ' (needs Hall of husks)')))),
             ...(left ? [el('div', {}, el('span.muted', {}, `${left} more to find`), el('span', {}, ''))] : []),
           );
         }
         honourSection.hidden = !ctx.flags.has('rival');
-        honourHead.textContent = `Raids repelled: ${bestWave(ctx)}. Honours earned: ${honoured(ctx)}. Each milestone is a lasting reward for this colony.`;
+        honourHead.textContent = `${bestWave(ctx)} raids repelled, ${honoured(ctx)} honours earned.`;
         const next = WAR.milestones.find((m) => !hasMilestone(ctx, m.id));
         const shown = WAR.milestones.filter((m) => hasMilestone(ctx, m.id)).map((m) => ({ m, done: true }));
         if (next) shown.push({ m: next, done: false });
@@ -886,7 +886,7 @@ export const war: GameSystem = {
           mileList.dataset.key = key;
           mileList.replaceChildren(...shown.map(({ m, done }) => el('div', { class: done ? '' : 'next' },
             el('span', { class: done ? '' : 'muted' }, `${done ? '✓' : '○'} ${m.wave} raids: ${m.name}`),
-            el('span', { class: done ? 'muted' : '' }, done ? m.desc : `${m.desc} (${bestWave(ctx)} of ${m.wave} raids)`))));
+            el('span', { class: done ? 'muted' : '' }, done ? m.desc : `${m.desc} (${bestWave(ctx)}/${m.wave})`))));
         }
         provokeBtn.update(ctx); rallyBtn.update(ctx); campBtn.update(ctx); forts.update(ctx);
         if (s.battle?.boss) {
@@ -901,15 +901,15 @@ export const war: GameSystem = {
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
           (s.lastReport ? 'Last raid: ' + s.lastReport : '');
         const hold = soldiers(ctx) * B.soldier.atk * power(ctx) + defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
-        ledger.replaceChildren(...[
-          ['Rival army', `about ${Math.round(s.rivalArmy)}`],
-          ['Threat', `${threatWord(threat(ctx))} (${fmt(threat(ctx))}). A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '')],
-          ['Your soldiers', `${soldiers(ctx)} (assign them on the Jobs tab)`],
-          ['Nest defence', `${defence(ctx)} (guard posts, stone tiles, husk halls)`],
-          ...(wallMax(ctx) ? [['Husk barricade', `${Math.floor(s.battle && !s.battle.boss ? (s.battle.us.find((x) => x.kind === 'wall')?.n ? s.battle.us.find((x) => x.kind === 'wall')!.hp : 0) : wallHp(ctx))} of ${wallMax(ctx)}`]] : []),
-          ['Damage per second at the gate', fmt(hold)],
-          ['Raids fought', `${s.raids}, ${s.won} without losses`],
-        ].map(([k, v]) => el('div', {}, el('span.muted', {}, k), el('span', {}, v))));
+        const raidNow = `A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '') + '.';
+        const wall = wallMax(ctx) ? `, barricade ${Math.floor(s.battle && !s.battle.boss ? (s.battle.us.find((x) => x.kind === 'wall')?.n ? s.battle.us.find((x) => x.kind === 'wall')!.hp : 0) : wallHp(ctx))}/${wallMax(ctx)}` : '';
+        ledger.replaceChildren(...([
+          ['Rival army', `about ${Math.round(s.rivalArmy)}`, ''],
+          ['Threat', `${threatWord(threat(ctx))} (${fmt(threat(ctx))})`, raidNow],
+          ['Soldiers', `${soldiers(ctx)}, ${fmt(hold)} damage/s at the gate`, 'Assign soldiers on the Jobs tab.'],
+          ['Nest defence', `${defence(ctx)}${wall}`, 'From guard posts, stone tiles and husk halls.'],
+          ['Raids fought', `${s.raids} (${s.won} without losses)`, ''],
+        ] as [string, string, string][]).map(([k, v, tip]) => el('div', {}, el('span.muted', {}, k), el('span', tip ? { title: tip } : {}, v))));
         const sel = ctx.state.map?.selected ?? null;
         const rows: [string, string][] = [];
         if (s.campaign) {
