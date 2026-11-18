@@ -260,6 +260,17 @@ input[type=checkbox] { accent-color: var(--accent); }
 .tip { position: fixed; z-index: 50; max-width: 280px; padding: 8px 12px; background: #24201c; border: 1px solid var(--line); border-radius: 4px;
   box-shadow: 0 4px 14px rgba(0,0,0,.5); font-size: 14px; text-align: center; pointer-events: none; }
 .tip > div + div { border-top: 1px solid var(--line); margin-top: 5px; padding-top: 5px; }
+.tip.rates { max-width: 440px; text-align: left; }
+.rt .rth { text-align: center; color: var(--muted); margin-bottom: 4px; }
+.rt .rtcols { display: flex; gap: 0; }
+.rt .rtcol { padding: 0 10px; }
+.rt .rtcol:first-child { padding-left: 0; }
+.rt .rtcol + .rtcol { border-left: 1px solid var(--line); padding-right: 0; }
+.rt .rtrow { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; line-height: 1.5; }
+.rt .pos { color: var(--good); font-variant-numeric: tabular-nums; }
+.rt .neg { color: #d9634a; font-variant-numeric: tabular-nums; }
+.rt .rtfoot { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.rt .rteta { border-top: 0; margin-top: 0; padding-top: 0; color: var(--muted); }
 .tip .tcost .short { color: #d98a5f; }
 .tip .tcost .over { color: #e0533a; font-weight: 600; }
 .tip .teffect { color: var(--good); }
