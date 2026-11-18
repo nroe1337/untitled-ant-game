@@ -490,6 +490,11 @@ function endBattle(ctx: Context) {
   if (rescued) lines.push(`${rescued} wounded carried home`);
   if (b.breaches) lines.push(`${b.breaches} got in and stole ${fmt(stolen)} food`);
   if (chest) lines.push(`A ${WAR.chests.kinds[chest].name.toLowerCase()}`);
+  if (!clean && Math.random() < T.ruin.chance) {
+    const [lo, hi] = T.ruin.rooms, n = lo + Math.floor(Math.random() * (hi - lo + 1));
+    const got = { n: 0 }; ctx.bus.emit('war:ruin', { n, got });
+    if (got.n) { lines.push(`${got.n} chamber${got.n > 1 ? 's' : ''} wrecked`); ctx.log(`They tear through ${got.n > 1 ? `${got.n} chambers` : 'a chamber'} on the way out. The walls can be raised again.`, 'warn', { tab: 'nest', label: 'Go to the Nest tab' }); }
+  }
   lines.push(`${WAR.raidKinds[b.kind ?? 'plain']?.name ?? 'A raid'}, threat ${fmt(w)}`);
   showResult(ctx, 'The raid', { win: clean, title: clean ? 'Victory' : 'They got through', lines });
   ctx.log((b.breaches ? 'The raid is over. ' : 'The raid is broken at the entrance. ') + s.lastReport, b.breaches ? 'warn' : 'story');

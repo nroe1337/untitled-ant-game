@@ -404,6 +404,8 @@ export const WAR = {
   threat: { perWorkers: 30, perChambers: 30, offset: 2, perHour: 0.5, luck: 0.25, wanderers: 0.8, ramp: 8, scoutRaids: 3,
     /** After a lost raid (Nate, Nov 18: losing shouldn't make it worse): each loss in a row eases threat by lossEase (up to
      *  lossMax losses), the time creep stops, and no great warband comes until a raid is repelled. */
+    /** ruin: when a raid gets through, a small chance it wrecks a few chambers; they rebuild for a share of their cost (Nate, Nov 18). */
+    ruin: { chance: 0.2, rooms: [1, 3] as [number, number], rebuild: 1 / 3 },
     lossEase: 0.15, lossMax: 3, lossRest: 0.5, // lossRest: after a loss the next raid on its own comes this much later per loss (a breather)
     words: [[0, 'Low'], [4, 'Rising'], [8, 'High'], [14, 'Grave'], [22, 'Dire']] as [number, string][] },
   /** Kinds of raid, rolled by weight once threat reaches `from`. raiders/brutes scale the count, tough the health and bite,
