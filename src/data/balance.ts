@@ -538,7 +538,7 @@ export const RESEARCH = {
     plans:      { name: 'Digging plans',     age: 'forage', cost: { knowledge: 240, soil: 200 },          needs: ['shelving'],             desc: 'A building queue with 3 slots. Queued chambers are dug as soon as you can afford them.' },
     studyplans: { name: 'Study plans',       age: 'forage', cost: { knowledge: 420, food: 300 },          needs: ['plans', 'songs'], flag: 'legacy:flown', desc: 'A research queue with 2 slots. Queued research is learned as soon as you can afford it.' },
     ledgers:    { name: 'Work ledgers',      age: 'settlement', cost: { knowledge: 650, paper: 60 },    needs: ['papercraft', 'studyplans'], desc: 'An upgrade queue with 2 slots. Queued upgrades are bought as soon as you can afford them.' },
-    frontier:   { name: 'Frontier sense',    age: 'conquest', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['resin'], desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
+    frontier:   { name: 'Frontier sense',    age: 'conquest', cost: { knowledge: 650, pheromone: 200 },    pop: 0.4, needs: ['resin'], flag: 'legacy:flown', desc: 'Adds an "Expand on its own" option to the Map: a party sets out to claim the nearest tile whenever it can.' },
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 160 },          needs: ['seeds', 'shelving'],   desc: 'Unlocks the Midden.' },
     cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 125 },   pop: 0.15, needs: ['ventilation', 'plans', 'sanitation'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
     martial:    { name: 'Mandible drill',    age: 'conquest', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['resin'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
@@ -561,7 +561,7 @@ export const RESEARCH = {
     pavement:   { name: 'Street fighting',   age: 'settlement', cost: { knowledge: 380, crumbs: 90 },  needs: ['nightwork', 'martial'], desc: 'Soldiers can clear pavement ants from town sites.' },
     papercraft: { name: 'Paper nests',       age: 'settlement', cost: { knowledge: 450, paper: 45 },   needs: ['tasting'],            desc: 'Chewed paper makes walls. Opens the study and satellite nests.' },
     metalwork:  { name: 'Iron dust',         age: 'settlement', cost: { knowledge: 700, grease: 35 },  needs: ['papercraft', 'pavement'], desc: 'Opens the shed, where iron filings lie in the oil.' },
-    campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks', 'frontier'], desc: 'Soldiers can march on enemy tiles.' },
+    campaigns:  { name: 'Campaigning',       age: 'conquest', cost: { knowledge: 700, chitin: 35 },       pop: 0.6, needs: ['husks'], desc: 'Soldiers can march on enemy tiles.' },
   } as Record<string, TechDef>,
   /**
    * Hidden milestones (Nate, Nov 14): these research stay out of sight until the colony has done something,

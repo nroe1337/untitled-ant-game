@@ -95,11 +95,11 @@ export const GUIDE: GuidePage[] = [
         '[Mapping], the last research of the Age of Forage, opened the {Map} tab.',
         'On the {Map} tab, drag to look around and scroll to zoom. The minimap in the corner jumps the view. Click a tile next to your land, then claim it.',
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out.',
-        'This age\'s research is a chain: [Resin working] leads to housing, war and [Frontier sense], and each branch opens the next. Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
+        'This age\'s research is a chain: [Resin working] leads to housing, war and the Map research, and each branch opens the next. Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
         'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
-      ], tip: 'Hold 6 tiles and [Frontier sense] appears: it turns on "Expand on its own". More research appears as your land grows.' },
+      ], tip: 'More research appears as your land grows. After your first nuptial flight, [Frontier sense] appears at 6 tiles: it turns on "Expand on its own".' },
       { head: 'Go to war', do: [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
         'Put workers on Soldier and dig Guard posts: once the {War} tab opens, the rival raids every so often.',

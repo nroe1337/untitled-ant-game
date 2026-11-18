@@ -58,8 +58,8 @@ const AGE_ROWS: Record<string, Row[]> = {
   ],
   conquest: [
     // Outposts (Nov 14): they push the colony's reach out across the bigger garden, and these make them worth it.
-    ['lookouts', 'Lookouts', ['frontier'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with a resource you choose on the Map.' }],
-    ['foragingcamps', 'Foraging camps', ['frontier'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
+    ['lookouts', 'Lookouts', ['resin'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with a resource you choose on the Map.' }],
+    ['foragingcamps', 'Foraging camps', ['resin'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
     ['terrainworks', 'Terrain works', ['lookouts'], { knowledge: 420, twig: 40 }, {}, {}, { lead: 'Each outpost works its own ground: stone gives resin, grass twigs, bare soil seeds, streams pheromone, patio slabs food.' }],
     ['waystations', 'Waystations', ['terrainworks'], { knowledge: 480, soil: 300 }, {}, {}, { lead: 'Outposts become waystations: an outpost\'s own tile yields three times as much again.' }],
     ['linkedtrails', 'Linked trails', ['waystations'], { knowledge: 560, pheromone: 80 }, {}, {}, { lead: 'Outposts linked to the nest by a chain of outposts, each within reach of the last, share their trails: every linked outpost yields 10% more for each one in the chain.' }],
@@ -70,7 +70,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['quartermasters', 'Quartermasters', ['resin'], { knowledge: 320, food: 220 }, { expLoot: 0.1 }],
     ['rendering', 'Husk rendering', ['husks'], { knowledge: 500, chitin: 20 }, { chamberCost: -0.03 }],
     ['fielddressing', 'Field dressing', ['fortify'], { knowledge: 360, food: 200 }, { expSafety: -0.1 }],
-    ['supplylines', 'Supply lines', ['frontier'], { knowledge: 560, pheromone: 30 }, { 'job:forager': 0.08 }],
+    ['supplylines', 'Supply lines', ['resin'], { knowledge: 560, pheromone: 30 }, { 'job:forager': 0.08 }],
     ['rivalscent', 'Rival scent', ['martial'], { knowledge: 340, pheromone: 25 }, { soldierPower: 0.05 }],
     ['widedoors', 'Wide doors', ['halls', 'quartermasters'], { knowledge: 420, soil: 300 }, { expSpeed: -0.1 }],
     // Conquest extras (Nov 14)
@@ -78,11 +78,11 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['nightshift', 'Night shift', ['grooming'], { knowledge: 360, food: 300 }, {}, {}, { lead: 'The queen lays on her own, all day and night, whenever the food stores are over half full. She no longer needs you to press Lay.' }],
     ['compost', 'Midden compost', ['grooming'], { knowledge: 400, soil: 250 }, {}, {}, { lead: 'Each Midden turns 3% of the mould scrubbed away into soil, two soil for each mould. Slow, but mould is worth something now.' }],
     // Terrain specialists: hold enough of one kind of ground and it teaches the nest something. Each one upgrades a chamber you already dig.
-    ['meadowgranary', 'Meadow granaries', ['frontier'], { knowledge: 420, seed: 30 }, {}, {}, { lead: 'Grass country. Seed granaries also gather seed, 0.01 a second each.' }],
-    ['soilmasons', 'Soil masons', ['frontier'], { knowledge: 420, soil: 400 }, {}, {}, { lead: 'Bare soil country. Soil pits are dug wide enough to sleep in: +2 living space each.' }],
-    ['stoneposts', 'Stone posts', ['martial', 'frontier'], { knowledge: 460, resin: 20 }, {}, {}, { lead: 'Stone country. Guard posts are walled with stone: they give twice the nest defence.' }],
-    ['dewwells', 'Dew wells', ['frontier'], { knowledge: 460, pheromone: 40 }, {}, {}, { lead: 'Stream country. Dew cisterns draw from the water table: each also scrubs 0.3 mould a second.' }],
-    ['warmslabs', 'Warm slabs', ['frontier'], { knowledge: 500, food: 400 }, {}, {}, { lead: 'Paved country. Warming chambers sit under sun-warmed slabs: +2 brood space each.' }],
+    ['meadowgranary', 'Meadow granaries', ['resin'], { knowledge: 420, seed: 30 }, {}, {}, { lead: 'Grass country. Seed granaries also gather seed, 0.01 a second each.' }],
+    ['soilmasons', 'Soil masons', ['resin'], { knowledge: 420, soil: 400 }, {}, {}, { lead: 'Bare soil country. Soil pits are dug wide enough to sleep in: +2 living space each.' }],
+    ['stoneposts', 'Stone posts', ['martial'], { knowledge: 460, resin: 20 }, {}, {}, { lead: 'Stone country. Guard posts are walled with stone: they give twice the nest defence.' }],
+    ['dewwells', 'Dew wells', ['resin'], { knowledge: 460, pheromone: 40 }, {}, {}, { lead: 'Stream country. Dew cisterns draw from the water table: each also scrubs 0.3 mould a second.' }],
+    ['warmslabs', 'Warm slabs', ['resin'], { knowledge: 500, food: 400 }, {}, {}, { lead: 'Paved country. Warming chambers sit under sun-warmed slabs: +2 brood space each.' }],
   ],
   wings: [
     ['packmules', 'Pack mules', ['castes'], { knowledge: 600, food: 400 }, {}, {}, { lead: 'Majors walk with expeditions. Choose up to 3 on the Surface tab: each cuts the chance of losing workers by 10% and carries rare finds (25% more amber, royal sugar and beetle ivory), but slows the party 10%. They never fall on the trail, but they are away from the nest.' }],
