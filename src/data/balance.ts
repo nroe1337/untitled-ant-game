@@ -308,6 +308,8 @@ export const MAP = {
   claimTimePerTile: 4,
   /** Outposts: built on a tile you hold, with resources only. Each one adds step x the base cost to the next. */
   outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.15, living: 6, defence: 2, yieldBoost: 2 },
+  /** Scouting for an outpost: a small party picks one of the best few tiles for an outpost and plants a flag there. */
+  survey: { cost: { food: 30, pheromone: 10 }, scouts: 2, time: 20, picks: 3 },
   /** Outpost research (Nov 14). */
   lookout: { every: 10, sight: 3, costs: { pheromone: 4, food: 15, seed: 2 } as Record<string, number> }, // each outpost clears one patch of fog within reach + sight every few seconds, paid in the chosen resource
   camps: 1,                 // Foraging camps: held tiles next to an outpost yield this much more (+100%)

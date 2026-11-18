@@ -230,6 +230,17 @@ export function tileButton(opts: {
   };
 }
 
+/** Show the shared info window at a point on the page (e.g. over a map tile) while `text` is set; hide it when cleared. */
+export function pointTip(owner: HTMLElement, text: string | null, x: number, y: number) {
+  if (!text) { if (tipOwner === owner) { tipOwner = null; tipText = null; tip().hidden = true; } return; }
+  tipOwner = owner; tipText = null;
+  const t = tip();
+  if (t.dataset.point !== text) { t.dataset.point = text; t.replaceChildren(...text.split('\n').map((line) => el('div', {}, line))); }
+  t.hidden = false;
+  t.style.left = `${Math.max(8, Math.min(window.innerWidth - t.offsetWidth - 8, x - t.offsetWidth / 2))}px`;
+  t.style.top = `${y + 18 + t.offsetHeight < window.innerHeight ? y + 18 : Math.max(8, y - t.offsetHeight - 12)}px`;
+}
+
 /** Every element with a data-tip (any el(..., { title })) gets the shared info window, open while hovered. */
 let tipText: string | null = null;
 function showText(node: HTMLElement) {

@@ -4,7 +4,7 @@
 //   emit 'map:capture' { x, y }   -> tile becomes yours
 // and read ctx.state.map (tiles, selected) to know what is where.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
+import { actionButton, el, pointTip, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
 import { MAP, NEST, WAR } from '../../data/balance';
@@ -25,7 +25,9 @@ export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 export type Stronghold = keyof typeof WAR.strongholds.kinds;
 export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean; sh?: Stronghold }
 interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
-interface MapState { lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState }
+interface MapState { lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState;
+  /** Scouting for an outpost: the party out, the flag it planted (and why), and the spots already shown. */
+  survey?: { elapsed: number; duration: number; ants: number } | null; flag?: number | null; flagWhy?: string; flagTried?: number[] }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
 const SKY_UPS = fromBalance(WORLD.skyUps);
 const skyL = (ctx: Context, id: keyof typeof WORLD.skyUps) => S(ctx).skyUps?.[id] ?? 0;
@@ -253,7 +255,49 @@ const claimScouts = (ctx: Context, i: number) => MAP.claimParty + Math.floor(MAP
 const scoutsAll = (ctx: Context) => Math.floor((ctx.state.jobs?.assigned?.scout ?? 0) as number);
 /** Scouts at home: not out on a winged sortie. */
 const scouts = (ctx: Context) => scoutsAll(ctx) - (S(ctx).world?.sortie?.ants ?? 0);
-const scoutsFree = (ctx: Context) => scouts(ctx) - (S(ctx).claiming?.ants ?? 0);
+const scoutsFree = (ctx: Context) => scouts(ctx) - (S(ctx).claiming?.ants ?? 0) - (S(ctx).survey?.ants ?? 0);
+
+// ---- scouting for an outpost ----
+/** Held tiles an outpost could stand on, best first: how much new land an outpost there brings within reach
+ *  (ground already seen counts double: the colony knows what it is getting). */
+function outpostSpots(ctx: Context) {
+  const s = S(ctx), R = reachOf(ctx);
+  const spots: { i: number; n: number; kinds: Record<string, number>; fog: number }[] = [];
+  s.tiles.forEach((t, i) => {
+    if (t.o !== 'you' || t.core || t.outpost || t.sh || t.w) return;
+    const [x, y] = xy(i), kinds: Record<string, number> = {};
+    let n = 0, fog = 0;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      if (!inside(x + dx, y + dy)) continue;
+      const j = idx(x + dx, y + dy), u = s.tiles[j];
+      if (u.o === 'you' || inReach(ctx, j)) continue;
+      n++;
+      if (!u.seen) fog++; else kinds[u.t] = (kinds[u.t] ?? 0) + 1;
+    }
+    if (n) spots.push({ i, n, kinds, fog });
+  });
+  const score = (p: { n: number; fog: number }) => 2 * (p.n - p.fog) + p.fog;
+  return spots.sort((a, b) => score(b) - score(a));
+}
+const flagValid = (ctx: Context, i: number | null | undefined) => { const t = i == null ? null : S(ctx).tiles[i]; return !!t && t.o === 'you' && !t.outpost && !t.core; };
+const canSurvey = (ctx: Context) => !S(ctx).survey && scoutsFree(ctx) >= MAP.survey.scouts && owned(ctx).some((t) => !t.core && !t.outpost);
+function finishSurvey(ctx: Context) {
+  const s = S(ctx);
+  s.survey = null;
+  // cycle through the best few spots: each new party picks one not shown yet
+  const top = outpostSpots(ctx).slice(0, MAP.survey.picks);
+  if (!top.length) { ctx.log('The scouts come home. From here, no outpost would reach new ground.', 'warn'); return; }
+  let tried = (s.flagTried ?? []).filter((i) => top.some((p) => p.i === i));
+  let pick = top.find((p) => p.i !== s.flag && !tried.includes(p.i));
+  if (!pick) { tried = []; pick = top.find((p) => p.i !== s.flag) ?? top[0]; }
+  s.flagTried = [...tried, pick.i];
+  s.flag = pick.i;
+  const parts = Object.entries(pick.kinds).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n} ${TERRAIN_NAME[k as Terrain].toLowerCase()}`);
+  if (pick.fog) parts.push(`${pick.fog} unexplored`);
+  s.flagWhy = `Scouts' pick for an outpost.\nFrom here, claims would reach ${pick.n} new tiles: ${parts.join(', ')}.`;
+  const [x, y] = xy(pick.i);
+  ctx.log(`The scouts plant a flag on the ${TERRAIN_NAME[s.tiles[pick.i].t].toLowerCase()} at ${x},${y}. A good place for an outpost.`, 'info');
+}
 const canSend = (ctx: Context, i: number | null) => !S(ctx).claiming && i !== null && scouts(ctx) >= claimScouts(ctx, i);
 function sendClaim(ctx: Context, i: number) {
   S(ctx).claiming = { i, elapsed: 0, duration: claimTime(ctx, i), ants: claimScouts(ctx, i) };
@@ -323,7 +367,7 @@ export const map: GameSystem = {
   // but outposts are left behind and must be built again
   keep(ctx) {
     const s = S(ctx);
-    return { ...s, selected: null, ups: {}, claiming: null, world: s.world ? { ...s.world, sortie: null } : undefined, tiles: s.tiles.map((t) => ({ ...t, outpost: false, w: undefined, dm: undefined })) };
+    return { ...s, selected: null, ups: {}, claiming: null, survey: null, flag: null, flagTried: [], world: s.world ? { ...s.world, sortie: null } : undefined, tiles: s.tiles.map((t) => ({ ...t, outpost: false, w: undefined, dm: undefined })) };
   },
 
   tick(ctx, dt) {
@@ -333,13 +377,15 @@ export const map: GameSystem = {
     if (!ctx.flags.has('stronghold:held') && mine.some((t) => t.sh)) ctx.flags.add('stronghold:held');
     delete ctx.busy.outposts;
     delete ctx.busy.claiming;
-    ctx.busy['job:scout'] = (s.claiming?.ants ?? 0) + (s.world?.sortie?.ants ?? 0); // scouts out claiming or flying don't make pheromone
+    ctx.busy['job:scout'] = (s.claiming?.ants ?? 0) + (s.survey?.ants ?? 0) + (s.world?.sortie?.ants ?? 0); // scouts out claiming or flying don't make pheromone
     const U = WORLD.skyUps;
     ctx.mods.set('sortieSpeed', 'captmarks', U.tailwind.per * skyL(ctx, 'tailwind'));
     ctx.mods.set('sortieLoot', 'captmarks', U.keen.per * skyL(ctx, 'keen'));
     ctx.mods.set('sortieRisk', 'captmarks', U.flock.per * skyL(ctx, 'flock'));
     tickWorld(ctx, dt);
     if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
+    if (s.survey && (s.survey.elapsed += dt) >= s.survey.duration) finishSurvey(ctx);
+    if (s.flag != null && !flagValid(ctx, s.flag)) s.flag = null; // built on, or lost
     if (s.auto && ctx.flags.has('tech:frontier')) {
       s.autoCd = (s.autoCd ?? 0) - dt;
       if (s.autoCd <= 0) { s.autoCd = MAP.expandEvery; autoExpand(ctx); }
@@ -373,6 +419,8 @@ export const map: GameSystem = {
     let cam: Camera, ccam: Camera, lastLooking = -1;
     let campWrap: HTMLElement, campBtn: ActionButton;
     let info: HTMLElement, hover: HTMLElement, claim: ActionButton, build: ActionButton, claimWrap: HTMLElement, buildWrap: HTMLElement, summary: HTMLElement, plant: ActionButton, plantWrap: HTMLElement;
+    let survey: ActionButton, surveyText: HTMLElement, surveyLine: HTMLElement, pointer = { x: 0, y: 0 };
+    const surveyBar = progressBar();
     let ups: ReturnType<typeof upgradeList>, upsHead: HTMLElement, skyUps: ReturnType<typeof upgradeList>, skyHead: HTMLElement;
     let hoverI: number | null = null;
     const bar = progressBar();
@@ -410,6 +458,15 @@ export const map: GameSystem = {
           enabled: (c) => canClaim(c, S(c).selected) && canSend(c, S(c).selected),
           onBuy: (c) => sendClaim(c, S(c).selected!),
         });
+        survey = actionButton({
+          ctx, label: 'Scout for an outpost', costs: () => MAP.survey.cost,
+          desc: `${MAP.survey.scouts} scouts look for a good place for an outpost and plant a flag there. Send again for another spot.`,
+          enabled: (c) => canSurvey(c),
+          onBuy: (c) => { S(c).survey = { elapsed: 0, duration: MAP.survey.time, ants: MAP.survey.scouts }; },
+        });
+        surveyText = el('span');
+        surveyLine = el('div.caption', { hidden: true }, surveyText, surveyBar.root);
+        cam.root.addEventListener('pointermove', (e) => { pointer = { x: e.clientX, y: e.clientY }; });
         build = actionButton({
           ctx, label: 'Build an outpost', costs: () => outpostCost(ctx),
           desc: `+${MAP.outpost.living} living space, +${MAP.outpost.defence} nest defence, tile yields x3`,
@@ -480,8 +537,8 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           cam.root,
           el('p.controls.mapkeys', {}, 'Drag or use the arrow keys to look around. Click a tile to inspect it, or the small map to jump.'),
-          el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), homeBtn),
-          summary, claimLine, el('div.row', {}, autoWrap), lookBox,
+          el('div.row.mapact', {}, claimWrap, survey.root, hover, el('span.grow'), homeBtn),
+          summary, claimLine, surveyLine, el('div.row', {}, autoWrap), lookBox,
           el('h3', {}, 'Selected tile'), shArt, info, buildWrap, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
         );
@@ -572,6 +629,17 @@ abandonWrap = el('div.row', {}, abandon);
           return t.seen ? `${x},${y}  ${t.sh ? WAR.strongholds.kinds[t.sh].name : TERRAIN_NAME[t.t]}, ${t.sh && t.o !== 'you' ? 'a stronghold' : OWNER_NAME[String(t.o)]}${t.core ? ' (home)' : ''}` : `${x},${y}  Unexplored`;
         };
         hover.textContent = describe(hoverI) || 'Hover a tile.';
+        // the scouts' flag: a little pennant on the tile, its reasons in a tooltip when hovered
+        if (s.flag != null) {
+          const [fx, fy] = xy(s.flag), c2 = cam.source.getContext('2d')!;
+          c2.fillStyle = PAL.bone; c2.fillRect(fx * 8 + 2, fy * 8 + 1, 1, 6);
+          c2.fillStyle = Math.floor(performance.now() / 600) % 2 ? '#f2c14e' : '#e0a83a'; c2.fillRect(fx * 8 + 3, fy * 8 + 1, 3, 2); c2.fillRect(fx * 8 + 3, fy * 8 + 3, 2, 1);
+        }
+        pointTip(cam.root, hoverI != null && hoverI === s.flag ? s.flagWhy ?? null : null, pointer.x, pointer.y);
+        survey.root.hidden = !ctx.flags.has('tech:cartography');
+        survey.update(ctx);
+        surveyLine.hidden = !s.survey;
+        if (s.survey) { surveyText.textContent = `${s.survey.ants} scouts looking for an outpost spot. ${Math.ceil((s.survey.duration - s.survey.elapsed) / ctx.speed)}s left.`; surveyBar.set(s.survey.elapsed / s.survey.duration); }
         upsHead.hidden = !ups.update(ctx);
         const mine = owned(ctx);
         const income: Record<string, number> = {};
@@ -607,6 +675,7 @@ if (t.sh) {
             : !openGround(ctx, t) ? (t.t === 'water' ? 'Needs Leaf rafts' : t.o === 'humans' ? 'Needs Street fighting' : 'No')
             : !inReach(ctx, i) ? `Too far from home. Build an outpost within ${reachOf(ctx)} tiles of here to reach it.` : 'Only tiles next to your territory']);
           if (t.o === 'you' && t.outpost) rows.push([t.dm ? 'Daughter mound' : 'Outpost', `Built. Claims reach ${reachOf(ctx)} tiles from here.`]);
+          if (i === s.flag && s.flagWhy) rows.push(["Scouts' pick", s.flagWhy.split('\n')[1]]);
 if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by 2 weavers. Claims reach ${reachOf(ctx)} tiles from here.`]);
           if (tilePost(ctx, 'nest', i) === 'there') rows.push(['Leaf nest', 'Held by 3 weavers. Living space that adds no mould.']);
           if (campAt(ctx) === i) rows.push(['Camp', `The Bivouac's camp. Campaigns reach ${campReach(ctx)} tiles from here.`]);
