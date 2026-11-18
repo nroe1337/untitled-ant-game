@@ -10,7 +10,6 @@ export const BROOD = {
   layOpensAtFood: 4,        // Lay an egg appears once the stores first reach this (a few forages)
   layEggCooldown: 3,        // seconds between manual lays
   nightShiftAt: 0.5,        // Night shift: the queen lays on her own while food is over this share of the cap
-  compost: { share: 0.03, soil: 2 }, // Midden compost: each Midden turns this share of scrubbed mould into soil, this much soil per mould
   eggHatchTime: 30,         // seconds for an egg to become a larva
   larvaGrowTime: 40,        // seconds for a larva to become a worker
   larvaFoodPerSecond: 0.05, // each growing larva eats this much
@@ -116,6 +115,8 @@ export const JOBS = {
   elder: { knowledge: 0.03 },
   leafcutter: { leaf: 0.08 },
   weaver: { silk: 0.015 },
+  /** Brickmakers (Mud bricks research): each presses soil into dirt bricks, `soilPer` soil for every brick. */
+  brickmaker: { brick: 0.02, soilPer: 5 },
 };
 
 export const NEST = {
@@ -182,29 +183,29 @@ export const NEST = {
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Soil pits hold far more
   /** Surface materials have small stores until you dig Twig lofts, Seed vaults and Resin vats. */
-  baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20 } as Record<string, number>,
+  baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20, brick: 40 } as Record<string, number>,
   /** Most chambers of one type the colony may dig, by age (index into RESEARCH.ages). Generous, so it only stops
    *  endless stacking (Nate, Nov 18). A chamber's own `max` still applies when lower. */
   ageCap: [8, 15, 20, 25, 30, 35, 40, 45],
   /** Strong chambers get only this share of the age cap (rounded). Chambers with a rework stay at the full cap, since
    *  rework level III needs 15 of a type. */
-  halfCap: ['gallery', 'vent', 'memory', 'chartroom', 'training', 'armory', 'stable', 'boatshed', 'den', 'nursery'] as string[],
+  halfCap: ['hall', 'gallery', 'vent', 'memory', 'chartroom', 'training', 'armory', 'stable', 'boatshed', 'den', 'nursery'] as string[],
   chambers: {
     tunnel:   { name: 'Resting chamber', base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3, later: { at: 13, cost: { knowledge: 15 } } },
     brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 16, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
-    store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
-    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, needs: 'tech:storage' },
+    store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, max: 10, needs: 'tech:storage' },
+    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, matCap: { brick: 5 }, max: 10, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: '+0.05 food/s',       foodRate: 0.05, later: { at: 8, cost: { resin: 4 } }, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, later: { at: 8, cost: { pheromone: 20 } }, needs: 'tech:resin' },
     gland:    { name: 'Scent chamber',   base: { soil: 35, pheromone: 8 }, growth: 1.3,       desc: '+15 pheromone storage, scouts +5% speed',  pheroCap: 15, scout: 0.05, later: { at: 8, cost: { seed: 4 } }, needs: 'tech:scouting' },
-    barracks: { name: 'Guard post',      base: { soil: 60, twig: 20 }, growth: 1.3,           desc: '+2 nest defence, +3 living space',        defence: 2, antCap: 3, later: { at: 8, cost: { chitin: 4 } }, needs: 'tech:martial' },
+    barracks: { name: 'Guard post',      base: { soil: 60, twig: 20 }, brick: 8, growth: 1.3,           desc: '+2 nest defence, +3 living space',        defence: 2, antCap: 3, later: { at: 8, cost: { chitin: 4 } }, needs: 'tech:martial' },
     husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 }, growth: 1.3,          desc: '+6 living space, +2 nest defence', antCap: 6, defence: 2, later: { at: 8, cost: { clay: 6 } }, needs: 'tech:husks' },
     library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 }, growth: 1.32,           desc: '+40 knowledge storage', knowCap: 40, needs: 'tech:elders' },
     fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 }, growth: 1.3,           desc: '+1 fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
     harbour:  { name: 'Harbour',         base: { soil: 80, twig: 20, resin: 6 }, growth: 1.6,  desc: '+1 boat at a time (max 3)', boats: 1, max: 3, needs: 'tech:rafts' },
     waxworks: { name: 'Wax store',       base: { soil: 40, wax: 5 }, growth: 1.3,             desc: '+40 wax storage',                         waxCap: 40, needs: 'tech:husbandry' },
-    hall:     { name: 'Worker hall',     base: { soil: 120, twig: 30 }, growth: 1.3,           desc: '+12 living space',  antCap: 12, later: { at: 8, cost: { pheromone: 25 } }, needs: 'tech:halls' },
+    hall:     { name: 'Worker hall',     base: { soil: 120, twig: 30 }, brick: 12, growth: 1.3,           desc: '+12 living space',  antCap: 12, later: { at: 8, cost: { pheromone: 25 } }, needs: 'tech:halls' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
     // ---- more chambers: each feeds one part of the game, and each unlocks with its research ----
     spoil:     { name: 'Digging gallery',  base: { soil: 25 }, growth: 1.3,                     desc: 'Diggers +4% soil', mods: { 'job:digger': 0.04 }, max: 15, later: { at: 7, cost: { pheromone: 6 } }, needs: 'surface' },
@@ -213,17 +214,17 @@ export const NEST = {
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'surface' },
-    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'surface' },
-    seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+15 seed storage', matCap: { seed: 15 }, needs: 'tech:seeds' },
-    resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, needs: 'tech:resin' },
+    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, max: 10, needs: 'surface' },
+    seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+15 seed storage', matCap: { seed: 15 }, max: 10, needs: 'tech:seeds' },
+    resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, max: 10, needs: 'tech:resin' },
     memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+60 knowledge storage, elders +5% speed', knowCap: 60, mods: { 'job:elder': 0.05 }, later: { at: 10, cost: { clay: 5 } }, needs: 'tech:songs' },
     nursery:   { name: 'Royal nursery',    base: { soil: 60, food: 40 }, growth: 1.32,          desc: '+6 brood space, +10 royal jelly storage', broodCap: 6, jellyCap: 10, later: { at: 6, cost: { jelly: 3 } }, needs: 'tech:royal' },
     chartroom: { name: 'Chart room',       base: { soil: 60, pheromone: 15 }, growth: 1.32,     desc: 'Expeditions +3% loot, party cap +2', mods: { expLoot: 0.03 }, max: 15, later: { at: 7, cost: { knowledge: 40 } }, needs: 'tech:cartography' },
     training:  { name: 'Training ground',  base: { soil: 80, chitin: 4 }, growth: 1.32,         desc: 'Soldiers +3% strength', mods: { soldierPower: 0.03 }, max: 20, later: { at: 8, cost: { chitin: 5 } }, needs: 'tech:martial' },
-    armory:    { name: 'Chitin armory',    base: { soil: 70, chitin: 8, twig: 15 }, growth: 1.32, desc: '+1 nest defence, soldiers +2% strength', defence: 1, mods: { soldierPower: 0.02 }, needs: 'tech:fortify' },
+    armory:    { name: 'Chitin armory',    base: { soil: 70, chitin: 8, twig: 15 }, brick: 6, growth: 1.32, desc: '+1 nest defence, soldiers +2% strength', defence: 1, mods: { soldierPower: 0.02 }, needs: 'tech:fortify' },
     sporecellar:{ name: 'Spore cellar',    base: { soil: 50, fungus: 15 }, growth: 1.3,         desc: '+30 fungus storage, brood grows 2% faster', fungusCap: 30, mods: { brood: 0.02 }, needs: 'tech:fungus' },
     stable:    { name: 'Aphid stable',     base: { soil: 60, food: 40 }, growth: 1.32,          desc: 'Herds +3% yield', mods: { herdYield: 0.03 }, max: 20, needs: 'tech:husbandry' },
-    boatshed:  { name: 'Boat shed',        base: { soil: 70, twig: 20 }, growth: 1.35,          desc: 'Voyages +4% speed', mods: { voyageSpeed: 0.04 }, max: 10, needs: 'tech:rafts' },
+    boatshed:  { name: 'Boat shed',        base: { soil: 70, twig: 20 }, brick: 8, growth: 1.35,          desc: 'Voyages +4% speed', mods: { voyageSpeed: 0.04 }, max: 10, needs: 'tech:rafts' },
     den:       { name: "Champion's den",   base: { soil: 60, chitin: 5 }, growth: 1.35,         desc: 'Champion +4% attack', mods: { champAtk: 0.04 }, max: 15, needs: 'tech:hunting' },
     pantry:    { name: 'Crumb pantry',     base: { soil: 80, crumbs: 10 }, growth: 1.3,         desc: '+80 food storage', foodCap: 80, later: { at: 8, cost: { clay: 8 } }, needs: 'tech:townlore' },
     paperhall: { name: 'Paper hall',       base: { soil: 150, paper: 10 }, growth: 1.32,        desc: '+10 living space', antCap: 10, later: { at: 6, cost: { clay: 10 } }, needs: 'tech:papercraft' },
@@ -337,6 +338,50 @@ export const MAP = {
     paved: { food: 0.08 },
   } as Record<string, Record<string, number>>,
   stoneDefence: 1,          // each stone tile adds this much nest defence
+  /** Tile variants (Nate, Nov 18): each terrain comes plain or as one of three kinds, rolled with the map. Small effects that
+   *  give exploring some interest. `each` effects count held tiles up to variantCap. Index 0 is the plain kind. */
+  variants: {
+    soil: [
+      { name: 'Loam' },
+      { name: 'Clay bed', desc: 'Brickmakers work 3% faster for each one held.', each: { brickRate: 0.03 } },
+      { name: 'Root mat', desc: 'Also yields twigs.', yield: { twig: 0.003 } },
+      { name: 'Old anthill', desc: '+3 living space.', living: 3 },
+    ],
+    stone: [
+      { name: 'Bare rock' },
+      { name: 'Overhang', desc: '+2 more nest defence.', defence: 2 },
+      { name: 'Flint', desc: 'Soldiers hit 1% harder for each one held.', each: { soldierPower: 0.01 } },
+      { name: 'Spring rock', desc: 'Held grass next to it yields double.', spring: true },
+    ],
+    water: [
+      { name: 'Puddle' },
+      { name: 'Shallows', desc: 'Can be claimed without Leaf rafts.', ford: true },
+      { name: 'Reed bed', desc: 'Yields twigs instead of pheromone.', yield: { twig: 0.004 }, replace: true },
+      { name: 'Strider pool', desc: 'Expeditions 1% faster for each one held.', each: { expSpeed: -0.01 } },
+    ],
+    grass: [
+      { name: 'Meadow' },
+      { name: 'Clover', desc: 'Double food.', yield: { food: 0.03 } },
+      { name: 'Tall grass', desc: 'Raids 1% smaller for each one held.', each: { raidSize: -0.01 } },
+      { name: 'Thistle', desc: '+1 nest defence.', defence: 1 },
+    ],
+  } as Record<string, { name: string; desc?: string; yield?: Record<string, number>; replace?: boolean; each?: Record<string, number>; living?: number; defence?: number; spring?: boolean; ford?: boolean }[]>,
+  variantOdds: [0.7, 0.1, 0.1, 0.1],
+  variantCap: 10,
+  /** Map loot (Nate, Nov 18): caches and relics lie on unclaimed ground, seen once the fog lifts, taken when the tile is ours.
+   *  Caches are one-off stores (x 1 + distance/10). Relics last until the next flight; each colony scatters new ones far out. */
+  loot: { every: 30, minDist: 4, caches: { food: 150, twig: 25, resin: 6, chitin: 10 } as Record<string, number>, relics: 3, relicDist: 8 },
+  relics: {
+    shell: { name: 'Beetle shell', desc: 'Soldiers hit 10% harder.', mods: { soldierPower: 0.1 } },
+    sunstone: { name: 'Sun stone', desc: 'Expeditions 10% faster.', mods: { expSpeed: -0.1 } },
+    husk: { name: 'Seed husk satchel', desc: 'Expeditions bring back 10% more.', mods: { expLoot: 0.1 } },
+    trailstone: { name: 'Trail stone', desc: 'Claims cost 10% less.', mods: { claimCost: -0.1 } },
+    mortar: { name: 'Termite mortar', desc: 'Outposts cost 10% less.', mods: { outpostCost: -0.1 } },
+    pebbles: { name: 'Pebble ring', desc: '+10 nest defence.', mods: { defence: 10 } },
+    antenna: { name: 'Long antenna', desc: '+1 claim reach.', mods: { reach: 1 } },
+    dust: { name: 'Bitter dust', desc: 'Raids 10% smaller.', mods: { raidSize: -0.1 } },
+    eye: { name: 'Dragonfly eye', desc: 'Lookouts see 1 tile further.', mods: { lookoutSight: 1 } },
+  } as Record<string, { name: string; desc: string; mods: Record<string, number> }>,
 };
 
 export const WAR = {
@@ -357,6 +402,11 @@ export const WAR = {
    *  raids have been fought, so raids work up from scouts to small bands to full columns.
    *  After the rival queen falls, wandering colonies keep raiding at `wanderers` of it. */
   threat: { perWorkers: 30, perChambers: 30, offset: 2, perHour: 0.5, luck: 0.25, wanderers: 0.8, ramp: 8, scoutRaids: 3,
+    /** After a lost raid (Nate, Nov 18: losing shouldn't make it worse): each loss in a row eases threat by lossEase (up to
+     *  lossMax losses), the time creep stops, and no great warband comes until a raid is repelled. */
+    /** ruin: when a raid gets through, a small chance it wrecks a few chambers; they rebuild for a share of their cost (Nate, Nov 18). */
+    ruin: { chance: 0.2, rooms: [1, 3] as [number, number], rebuild: 1 / 3 },
+    lossEase: 0.15, lossMax: 3, lossRest: 0.5, // lossRest: after a loss the next raid on its own comes this much later per loss (a breather)
     words: [[0, 'Low'], [4, 'Rising'], [8, 'High'], [14, 'Grave'], [22, 'Dire']] as [number, string][] },
   /** Kinds of raid, rolled by weight once threat reaches `from`. raiders/brutes scale the count, tough the health and bite,
    *  spoils the chitin and honours. cap: most raiders. noCry: the war cry can't be sounded. hint: what the column looks like. */
@@ -594,11 +644,11 @@ export const RESEARCH = {
     fortify: ['raids', 1, 'Your soldiers'], rivalscent: ['raids', 2, 'Your soldiers'], alarmscent: ['raids', 3, 'Your soldiers'],
     fielddressing: ['raids', 4, 'Your nurses'], columnbreak: ['raids', 6, 'Your soldiers'], counterraid: ['raids', 10, 'Your soldiers'],
     husks: ['chitin', 15, 'Your diggers'], rendering: ['chitin', 40, 'Your diggers'],
-    campaigns: ['wave', 3, 'Your soldiers'],
+    campaigns: ['wave', 3, 'Your soldiers'], bricks: ['wave', 3, 'Your diggers'],
     lookouts: ['outposts', 1, 'Your scouts'], terrainworks: ['outposts', 2, 'Your scouts'], waystations: ['outposts', 3, 'Your scouts'],
     linkedtrails: ['outposts', 4, 'Your scouts'], foragingcamps: ['tiles', 12, 'Your foragers'],
     packmules: ['runs', 80, 'The expedition leaders'], talltales: ['rumours', 3, 'The expedition leaders'],
-    nightshift: ['born', 300, 'Your nurses'], compost: ['rooms', 40, 'Your nurses'], renovation: ['rooms', 90, 'Your diggers'],
+    nightshift: ['born', 300, 'Your nurses'], renovation: ['rooms', 90, 'Your diggers'],
     // Age of Wings: the Swarm Spire. Each stage needs its own research, which shows as the Spire rises.
     packedearth: ['spire', 0, 'Your diggers'], resinvault: ['spire', 1, 'Your builders'], winglore: ['spire', 3, 'Your nurses'], eveningwinds: ['spire', 4, 'Your builders'],
     scaffolding: ['spire', 1, 'Your builders'], pulleys: ['spire', 2, 'Your builders'], weatherwatch: ['spire', 4, 'Your scouts'],

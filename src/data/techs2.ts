@@ -57,6 +57,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['faminelaw', 'Famine law', ['brood'], { knowledge: 20, food: 20 }, {}, {}, { lead: 'When the colony starves, nurses feed eggs and then larvae to the workers before any worker dies.' }],
   ],
   conquest: [
+    ['bricks', 'Mud bricks', ['martial'], { knowledge: 320, soil: 300 }, {}, {}, { lead: 'Unlocks Brickmakers, who press soil into dirt bricks. Guard posts, Worker halls, Chitin armories and Boat sheds are built with bricks instead of twigs.' }],
     // Outposts (Nov 14): they push the colony's reach out across the bigger garden, and these make them worth it.
     ['lookouts', 'Lookouts', ['resin'], { knowledge: 340, pheromone: 40 }, {}, {}, { lead: 'Each outpost keeps a lookout who clears fog around it on its own, paid for with pheromone.' }],
     ['foragingcamps', 'Foraging camps', ['lookouts'], { knowledge: 380, food: 250 }, {}, {}, { lead: 'Held tiles next to an outpost yield twice as much.' }],
@@ -76,7 +77,6 @@ const AGE_ROWS: Record<string, Row[]> = {
     // Conquest extras (Nov 14)
     ['talltales', 'Tall tales', ['quartermasters'], { knowledge: 440, pheromone: 40 }, {}, {}, { lead: 'Returning parties trade stories. Rumours come twice as often (6% a trip), and every rumoured place holds one more trip.' }],
     ['nightshift', 'Night shift', ['grooming'], { knowledge: 450, food: 300 }, {}, {}, { lead: 'The queen lays on her own, all day and night, whenever the food stores are over half full. She no longer needs you to press Lay.' }],
-    ['compost', 'Midden compost', ['grooming'], { knowledge: 470, soil: 250 }, {}, {}, { lead: 'Each Midden turns 3% of the mould scrubbed away into soil, two soil for each mould. Slow, but mould is worth something now.' }],
     // Terrain specialists: hold enough of one kind of ground and it teaches the nest something. Each one upgrades a chamber you already dig.
     ['meadowgranary', 'Meadow granaries', ['foragingcamps'], { knowledge: 420, seed: 30 }, {}, {}, { lead: 'Grass country. Seed granaries also gather seed, 0.01 a second each.' }],
     ['soilmasons', 'Soil masons', ['foragingcamps'], { knowledge: 420, soil: 400 }, {}, {}, { lead: 'Bare soil country. Soil pits are dug wide enough to sleep in: +2 living space each.' }],

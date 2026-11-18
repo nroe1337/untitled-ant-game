@@ -5,7 +5,7 @@ import { el, tileButton, actionButton } from '../../core/ui';
 import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
-import { BROOD, COLONY, MAP, NEST, RESEARCH } from '../../data/balance';
+import { BROOD, COLONY, MAP, NEST, RESEARCH, WAR } from '../../data/balance';
 import { PAL, blob, maskInto, rect, setup } from '../../core/pixel';
 import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 import { currentAge } from '../research';
@@ -20,6 +20,8 @@ type ChamberDef = {
   mods?: Record<string, number>;
   /** From the `at`-th chamber of this kind on, it also costs these (growing from there at the same rate). */
   later?: { at: number; cost: Costs };
+  /** With Mud bricks, this many bricks replace the chamber's twigs (growing the same way). */
+  brick?: number;
 };
 const DEFS = NEST.chambers as Record<ChamberId, ChamberDef>;
 /** How the chamber buttons are grouped on the Nest tab. Anything not listed goes in the last group. */
@@ -45,7 +47,9 @@ interface NestState { built: Record<string, number>; order: ChamberId[]; queue?:
   /** Parts already paid toward each chamber type's next rework level (levels II and III are paid in parts). */
   reworkPaid?: Record<string, number>;
   /** Gatehouse: gates shut. Spoil walls: wall height. Alarm scent: mould line. Flood channel: cooldown. */
-  gates?: boolean; walls?: number; alarmAt?: number; floodCd?: number }
+  gates?: boolean; walls?: number; alarmAt?: number; floodCd?: number;
+  /** Chambers wrecked by a raid, waiting to be rebuilt (WAR.threat.ruin). */
+  ruined?: Record<string, number> }
 const S = (ctx: Context) => ctx.state.nest as NestState;
 
 const count = (ctx: Context, id: ChamberId) => S(ctx).built[id] ?? 0;
@@ -56,6 +60,8 @@ const costOf = (ctx: Context, id: ChamberId): Costs => {
   if (d.later && n + 1 >= d.later.at) {
     for (const [r, v] of Object.entries(d.later.cost)) out[r] = (out[r] ?? 0) + Math.ceil((v ?? 0) * Math.pow(g, n + 1 - d.later.at) * cheaper);
   }
+  // Mud bricks: bricks stand in for twigs
+  if (d.brick && out.twig && ctx.flags.has('tech:bricks')) { delete out.twig; out.brick = Math.ceil(d.brick * Math.pow(g, n) * cheaper); }
   // the Undercroft: Wide tunnels take less soil; Root props make the first few of each chamber free of soil
   if (out.soil) out.soil = n < ctx.mods.get('rootProps') ? 0 : Math.ceil(out.soil * (1 + ctx.mods.get('wonderSoil')));
   if (out.soil === 0) delete out.soil;
@@ -84,6 +90,35 @@ export const capOf = (ctx: Context, id: ChamberId) => {
   return Math.min(DEFS[id].max ?? Infinity, NEST.halfCap.includes(id) ? Math.round(cap / 2) : cap);
 };
 const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && count(ctx, id) < capOf(ctx, id);
+
+/** A raid wrecks up to n chambers (never the last tunnel or nurses' den). */
+function ruin(ctx: Context, n: number) {
+  const s = S(ctx); let done = 0;
+  for (let k = 0; k < n; k++) {
+    const pool = IDS.filter((id) => count(ctx, id) > (id === 'tunnel' || id === 'brood' ? 1 : 0));
+    if (!pool.length) break;
+    const id = pool[Math.floor(Math.random() * pool.length)];
+    s.built[id] -= 1;
+    const at = s.order.lastIndexOf(id); if (at >= 0) s.order.splice(at, 1);
+    (s.ruined ??= {})[id] = (s.ruined[id] ?? 0) + 1; done++;
+  }
+  return done;
+}
+/** Wrecked chambers that can still go back: none past the chamber's cap (if new ones were dug meanwhile). */
+const ruinedOf = (ctx: Context) => Object.entries(S(ctx).ruined ?? {}).map(([id, r]) => [id as ChamberId, Math.max(0, Math.min(r, capOf(ctx, id as ChamberId) - count(ctx, id as ChamberId)))] as const).filter(([, r]) => r > 0);
+const ruinedCount = (ctx: Context) => ruinedOf(ctx).reduce((a, [, r]) => a + r, 0);
+/** Rebuilding every wrecked chamber: a share of what each would cost to dig now. */
+function rebuildCost(ctx: Context): Costs {
+  const out: Costs = {};
+  for (const [id, r] of ruinedOf(ctx)) for (const [k, v] of Object.entries(costOf(ctx, id))) out[k] = (out[k] ?? 0) + Math.ceil(v * r * WAR.threat.ruin.rebuild);
+  return out;
+}
+function rebuild(ctx: Context) {
+  const s = S(ctx);
+  for (const [id, r] of ruinedOf(ctx)) { s.built[id] = count(ctx, id) + r; for (let k = 0; k < r; k++) s.order.push(id); }
+  s.ruined = {};
+  ctx.log('The wrecked chambers are dug out and raised again.', 'info');
+}
 
 function build(ctx: Context, id: ChamberId) {
   const def = DEFS[id];
@@ -240,7 +275,6 @@ function liveDesc(ctx: Context, id: ChamberId) {
     barracks: ['stoneposts', 'defence doubled (Stone posts)'],
     cistern: ['dewwells', `scrubs ${NEST.terrain.dewwells} mould/s (Dew wells)`],
     warmth: ['warmslabs', `+${NEST.terrain.warmslabs} brood space (Warm slabs)`],
-    midden: ['compost', `turns ${BROOD.compost.share * 100}% of scrubbed mould into soil (Midden compost)`],
   };
   const x = extra[id];
   if (x && ctx.flags.has('tech:' + x[0])) d += `, ${x[1]}`;
@@ -309,6 +343,7 @@ export const nest: GameSystem = {
       refundOldLevels(ctx);
       applyEffects(ctx);
     });
+    ctx.bus.on('war:ruin', ({ n, got }: { n: number; got: { n: number } }) => { got.n = ruin(ctx, n); });
   },
 
   isUnlocked: (ctx) => ctx.flags.has('tech:digging'),
@@ -330,6 +365,7 @@ export const nest: GameSystem = {
   panel: (() => {
     const buttons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     let canvas: HTMLCanvasElement, progress: HTMLElement, grid: HTMLElement, upBox: HTMLElement, roomName: HTMLElement;
+    let rebuildBtn: ReturnType<typeof actionButton>, rebuildWrap: HTMLElement;
     let floodBtn: ReturnType<typeof actionButton>, floodWrap: HTMLElement, gateWrap: HTMLElement, gateBox: HTMLInputElement, alarmWrap: HTMLElement, alarmSel: HTMLSelectElement;
     const rwButtons = new Map<ChamberId, ReturnType<typeof tileButton>>();
     return {
@@ -415,6 +451,14 @@ export const nest: GameSystem = {
           onBuy: (c) => flood(c),
         });
         floodWrap = el('div.row', { hidden: true }, floodBtn.root);
+        rebuildBtn = actionButton({
+          ctx, label: () => `Rebuild ${ruinedCount(ctx)} wrecked chamber${ruinedCount(ctx) > 1 ? 's' : ''}`,
+          desc: () => `Wrecked by a raid: ${ruinedOf(ctx).map(([id, r]) => `${r} ${DEFS[id].name.toLowerCase()}`).join(', ')}. Rebuilding costs a third of digging them new.`,
+          costs: () => rebuildCost(ctx),
+          enabled: (c) => ruinedCount(c) > 0,
+          onBuy: (c) => rebuild(c),
+        });
+        rebuildWrap = el('div.row', { hidden: true }, rebuildBtn.root);
         gateBox = el('input', { type: 'checkbox' }) as HTMLInputElement;
         gateBox.addEventListener('change', () => { S(ctx).gates = gateBox.checked; applyEffects(ctx); ctx.log(gateBox.checked ? 'The gates are sealed. Nothing goes out.' : 'The gates open again.', 'info'); });
         gateWrap = el('div.row', { hidden: true }, el('label', {}, gateBox, ' Shut the gates (more defence; no foraging and no expeditions)'));
@@ -424,7 +468,7 @@ export const nest: GameSystem = {
         upBox = el('div.tilegroups.compact.chamberups', { hidden: true }, el('div.tilegroup', {}, el('div.tilehead', {}, 'Chamber reworks'), rwTiles));
         const rwCtl = el('div.reworkctl', {}, floodWrap, gateWrap, alarmWrap);
         root.classList.add('nestpanel');
-        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, grid, upBox, rwCtl,
+        root.append(el('p.flavor', {}, 'Chambers carved from the dark. Each one makes room for more.'), progress, rebuildWrap, grid, upBox, rwCtl,
           el('div.row', {}, el('label.muted', {}, toggle, ' Draw entire nest'), roomName), scroller);
       },
       update(_root, ctx) {
@@ -440,6 +484,7 @@ export const nest: GameSystem = {
         for (const [id, b] of rwButtons) { b.root.hidden = !(reworked(ctx, id) || reworkReady(ctx, id)); anyRw ||= !b.root.hidden; b.update(ctx); }
         upBox.hidden = !anyRw;
         floodWrap.hidden = !reworked(ctx, 'cistern'); floodBtn.update(ctx);
+        rebuildWrap.hidden = !ruinedCount(ctx); if (!rebuildWrap.hidden) rebuildBtn.update(ctx);
         gateWrap.hidden = !reworked(ctx, 'barracks'); gateBox.checked = !!S(ctx).gates;
         alarmWrap.hidden = !reworked(ctx, 'gland'); alarmSel.value = String(alarmLine(ctx));
         grid.querySelectorAll<HTMLElement>('.tilegroup').forEach((g) => { g.hidden = !Array.from(g.querySelectorAll<HTMLElement>('.tilewrap')).some((t) => !t.hidden); });

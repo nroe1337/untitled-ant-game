@@ -311,11 +311,7 @@ export const brood: GameSystem = {
     if (ctx.flags.has('tech:brood')) {
       if (!s.mouldIntro) { s.mouldIntro = true; ctx.log('Damp creeps into the chambers: mould. Every chamber gathers a little, and it slows the brood. The queen and nurses scrub it away (Environment, in the Stores).', 'story'); }
       res.source = 'Damp chambers'; res.add('mould', mouldMade(ctx) * dt);
-      const before = res.amt('mould');
       res.source = 'Queen, nurses and purification scrubbing'; res.add('mould', -mouldClean(ctx) * dt);
-      // Midden compost: a share of what was scrubbed away comes back as soil
-      const middens = ctx.state.nest?.built?.midden ?? 0;
-      if (ctx.flags.has('tech:compost') && middens) { res.source = 'Midden compost'; res.add('soil', (before - res.amt('mould')) * BROOD.compost.share * middens * BROOD.compost.soil); }
       res.source = 'Brood';
       const m = res.amt('mould');
       mouldAlarm(ctx, m, dt);

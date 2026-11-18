@@ -26,6 +26,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Each early age converges on one gate research (`RESEARCH.gates`: Upward tunnels, Mapping, Royal court). Nothing of the
   next age shows until it is learned, so the player starts each age with its key feature open (Nate, Nov 17).
   Optional side research is fine. Milestones should count buildings or deeds, not full stores.
+- Map variants and loot (Nate, Nov 18): nothing on the map disappears, and nothing on the surface adds mould (mould is a nest thing).
+  Relics may be flat bonuses.
 - Start new bonuses small (e.g. 10% rather than 25% or 50%). It's easier to buff later than to nerf.
 - Show Nate a mockup (an HTML page with a screenshot) of any new screen before coding it.
 - Effect and UI text (what a crown, chamber or button does) stays short and plain: say what it does.
@@ -74,6 +76,8 @@ new standing rule in a thread, add it here in the same pull request.
 - Once the player has a defence set up they can mostly leave it, but raids pay chitin, honours and chests, so effort is
   rewarded (heavy bait). Some raids should be big swings (the great warband) that punish a nest that isn't well prepared,
   without bricking a run (losses stay capped).
+- Losing must never make raids harder (Nate, Nov 18): lost raids in a row ease threat, pause the time creep and hold off the
+  great warband until one is repelled (`WAR.threat.lossEase`).
 
 ## Strongholds
 - Three fortress tiles on the Map (`WAR.strongholds`): each has its own catch when attacked, not just more strength, and

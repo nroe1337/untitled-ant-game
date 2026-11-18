@@ -37,6 +37,7 @@ const JOB_DEFS: JobDef[] = [
   { id: 'townforager', name: 'Town forager', desc: 'Works the town sites in the Town tab.', produces: {}, requires: 'tech:townlore' },
   { id: 'taster', name: 'Taster', desc: 'Tastes stored food and throws out the poisoned share.', produces: {}, requires: 'tech:tasting' },
   { id: 'builder', name: 'Builder', desc: 'Carries soil, twigs and stores up to the Swarm Spire.', produces: {}, requires: 'tech:flight' },
+  { id: 'brickmaker', name: 'Brickmaker', desc: 'Presses soil into dirt bricks.', produces: {}, requires: 'tech:bricks' },
   { id: 'weaver', name: 'Weaver', desc: 'Spins silk from larvae. Silk builds better boats. More posts on the Castes tab.', produces: JOBS.weaver, requires: 'caste:weaver' },
 ];
 
@@ -213,6 +214,7 @@ export const jobs: GameSystem = {
     ctx.res.define({ id: 'soil', name: 'Soil', cap: NEST.baseSoilCap, order: 2 });
     ctx.res.define({ id: 'pheromone', name: 'Pheromone', cap: 40, order: 4 });
     ctx.res.define({ id: 'clay', name: 'Clay', cap: JOBS.clayCap, order: 5, integer: true });
+    ctx.res.define({ id: 'brick', name: 'Dirt bricks', cap: NEST.baseMaterialCap.brick, order: 6, integer: true });
     ctx.state.jobs = { assigned: Object.fromEntries(JOB_DEFS.map((j) => [j.id, 0])), tech: {} } satisfies JobsState;
   },
 
@@ -313,6 +315,12 @@ export const jobs: GameSystem = {
       if ((j.id === 'forager' || j.id === 'leafcutter') && ctx.mods.get('gatesShut') > 0) continue; // Gatehouse: gates shut
       ctx.res.source = j.name + 's';
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
+      if (j.id === 'brickmaker') {
+        // soil in, bricks out: as many as the soil on hand and the brick store allow
+        const B = JOBS.brickmaker, want = B.brick * n * mult * jobMult(ctx, j.id) * (1 + ctx.mods.get('brickRate')) * dt;
+        const make = Math.max(0, Math.min(want, ctx.res.amt('soil') / B.soilPer, ctx.res.cap('brick') - ctx.res.amt('brick')));
+        if (make > 0) { ctx.res.add('soil', -make * B.soilPer); ctx.res.add('brick', make); }
+      }
       if (j.id === 'digger' && ctx.flags.has('tech:deepdig')) ctx.res.add('clay', JOBS.diggerClay * n * mult * jobMult(ctx, j.id) * dt);
       if (j.id === 'digger' && ctx.flags.has('tech:buriedfinds')) buriedFind(ctx, n * mult * dt);
     }

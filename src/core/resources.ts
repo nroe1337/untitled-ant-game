@@ -82,7 +82,8 @@ export class Resources {
   add(id: string, n: number) {
     const r = this.get(id);
     if (n > 0 && r.amount + n > this.cap(id)) this.spills.set(id, (this.spills.get(id) ?? 0) + r.amount + n - Math.max(r.amount, this.cap(id)));
-    r.amount = Math.max(0, Math.min(this.cap(id), r.amount + n));
+    // a store over its cap (a chamber was lost) keeps what it has: gains stop, spending still takes from it
+    r.amount = n > 0 ? Math.max(r.amount, Math.min(this.cap(id), r.amount + n)) : Math.max(0, r.amount + n);
     if (r.amount > 0) r.seen = true;
     // record what each source tried to add or take, not what fit: a full (or empty) store still shows its real flows
     if (!this.lumping && n !== 0) {

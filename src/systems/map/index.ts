@@ -24,9 +24,11 @@ export type Owner = 'you' | 'rival' | 'spider' | 'humans' | null;
 /** w: a wonder stands (or is being built) here; dm: the outpost is a daughter mound (Great Mound epic). */
 /** sh: a stronghold stands here (see WAR.strongholds). Untaken it has no owner; taken it is a fort of yours. */
 export type Stronghold = keyof typeof WAR.strongholds.kinds;
-export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean; sh?: Stronghold }
+export interface Tile { t: Terrain; o: Owner; seen: boolean; outpost?: boolean; core?: boolean; w?: string; dm?: boolean; sh?: Stronghold;
+  /** v: the tile's variant (MAP.variants, 0 plain); l: loot lying here, 'cache:<res>' or 'relic:<id>'. */
+  v?: number; l?: string }
 interface Claim { i: number; elapsed: number; duration: number; ants: number; cell?: number }
-interface MapState { lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState;
+interface MapState { varV?: number; lootV?: number; relics?: string[]; lookout?: string | null; lookCd?: number; seed: number; tiles: Tile[]; selected: number | null; claims: number; ups?: Record<string, number>; skyUps?: Record<string, number>; auto?: boolean; autoCd?: number; claiming?: Claim | null; v2?: boolean; world?: WorldState;
   /** Scouting for an outpost: the party out, the flag it planted (and why), and the spots already shown. */
   survey?: { elapsed: number; duration: number; ants: number } | null; flag?: number | null; flagWhy?: string; flagTried?: number[] }
 const UPS = fromBalance(MAP.upgrades, (ctx, needs) => !needs || !needs.startsWith('res:') || (ctx.res.has(needs.slice(4)) && ctx.res.get(needs.slice(4)).seen));
@@ -143,6 +145,74 @@ function migrateGarden(ctx: Context) {
 }
 const cellMove = (i: number) => idx(i % MAP.oldSize[0], Math.floor(i / MAP.oldSize[0]));
 
+// ---- tile variants and map loot (Nov 18) ----
+type Variant = (typeof MAP.variants)[string][number];
+const variantOf = (t: Tile): Variant | null => MAP.variants[t.t]?.[t.v ?? 0] ?? null;
+const tileName = (t: Tile) => (t.v ? variantOf(t)?.name : null) ?? TERRAIN_NAME[t.t];
+/** What a held tile yields each second: its terrain's yield, with its variant's added (or instead). */
+function tileYield(t: Tile): Record<string, number> {
+  const v = variantOf(t), out: Record<string, number> = v?.replace ? {} : { ...(MAP.yield[t.t] ?? {}) };
+  for (const [r, n] of Object.entries(v?.yield ?? {})) out[r] = (out[r] ?? 0) + n;
+  return out;
+}
+/** Roll every tile's variant once, from the map's seed (older saves too). */
+function rollVariants(s: MapState) {
+  const R = rng(s.seed + 313), odds = MAP.variantOdds;
+  s.tiles.forEach((t) => { let r = R(), v = 0; while (v < odds.length - 1 && r >= odds[v]) { r -= odds[v]; v++; } if (MAP.variants[t.t] && !t.core) t.v = v; });
+  s.varV = 1;
+}
+const nestDist = (i: number) => { const [x, y] = xy(i), [nx, ny] = MAP.nest; return Math.max(Math.abs(x - nx), Math.abs(y - ny)); };
+const lootSpot = (t: Tile) => !t.l && !t.core && !t.sh && !t.w && t.o !== 'you' && t.t !== 'paved';
+/** Relics: a few new ones each colony, scattered far from the nest on ground that isn't ours. */
+function scatterRelics(s: MapState) {
+  for (const t of s.tiles) if (t.l?.startsWith('relic:')) delete t.l;
+  const ids = Object.keys(MAP.relics).sort(() => Math.random() - 0.5).slice(0, MAP.loot.relics);
+  let pool = s.tiles.map((_, i) => i).filter((i) => lootSpot(s.tiles[i]) && nestDist(i) >= MAP.loot.relicDist);
+  for (const id of ids) {
+    if (!pool.length) break;
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    s.tiles[i].l = 'relic:' + id; pool = pool.filter((j) => j !== i);
+  }
+}
+/** Caches once per garden, then this colony's relics. */
+function placeLoot(s: MapState) {
+  const R = rng(s.seed + 919), kinds = Object.keys(MAP.loot.caches);
+  s.tiles.forEach((t, i) => { if (lootSpot(t) && nestDist(i) >= MAP.loot.minDist && R() < 1 / MAP.loot.every) t.l = 'cache:' + kinds[Math.floor(R() * kinds.length)]; });
+  scatterRelics(s); s.lootV = 1;
+}
+const lootName = (l: string) => l.startsWith('relic:') ? `${MAP.relics[l.slice(6)]?.name ?? 'A relic'} (relic)` : `A cache of ${l.slice(6) === 'twig' ? 'twigs' : l.slice(6)}`;
+/** Land just taken: pick up what lies on it. */
+function collect(ctx: Context, i: number) {
+  const s = S(ctx), t = s.tiles[i], l = t.l!;
+  delete t.l;
+  if (l.startsWith('relic:')) {
+    const R = MAP.relics[l.slice(6)]; if (!R) return;
+    (s.relics ??= []).push(l.slice(6));
+    ctx.log(`In the new ground the scouts find something old: ${R.name.toLowerCase()}. ${R.desc}`, 'story');
+    ctx.announce(R.name, `${R.desc} Until the next flight.`, { small: true, kicker: 'A relic' });
+    return;
+  }
+  const r = l.slice(6), n = Math.round(MAP.loot.caches[r] * (1 + nestDist(i) / 10));
+  if (!ctx.res.has(r)) return;
+  ctx.res.add(r, n);
+  ctx.log(`Scouts find a cache in the new ground. (+${n} ${ctx.res.get(r).name.toLowerCase()})`, 'info');
+}
+/** What the colony's held variants and relics add up to. */
+function variantMods(ctx: Context) {
+  const s = S(ctx), each: Record<string, number> = {}, out: Record<string, number> = {};
+  let living = 0, defence = 0;
+  for (const t of s.tiles) {
+    if (t.o !== 'you') continue;
+    const v = variantOf(t); if (!v) continue;
+    living += v.living ?? 0; defence += v.defence ?? 0;
+    for (const k of Object.keys(v.each ?? {})) each[k] = Math.min(MAP.variantCap, (each[k] ?? 0) + 1);
+  }
+  for (const k of ['soil', 'stone', 'water', 'grass']) for (const v of MAP.variants[k]) for (const [m, per] of Object.entries(v.each ?? {})) out[m] = (out[m] ?? 0) + per * (each[m] ?? 0);
+  for (const id of s.relics ?? []) for (const [m, n] of Object.entries(MAP.relics[id]?.mods ?? {})) out[m] = (out[m] ?? 0) + n;
+  return { out, living, defence };
+}
+const springBeside = (ctx: Context, i: number) => { const [x, y] = xy(i); return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { if (!inside(x + dx, y + dy)) return false; const n = S(ctx).tiles[idx(x + dx, y + dy)]; return n.o === 'you' && !!variantOf(n)?.spring; }); };
+
 /** The nest and every outpost: claims reach out from these. */
 let baseCache = { at: -1, tiles: null as Tile[] | null, list: [] as number[] };
 const bases = (ctx: Context) => {
@@ -198,7 +268,7 @@ const besideOutpost = (ctx: Context, i: number) => { const [x, y] = xy(i); for (
 function tileMult(ctx: Context, i: number, linked: Set<number> | null) {
   const t = S(ctx).tiles[i];
   // Paved roads (Signal Stones): tiles near the nest yield a little more
-  const road = ctx.mods.get('roadYield') > 0 && cheb(i, idx(...MAP.nest)) <= 4 ? 1 + ctx.mods.get('roadYield') : 1;
+  const road = (ctx.mods.get('roadYield') > 0 && cheb(i, idx(...MAP.nest)) <= 4 ? 1 + ctx.mods.get('roadYield') : 1) * (t.t === 'grass' && springBeside(ctx, i) ? 2 : 1);
   if (t.outpost) return outpostMult(ctx, i, linked) * road;
   return (ctx.flags.has('tech:foragingcamps') && besideOutpost(ctx, i) ? 1 + MAP.camps : 1) * road;
 }
@@ -245,7 +315,7 @@ const outpostCost = (ctx: Context): Costs =>
 const claimTime = (ctx: Context, i: number) => Math.round(MAP.claimTime + MAP.claimTimePerTile * homeDist(ctx, i));
 /** Stream tiles open with Leaf rafts; patio slabs once soldiers can clear the pavement ants (Street fighting). */
 const openGround = (ctx: Context, t: Tile) =>
-  t.sh && t.o !== 'you' ? false : t.o === null ? t.t !== 'water' || ctx.flags.has('tech:rafts') : t.o === 'humans' && !t.core && ctx.flags.has('tech:pavement');
+  t.sh && t.o !== 'you' ? false : t.o === null ? t.t !== 'water' || ctx.flags.has('tech:rafts') || !!variantOf(t)?.ford : t.o === 'humans' && !t.core && ctx.flags.has('tech:pavement');
 export const canClaim = (ctx: Context, i: number | null) => {
   if (i == null) return false;
   const t = S(ctx).tiles[i];
@@ -370,13 +440,20 @@ export const map: GameSystem = {
   // but outposts are left behind and must be built again
   keep(ctx) {
     const s = S(ctx);
-    return { ...s, selected: null, ups: {}, claiming: null, survey: null, flag: null, flagTried: [], world: s.world ? { ...s.world, sortie: null } : undefined, tiles: s.tiles.map((t) => ({ ...t, outpost: false, w: undefined, dm: undefined })) };
+    const tiles = s.tiles.map((t) => ({ ...t, outpost: false, w: undefined, dm: undefined }));
+    scatterRelics({ ...s, tiles });
+    return { ...s, tiles, relics: [], selected: null, ups: {}, claiming: null, survey: null, flag: null, flagTried: [], world: s.world ? { ...s.world, sortie: null } : undefined };
   },
 
   tick(ctx, dt) {
     const mine = owned(ctx);
     const s = S(ctx);
     placeStrongholds(s);
+    if (!s.varV) rollVariants(s);
+    if (!s.lootV) placeLoot(s);
+    s.tiles.forEach((t, i) => { if (t.l && t.o === 'you') collect(ctx, i); });
+    const vm = variantMods(ctx);
+    for (const k of ['brickRate', 'soldierPower', 'expSpeed', 'expLoot', 'raidSize', 'claimCost', 'outpostCost', 'reach', 'lookoutSight']) ctx.mods.set(k, 'land', vm.out[k] ?? 0);
     if (!ctx.flags.has('stronghold:held') && mine.some((t) => t.sh)) ctx.flags.add('stronghold:held');
     delete ctx.busy.outposts;
     delete ctx.busy.claiming;
@@ -386,6 +463,8 @@ export const map: GameSystem = {
     ctx.mods.set('sortieLoot', 'captmarks', U.keen.per * skyL(ctx, 'keen'));
     ctx.mods.set('sortieRisk', 'captmarks', U.flock.per * skyL(ctx, 'flock'));
     tickWorld(ctx, dt);
+    // scouts out to claim see the ground around them as they go (Nate, Nov 18)
+    if (s.claiming && s.claiming.cell == null) { const [nx, ny] = MAP.nest, [tx, ty] = xy(s.claiming.i), f = Math.min(1, s.claiming.elapsed / (s.claiming.duration || 1)); reveal(ctx, Math.round(nx + (tx - nx) * f), Math.round(ny + (ty - ny) * f), 1); }
     if (s.claiming && (s.claiming.elapsed += dt) >= s.claiming.duration) finishClaim(ctx);
     if (s.survey && (s.survey.elapsed += dt) >= s.survey.duration) finishSurvey(ctx);
     if (s.flag != null && !flagValid(ctx, s.flag)) s.flag = null; // built on, or lost
@@ -401,7 +480,7 @@ export const map: GameSystem = {
         if (t.o !== 'you' || t.w) return; // a wonder's tile gives no yield while it stands
         const m = yieldMult(ctx) * tileMult(ctx, i, linked);
         ctx.res.source = 'Claimed land';
-        for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * m * dt);
+        for (const [rid, per] of Object.entries(tileYield(t))) if (ctx.res.has(rid)) ctx.res.add(rid, per * m * dt);
         ctx.res.source = 'Outposts';
         if (works && t.outpost) for (const [rid, per] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * m * dt);
       });
@@ -412,8 +491,8 @@ export const map: GameSystem = {
     const far = heldTerrain(ctx);
     ctx.res.source = 'Claimed land';
     for (const t of far) for (const [rid, per] of Object.entries(MAP.yield[t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * yieldMult(ctx) * dt);
-    ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence);
-    ctx.res.setCapBonus('ant', 'outposts', n * O.living);
+    ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence + vm.defence + (vm.out.defence ?? 0));
+    ctx.res.setCapBonus('ant', 'outposts', n * O.living + vm.living);
     ctx.mods.set('tiles', 'map', mine.length + far.length);
   },
 
@@ -528,7 +607,7 @@ abandonWrap = el('div.row', {}, abandon);
           enabled: (c) => sowKind(c, S(c).selected) != null,
           onBuy: (c) => {
             const k = sowKind(c, S(c).selected), t = S(c).tiles[S(c).selected!];
-            if (k === 'grass') { t.t = 'grass'; c.log('Seeds from the seed bank take root. The bare soil turns green.', 'info'); }
+            if (k === 'grass') { t.t = 'grass'; t.v = 0; c.log('Seeds from the seed bank take root. The bare soil turns green.', 'info'); }
             else if (k === 'claim') { t.o = 'you'; c.log('The seed bank sows the ground past the border. It smells of us now: the tile is ours.', 'info'); }
             basesChanged();
           },
@@ -635,7 +714,7 @@ abandonWrap = el('div.row', {}, abandon);
         const describe = (i: number | null) => {
           if (i == null) return '';
           const [x, y] = xy(i); const t = s.tiles[i];
-          return t.seen ? `${x},${y}  ${t.sh ? WAR.strongholds.kinds[t.sh].name : TERRAIN_NAME[t.t]}, ${t.sh && t.o !== 'you' ? 'a stronghold' : OWNER_NAME[String(t.o)]}${t.core ? ' (home)' : ''}` : `${x},${y}  Unexplored`;
+          return t.seen ? `${x},${y}  ${t.sh ? WAR.strongholds.kinds[t.sh].name : tileName(t)}, ${t.sh && t.o !== 'you' ? 'a stronghold' : OWNER_NAME[String(t.o)]}${t.core ? ' (home)' : ''}` : `${x},${y}  Unexplored`;
         };
         hover.textContent = describe(hoverI) || 'Hover a tile.';
         // the scouts' flag: a little pennant on the tile, its reasons in a tooltip when hovered
@@ -656,7 +735,7 @@ abandonWrap = el('div.row', {}, abandon);
           s.tiles.forEach((t, i) => {
             if (t.o !== 'you') return;
             const m = yieldMult(ctx) * tileMult(ctx, i, linked);
-            for (const [r, v] of Object.entries(MAP.yield[t.t] ?? {})) income[r] = (income[r] ?? 0) + v * m;
+            for (const [r, v] of Object.entries(tileYield(t))) income[r] = (income[r] ?? 0) + v * m;
             if (t.outpost && ctx.flags.has('tech:terrainworks')) for (const [r, v] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(r)) income[r] = (income[r] ?? 0) + v * m;
           }); }
         const c = s.claiming;
@@ -667,9 +746,12 @@ abandonWrap = el('div.row', {}, abandon);
         const i = s.selected;
         if (i == null) { info.replaceChildren(el('span.muted', {}, 'No tile selected.')); claimWrap.hidden = true; buildWrap.hidden = true; plantWrap.hidden = true; abandonWrap.hidden = true; postBtns.bridge.hidden = postBtns.nest.hidden = postBtns.fort.hidden = true; shArt.hidden = true; campWrap.hidden = true; flagWrap.hidden = true; campWarWrap.hidden = true; return; }
         const t = s.tiles[i];
-        const y = MAP.yield[t.t] ?? {};
+        const y = tileYield(t);
         const rows: [string, string][] = [['Tile', describe(i)]];
         if (t.seen) {
+          const v = variantOf(t);
+          if (t.v && v?.desc) rows.push([v.name, v.desc]);
+          if (t.l) rows.push(['Lying here', t.l.startsWith('relic:') ? `${lootName(t.l)}: ${MAP.relics[t.l.slice(6)]?.desc ?? ''} Claim the tile to take it.` : `${lootName(t.l)}. Claim the tile to take it.`]);
           const yl = (m: number) => Object.entries(y).map(([r, v]) => `+${fmt(v * m * yieldMult(ctx))} ${r}/s`).join(', ');
           const boost = outpostMult(ctx, i, null);
 if (t.sh) {
@@ -867,6 +949,22 @@ const HOME_ART: Record<'nest' | 'outpost', { rows: string[]; pal: Record<string,
     'obbbbbbo',
     'oooooooo'] },
 };
+/** Each variant's marks on its terrain colour: [x, y, w, h, colour]. Index 0 (plain) has none. */
+type Marks = [number, number, number, number, string][];
+const VAR_ART: Record<string, Marks[]> = {
+  soil: [[], [[1, 2, 3, 1, '#7a4530'], [4, 5, 3, 1, '#7a4530'], [2, 6, 1, 1, '#7a4530']],
+    [[1, 1, 1, 3, '#8a7a5a'], [2, 4, 3, 1, '#8a7a5a'], [5, 2, 1, 3, '#8a7a5a'], [6, 5, 1, 2, '#8a7a5a']],
+    [[2, 4, 4, 2, '#5e4632'], [3, 3, 2, 1, '#5e4632'], [3, 4, 1, 1, '#140e0a'], [5, 5, 1, 1, '#140e0a']]],
+  stone: [[], [[0, 5, 8, 2, '#3a3a3a'], [1, 4, 6, 1, '#9a9a9a']],
+    [[2, 2, 2, 1, '#2c2f38'], [5, 5, 1, 2, '#2c2f38'], [1, 6, 1, 1, '#2c2f38'], [6, 1, 1, 1, '#2c2f38']],
+    [[3, 3, 2, 2, '#5f8fa8'], [4, 5, 1, 2, '#5f8fa8'], [3, 3, 1, 1, '#a8d0e0']]],
+  water: [[], [[2, 2, 1, 1, '#8a9a96'], [5, 4, 1, 1, '#8a9a96'], [3, 6, 1, 1, '#8a9a96'], [6, 1, 1, 1, '#8a9a96']],
+    [[2, 2, 1, 5, '#6f7d3a'], [4, 1, 1, 6, '#6f7d3a'], [6, 3, 1, 4, '#6f7d3a'], [4, 1, 1, 1, '#a08a4a']],
+    [[2, 3, 4, 1, '#9fc6d8'], [3, 5, 2, 1, '#9fc6d8'], [4, 4, 1, 1, '#1c1612']]],
+  grass: [[], [[2, 2, 1, 1, '#e6e0d0'], [5, 3, 1, 1, '#d48aa8'], [3, 5, 1, 1, '#e6e0d0'], [6, 6, 1, 1, '#d48aa8']],
+    [[1, 2, 1, 5, '#5a6b38'], [3, 1, 1, 6, '#5a6b38'], [5, 3, 1, 4, '#5a6b38'], [6, 1, 1, 3, '#5a6b38']],
+    [[2, 2, 1, 1, '#9a6ab0'], [5, 5, 1, 1, '#9a6ab0'], [2, 3, 1, 2, '#6a7a40'], [5, 6, 1, 1, '#6a7a40']]],
+};
 function drawArt(c: CanvasRenderingContext2D, a: { rows: string[]; pal: Record<string, string> }, X: number, Y: number) {
   a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
 }
@@ -883,6 +981,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
     const X = x * T, Y = y * T;
     if (!tile.seen) { rect(c, X, Y, T, T, PAL.fog); return; }
     rect(c, X, Y, T, T, TERRAIN_COLOR[tile.t]);
+    if (tile.v) for (const [dx, dy, w, h, col] of VAR_ART[tile.t]?.[tile.v] ?? []) rect(c, X + dx, Y + dy, w, h, col);
     // the edge of what claims can reach: a dotted line on the inside of the last reachable tiles
     if (near[i]) {
       const out = (dx: number, dy: number) => inside(x + dx, y + dy) && s.tiles[idx(x + dx, y + dy)].seen && !near[idx(x + dx, y + dy)];
@@ -921,6 +1020,10 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
     if (posts.bridges.includes(i)) { rect(c, X, Y + 3, T, 1, PAL.bone); rect(c, X + 1, Y + 4, 1, 1, PAL.bone); rect(c, X + 3, Y + 4, 2, 1, PAL.bone); rect(c, X + 6, Y + 4, 1, 1, PAL.bone); }
     if (posts.nests.includes(i)) { rect(c, X + 3, Y + 2, 2, 1, PAL.bone); rect(c, X + 2, Y + 3, 4, 2, PAL.bone); rect(c, X + 3, Y + 5, 2, 1, PAL.bone); }
     if (tile.sh) { drawStronghold(c, tile.sh, X, Y); if (posts.forts.includes(i)) { rect(c, X + 7, Y, 1, 3, PAL.bone); rect(c, X + 5, Y, 2, 2, PAL.you); } }
+    if (tile.l && tile.o !== 'you') {
+      if (tile.l.startsWith('relic:')) { const on = Math.floor(performance.now() / 500 + i) % 2; rect(c, X + 3, Y + 2, 2, 4, on ? '#f2c14e' : PAL.amber); rect(c, X + 2, Y + 3, 4, 2, on ? '#f2c14e' : PAL.amber); rect(c, X + 3, Y + 3, 1, 1, '#fff3c4'); }
+      else { rect(c, X + 2, Y + 4, 4, 2, '#1c1612'); rect(c, X + 3, Y + 3, 2, 2, '#1c1612'); rect(c, X + 3, Y + 4, 2, 1, '#d9a86a'); rect(c, X + 4, Y + 3, 1, 1, '#d9a86a'); }
+    }
     if (posts.camp === i) { rect(c, X + 2, Y + 2, 4, 4, '#7a2f18'); rect(c, X + 3, Y + 1, 2, 5, '#c4532f'); rect(c, X + 1, Y + 6, 6, 1, '#c4532f'); }
   });
   const mark = (i: number | null, col: string) => {

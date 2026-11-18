@@ -32,7 +32,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Dig chambers', do: [
         'On the {Nest} tab, dig [Resting chamber]s for living space.',
         'When living space is full, no new workers hatch. Dig ahead.',
-        'Each chamber type has a cap (the badge shows it). Every new age raises it.',
+        'Each chamber type has a cap (the badge shows it). Every new age raises it. Storage chambers stop at 10.',
       ] },
       { head: 'Research the basics', do: [
         'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (after 6 chambers).',
@@ -97,7 +97,9 @@ export const GUIDE: GuidePage[] = [
         'On the {Map} tab, drag to look around and scroll to zoom. The minimap in the corner jumps the view. Click a tile next to your land, then claim it.',
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out. Outposts go only on a flag. Plant one yourself on a tile you hold, or use "Scout for an outpost" to have scouts flag a good spot; send again for another.',
         'This age\'s research is a chain: [Resin working] leads to housing, war and the Map research, and each branch opens the next. Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
-        'Each tile you hold gives resources. Build outposts on tiles for more.',
+        'Each tile you hold gives resources. Build outposts on tiles for more. Scouts out claiming clear the fog along their way.',
+        'Some tiles are a special kind (clay bed, overhang, reed bed, clover...) with a small extra effect. Select a tile to see it.',
+        'Caches and relics lie out in the fog. Claim their tile to take them. Relics last until the next flight, and each colony scatters new ones far from the nest.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
         'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
       ], tip: 'More research appears as your land grows. After your first nuptial flight, [Frontier sense] appears at 6 tiles: it turns on "Expand on its own".' },
@@ -105,6 +107,7 @@ export const GUIDE: GuidePage[] = [
         'Learn [Mandible drill]. It unlocks Soldiers, the [Guard post] and the {War} tab.',
         'Put workers on Soldier and dig Guard posts: once the {War} tab opens, the rival raids every so often.',
         'Raids give |chitin| and war honours. Campaigns take enemy tiles, and three strongholds wait far out on the {Map}.',
+        'After 3 raids repelled, [Mud bricks] appears: Brickmakers press |soil| into dirt bricks, which replace twigs in Guard posts, Worker halls, armories and Boat sheds.',
       ], tip: 'A War page opens in this Guide (the tabs above). It covers raids, campaigns, the rival queen and the strongholds.' },
       { head: 'Chase rumours', do: [
         'After 15 expeditions, returning parties sometimes bring a rumour of a special place. It shows on the {Surface} tab with its name in gold.',
@@ -114,7 +117,6 @@ export const GUIDE: GuidePage[] = [
       ] },
       { head: 'Let the nest run itself', do: [
         'After [Grooming] and 300 workers born, [Night shift] appears: the queen lays on her own while food is over half full.',
-        'After [Grooming], with 40 chambers, [Midden compost] appears: Middens turn some of the scrubbed mould into |soil|.',
       ] },
       { head: 'Make room', do: [
         'Learn [Resin working], [Sleeping halls] and [Vaulted roofs].',
@@ -228,7 +230,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Raids', do: [
         'The rival raids on its own every 10 to 15 minutes. Its column marches across the {Map} for 2 minutes first; its look hints at what is coming. Then it fights at the entrance.',
         'Raids never stop: the first three are only rival scouts, easily beaten; then come small bands, and full columns that grow with your colony (workers, chambers) and slowly with time. The {War} tab shows the threat. After the rival queen falls, wandering colonies keep coming.',
-        'Each raid is rolled: plain, a swarm, a brute pack, a night raid (no war cry) or, rarely, a great warband that only a well-prepared nest holds.',
+        'Each raid is rolled: plain, a swarm, a brute pack, a night raid (no war cry) or, rarely, a great warband that only a well-prepared nest holds. Losing a raid makes the next ones weaker and later until you repel one. Now and then a raid that gets through wrecks a few chambers; rebuild them from the Nest tab for a third of the cost.',
         'Click [Provoke a raid] to lure one now. Light bait lures a smaller raid for half the spoils and no chest; heavy bait a bigger one for double.',
         'Every ant fights at once. Raiders bite your majors first, then soldiers, then workers who rally.',
         'Repel a raid with nobody getting in and you earn war honours and a chest. Bigger raids pay more.',
