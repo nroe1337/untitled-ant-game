@@ -48,7 +48,7 @@ const ALERT_ROTATE_S = 5;
 
 /** How each system shows up when you hover a resource's rate (systems can name finer sources themselves). */
 const SOURCE_LABELS: Record<string, string> = {
-  brood: 'Brood', jobs: 'Workers', nest: 'Granaries', expeditions: 'Expeditions', map: 'Outposts', war: 'War',
+  brood: 'Brood', jobs: 'Workers', nest: 'Granaries', expeditions: 'Expeditions', map: 'Map', war: 'War',
   garden: 'Fungus gardens', castes: 'Castes', waters: 'Boats', lineage: 'Swarm Spire', husbandry: 'Herds',
   champion: 'Hunts', town: 'Town', supercolony: 'Continent', migration: 'Migration',
 };

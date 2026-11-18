@@ -397,13 +397,17 @@ export const map: GameSystem = {
       s.tiles.forEach((t, i) => {
         if (t.o !== 'you' || t.w) return; // a wonder's tile gives no yield while it stands
         const m = yieldMult(ctx) * tileMult(ctx, i, linked);
+        ctx.res.source = 'Claimed land';
         for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * m * dt);
+        ctx.res.source = 'Outposts';
         if (works && t.outpost) for (const [rid, per] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * m * dt);
       });
+      ctx.res.source = 'Map';
       lookouts(ctx, dt);
     }
     // land beyond the garden yields by terrain too
     const far = heldTerrain(ctx);
+    ctx.res.source = 'Claimed land';
     for (const t of far) for (const [rid, per] of Object.entries(MAP.yield[t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * yieldMult(ctx) * dt);
     ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence);
     ctx.res.setCapBonus('ant', 'outposts', n * O.living);
