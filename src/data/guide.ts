@@ -32,6 +32,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Dig chambers', do: [
         'On the {Nest} tab, dig [Resting chamber]s for living space.',
         'When living space is full, no new workers hatch. Dig ahead.',
+        'Each chamber type has a cap (the badge shows it). Every new age raises it.',
       ] },
       { head: 'Research the basics', do: [
         'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (after 6 chambers).',

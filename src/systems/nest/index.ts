@@ -8,6 +8,7 @@ import type { Costs } from '../../core/resources';
 import { BROOD, COLONY, MAP, NEST, RESEARCH } from '../../data/balance';
 import { PAL, blob, maskInto, rect, setup } from '../../core/pixel';
 import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
+import { currentAge } from '../research';
 
 type ChamberId = keyof typeof NEST.chambers;
 type ChamberDef = {
@@ -76,7 +77,12 @@ export const queueSlots = (ctx: Context) => (ctx.flags.has('tech:plans') ? 3 + c
 dockQueue('Building queue', 0, (strip, ctx) => strip.update(queueSlots(ctx), (S(ctx).queue ??= []), (id) => DEFS[id as ChamberId].name, undefined, ctx, (id) => costOf(ctx, id as ChamberId)));
 const totalCost = (c: Costs) => Object.values(c).reduce((a, b) => a + b, 0);
 const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx.res.has(r) && ctx.res.cap(r) >= n);
-const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && (!DEFS[id].max || count(ctx, id) < DEFS[id].max!);
+/** The most of this chamber the colony may have now: its own max, or the age's cap (NEST.ageCap), whichever is lower. */
+export const capOf = (ctx: Context, id: ChamberId) => {
+  const i = Math.max(0, RESEARCH.ages.findIndex((a) => a.id === currentAge(ctx).id));
+  return Math.min(DEFS[id].max ?? Infinity, NEST.ageCap[Math.min(i, NEST.ageCap.length - 1)]);
+};
+const canBuild = (ctx: Context, id: ChamberId) => visible(ctx, id) && count(ctx, id) < capOf(ctx, id);
 
 function build(ctx: Context, id: ChamberId) {
   const def = DEFS[id];
@@ -340,9 +346,9 @@ export const nest: GameSystem = {
         for (const id of IDS) {
           const def = DEFS[id];
           const btn = tileButton({
-            ctx, label: def.name, effect: () => liveDesc(ctx, id), count: () => count(ctx, id),
+            ctx, label: def.name, effect: () => liveDesc(ctx, id), count: () => `${count(ctx, id)}/${capOf(ctx, id)}`,
             costs: () => costOf(ctx, id),
-            enabled: (c) => !def.max || count(c, id) < def.max,
+            enabled: (c) => count(c, id) < capOf(c, id),
             onBuy: (c) => build(c, id),
             onQueue: (c) => {
               const s = S(c);
