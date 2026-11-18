@@ -358,7 +358,7 @@ export class Game {
         row.rate.textContent = on ? (row.step! > 0 ? '+' : '−') + Math.abs(row.step!) : '';
         row.rate.className = 'rate step ' + (on ? (row.step! < 0 ? 'neg' : 'pos') : 'flat');
       } else {
-        const flat = Math.abs(r.rate) < 0.005;
+        const flat = Math.abs(r.rate) < 1e-6; // tiny trickles show too (fmt gives them two significant digits)
         row.rate.textContent = flat ? '0/s' : (r.rate > 0 ? '+' : '') + fmt(r.rate) + '/s';
         row.rate.className = 'rate ' + (flat ? 'flat' : (r.rate < 0) !== (r.group === ENV) ? 'neg' : 'pos'); // for a bad store, rising is the bad direction
       }
