@@ -1,7 +1,7 @@
 // Expeditions: send parties to the surface, watch them travel, bring back surface materials.
 // Emits "expedition:return" { dest, tile } so the map (if present) can reveal the area.
 import type { GameSystem, Context } from '../../core/types';
-import { actionButton, el, progressBar, type ActionButton } from '../../core/ui';
+import { actionButton, el, hoverTip, progressBar, type ActionButton } from '../../core/ui';
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, blob, rect, setup } from '../../core/pixel';
@@ -119,6 +119,11 @@ const markCost = (ctx: Context) => {
 };
 const available = (ctx: Context) => X.destinations.filter((d) => earned(ctx) >= d.unlockMarks);
 const frozen = (ctx: Context) => ctx.mods.get('winter') > 0 && ctx.mods.get('winterTrails') <= 0;
+/** What a trip to this place brings home, by name only (the numbers vary with the party). */
+const brings = (ctx: Context, d: Dest) => {
+  const names = [...Object.keys(d.loot).map((r) => ctx.res.get(r).name.toLowerCase()), 'trail marks'];
+  return `Brings home ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
+};
 const canSend = (ctx: Context) => !frozen(ctx) && ctx.mods.get('gatesShut') <= 0 && S(ctx).parties.length < maxParties(ctx) && ready(ctx) >= S(ctx).party;
 
 const safetyOf = (ctx: Context) => Math.max(0.1, 1 + U.instinct.per * lvl(ctx, 'instinct'));
@@ -311,7 +316,7 @@ export const expeditions: GameSystem = {
     let reserveBox: HTMLInputElement, reserveWrap: HTMLElement, reserveCount: HTMLElement;
     let rumourList: HTMLElement, rumourBox: HTMLElement, mulesEl: HTMLElement, mulesRow: HTMLElement;
     let nextBox: HTMLElement, nextTxt: HTMLElement; const nextBar = progressBar();
-    let lootEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
+    let bonusEl: HTMLElement, partyHint: HTMLElement, idleEl: HTMLElement, upsHead: HTMLElement;
     let ups: ReturnType<typeof upgradeList>;
     const bars: ReturnType<typeof progressBar>[] = [];
     return {
@@ -332,7 +337,7 @@ export const expeditions: GameSystem = {
         const party = (d: number) => el('button.small', { type: 'button', onclick: (e: MouseEvent) => {
           const step = e.shiftKey ? d * 5 : d;
           s.party = Math.max(X.minParty, Math.min(s.party + step, Math.max(X.minParty, ready(ctx))));
-        } }, d > 0 ? '+' : '−');
+        }, title: 'Shift-click moves 5.' }, d > 0 ? '+' : '−');
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
           desc: () => 'Idle workers leave the nest and come back with whatever they find. Not all of them come back.\n' +
@@ -354,7 +359,7 @@ export const expeditions: GameSystem = {
         viewer = el('canvas.viewer', { width: 320, height: 40, 'aria-label': 'Your expeditions on the trail' }) as HTMLCanvasElement;
         autoBox = el('input', { type: 'checkbox', id: 'exp-auto' }) as HTMLInputElement;
         autoBox.addEventListener('change', () => { s.auto = autoBox.checked; });
-        autoWrap = el('label.row', { for: 'exp-auto' }, autoBox, 'Send parties again when they return');
+        autoWrap = el('label', { for: 'exp-auto', style: 'margin-left: 16px' }, autoBox, ' Send again on return');
         markBox = el('input', { type: 'checkbox', id: 'exp-automark' }) as HTMLInputElement;
         markBox.addEventListener('change', () => { s.autoMark = markBox.checked; });
         markWrap = el('label', { for: 'exp-automark', title: 'Mark the trail before every trip, whenever you have the pheromone for it.' }, markBox, ' Mark every trip');
@@ -364,7 +369,7 @@ export const expeditions: GameSystem = {
           reserveBox, ' reserve workers', reserveCount = el('span.muted'));
         ledger = el('div.ledger');
         ups = upgradeList(ctx, () => S(ctx).ups, UPGRADES, { research: true });
-        lootEl = el('p.muted');
+        hoverTip(destSel, () => { const d = destOf(S(ctx).dest); return d ? [brings(ctx, d), ...(isRumour(d.id) ? ['A rumoured place: only a few trips before it is picked clean.'] : [])] : []; });
         nextTxt = el('span');
         nextBox = el('div.nextplace', { title: 'Trail marks open new, richer places.' }, nextTxt, nextBar.root);
         partyHint = el('p.muted');
@@ -375,15 +380,12 @@ export const expeditions: GameSystem = {
           rumourBox,
           nextBox,
           el('div.row', {}, el('label', { for: 'exp-dest' }, 'Destination'), destSel),
-          lootEl,
-          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
+          el('div.row', {}, el('span', {}, 'Party size'), party(-1), partyEl, party(1), capEl, bonusEl = el('span.muted', { style: 'margin-left: 8px', title: `Each worker past ${X.minParty} adds ${Math.round(X.lootPerAnt * 100)}% loot.` }), el('span', { style: 'margin-left: 16px' }, 'Idle workers: ', idleEl), el('span', { style: 'margin-left: 16px' }, reserveWrap)),
           mulesRow,
-          el('div.row', {}, sendBtn.root, markBtn.root, markWrap),
-          partyHint,
-          el('p.controls', {}, 'Shift-click moves 5.'),
-          autoWrap,
+          el('div.row', {}, sendBtn.root, markBtn.root, markWrap, autoWrap),
           el('div.viewerwrap', {}, viewer, captions),
           statusEl,
+          partyHint,
           ledger,
           upsHead,
           ups.root,
@@ -396,7 +398,7 @@ export const expeditions: GameSystem = {
         const okey = opts.map((d) => d.id).join() + label(opts[0]);
         if (destSel.dataset.key !== okey) {
           destSel.dataset.key = okey;
-          destSel.replaceChildren(...opts.map((d) => el('option', isRumour(d.id) ? { value: d.id, class: 'rumour' } : { value: d.id }, label(d))));
+          destSel.replaceChildren(...opts.map((d) => el('option', isRumour(d.id) ? { value: d.id, class: 'rumour', title: brings(ctx, d) } : { value: d.id, title: brings(ctx, d) }, label(d))));
         }
         if (destSel.value !== s.dest) destSel.value = s.dest;
         destSel.classList.toggle('rumour', isRumour(s.dest));
@@ -423,7 +425,7 @@ export const expeditions: GameSystem = {
         capEl.classList.toggle('bad', s.party > partyCap(ctx));
         idleEl.textContent = String(Math.max(0, idle(ctx)));
         const dest = destOf(s.dest);
-        const m = partyMult(ctx, s.party) * (1 + U.mandibles.per * lvl(ctx, 'mandibles') + ctx.mods.get('expLoot'));
+        bonusEl.textContent = s.party > X.minParty ? ` +${Math.round((partyMult(ctx, s.party) - 1) * 100)}% loot` : '';
         {
           const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)), prev = [...X.destinations].reverse().find((d) => d.unlockMarks <= earned(ctx));
           nextBox.hidden = !n;
@@ -432,15 +434,10 @@ export const expeditions: GameSystem = {
             nextBar.set((earned(ctx) - (prev?.unlockMarks ?? 0)) / (n.unlockMarks - (prev?.unlockMarks ?? 0)));
           }
         }
-        lootEl.textContent = 'Every trip here brings back about ' + Object.entries(dest.loot)
-          .map(([rid, [lo, hi]]) => `${Math.round(lo * m)} to ${Math.round(hi * m)} ${ctx.res.get(rid).name.toLowerCase()}`).join(', ') +
-          `, and ${marksFor(dest.time)} trail mark${marksFor(dest.time) === 1 ? '' : 's'}.` + (isRumour(dest.id) ? ' A rumoured place: only a few trips before it is picked clean.' : ' Trips can be repeated as often as you like.');
-        partyHint.textContent = `Each worker past ${X.minParty} carries ${Math.round(X.lootPerAnt * 100)}% more loot home ` +
-          `(this party: +${Math.round((partyMult(ctx, s.party) - 1) * 100)}%). They are away from their jobs until the party returns.` +
-          (s.party > partyCap(ctx)
-            ? ` Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap.`
+        partyHint.textContent = (s.party > partyCap(ctx)
+            ? `Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap.`
             : s.party < partyCap(ctx) && 'twig' in dest.loot
-              ? ` Short on twigs? Bigger parties bring home far more. Each Forager's rest raises the cap, a little less each time.`
+              ? `Short on twigs? Bigger parties bring home far more. Each Forager's rest raises the cap, a little less each time.`
               : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');
