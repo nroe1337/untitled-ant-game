@@ -317,7 +317,7 @@ export const jobs: GameSystem = {
       for (const [rid, per] of Object.entries(j.produces)) ctx.res.add(rid, per * n * mult * jobMult(ctx, j.id) * dt);
       if (j.id === 'brickmaker') {
         // soil in, bricks out: as many as the soil on hand and the brick store allow
-        const B = JOBS.brickmaker, want = B.brick * n * mult * jobMult(ctx, j.id) * dt;
+        const B = JOBS.brickmaker, want = B.brick * n * mult * jobMult(ctx, j.id) * (1 + ctx.mods.get('brickRate')) * dt;
         const make = Math.max(0, Math.min(want, ctx.res.amt('soil') / B.soilPer, ctx.res.cap('brick') - ctx.res.amt('brick')));
         if (make > 0) { ctx.res.add('soil', -make * B.soilPer); ctx.res.add('brick', make); }
       }

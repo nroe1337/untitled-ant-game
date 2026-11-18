@@ -32,7 +32,7 @@ export const GUIDE: GuidePage[] = [
       { head: 'Dig chambers', do: [
         'On the {Nest} tab, dig [Resting chamber]s for living space.',
         'When living space is full, no new workers hatch. Dig ahead.',
-        'Each chamber type has a cap (the badge shows it). Every new age raises it.',
+        'Each chamber type has a cap (the badge shows it). Every new age raises it. Storage chambers stop at 10.',
       ] },
       { head: 'Research the basics', do: [
         'Learn [Storage chambers] (after 3 chambers), [Brood care] (after 5 workers) and [Elder memory] (after 6 chambers).',
@@ -98,6 +98,8 @@ export const GUIDE: GuidePage[] = [
         'Scouts only reach 8 tiles from the nest (the dotted line). Build outposts to push that line further out. Outposts go only on a flag. Plant one yourself on a tile you hold, or use "Scout for an outpost" to have scouts flag a good spot; send again for another.',
         'This age\'s research is a chain: [Resin working] leads to housing, war and the Map research, and each branch opens the next. Outpost research appears as you build them: [Lookouts] clear fog on their own, [Terrain works] and [Waystations] make outposts pay, [Linked trails] rewards a chain of them.',
         'Each tile you hold gives resources. Build outposts on tiles for more.',
+        'Some tiles are a special kind (clay bed, overhang, reed bed, clover...) with a small extra effect. Select a tile to see it.',
+        'Caches and relics lie out in the fog. Claim their tile to take them. Relics last until the next flight, and each colony scatters new ones far from the nest.',
         'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
         'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
       ], tip: 'More research appears as your land grows. After your first nuptial flight, [Frontier sense] appears at 6 tiles: it turns on "Expand on its own".' },

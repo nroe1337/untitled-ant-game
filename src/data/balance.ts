@@ -189,12 +189,12 @@ export const NEST = {
   ageCap: [8, 15, 20, 25, 30, 35, 40, 45],
   /** Strong chambers get only this share of the age cap (rounded). Chambers with a rework stay at the full cap, since
    *  rework level III needs 15 of a type. */
-  halfCap: ['gallery', 'vent', 'memory', 'chartroom', 'training', 'armory', 'stable', 'boatshed', 'den', 'nursery'] as string[],
+  halfCap: ['hall', 'gallery', 'vent', 'memory', 'chartroom', 'training', 'armory', 'stable', 'boatshed', 'den', 'nursery'] as string[],
   chambers: {
     tunnel:   { name: 'Resting chamber', base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3, later: { at: 13, cost: { knowledge: 15 } } },
     brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 16, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
-    store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, needs: 'tech:storage' },
-    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, matCap: { brick: 5 }, needs: 'tech:storage' },
+    store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, max: 10, needs: 'tech:storage' },
+    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, matCap: { brick: 5 }, max: 10, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: '+0.05 food/s',       foodRate: 0.05, later: { at: 8, cost: { resin: 4 } }, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, later: { at: 8, cost: { pheromone: 20 } }, needs: 'tech:resin' },
@@ -214,9 +214,9 @@ export const NEST = {
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'surface' },
-    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, needs: 'surface' },
-    seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+15 seed storage', matCap: { seed: 15 }, needs: 'tech:seeds' },
-    resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, needs: 'tech:resin' },
+    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, max: 10, needs: 'surface' },
+    seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+15 seed storage', matCap: { seed: 15 }, max: 10, needs: 'tech:seeds' },
+    resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, max: 10, needs: 'tech:resin' },
     memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+60 knowledge storage, elders +5% speed', knowCap: 60, mods: { 'job:elder': 0.05 }, later: { at: 10, cost: { clay: 5 } }, needs: 'tech:songs' },
     nursery:   { name: 'Royal nursery',    base: { soil: 60, food: 40 }, growth: 1.32,          desc: '+6 brood space, +10 royal jelly storage', broodCap: 6, jellyCap: 10, later: { at: 6, cost: { jelly: 3 } }, needs: 'tech:royal' },
     chartroom: { name: 'Chart room',       base: { soil: 60, pheromone: 15 }, growth: 1.32,     desc: 'Expeditions +3% loot, party cap +2', mods: { expLoot: 0.03 }, max: 15, later: { at: 7, cost: { knowledge: 40 } }, needs: 'tech:cartography' },
@@ -338,6 +338,50 @@ export const MAP = {
     paved: { food: 0.08 },
   } as Record<string, Record<string, number>>,
   stoneDefence: 1,          // each stone tile adds this much nest defence
+  /** Tile variants (Nate, Nov 18): each terrain comes plain or as one of three kinds, rolled with the map. Small effects that
+   *  give exploring some interest. `each` effects count held tiles up to variantCap. Index 0 is the plain kind. */
+  variants: {
+    soil: [
+      { name: 'Loam' },
+      { name: 'Clay bed', desc: 'Brickmakers work 3% faster for each one held.', each: { brickRate: 0.03 } },
+      { name: 'Root mat', desc: 'Also yields twigs.', yield: { twig: 0.003 } },
+      { name: 'Old anthill', desc: '+3 living space.', living: 3 },
+    ],
+    stone: [
+      { name: 'Bare rock' },
+      { name: 'Overhang', desc: '+2 more nest defence.', defence: 2 },
+      { name: 'Flint', desc: 'Soldiers hit 1% harder for each one held.', each: { soldierPower: 0.01 } },
+      { name: 'Spring rock', desc: 'Held grass next to it yields double.', spring: true },
+    ],
+    water: [
+      { name: 'Puddle' },
+      { name: 'Shallows', desc: 'Can be claimed without Leaf rafts.', ford: true },
+      { name: 'Reed bed', desc: 'Yields twigs instead of pheromone.', yield: { twig: 0.004 }, replace: true },
+      { name: 'Strider pool', desc: 'Expeditions 1% faster for each one held.', each: { expSpeed: -0.01 } },
+    ],
+    grass: [
+      { name: 'Meadow' },
+      { name: 'Clover', desc: 'Double food.', yield: { food: 0.03 } },
+      { name: 'Tall grass', desc: 'Raids 1% smaller for each one held.', each: { raidSize: -0.01 } },
+      { name: 'Thistle', desc: '+1 nest defence.', defence: 1 },
+    ],
+  } as Record<string, { name: string; desc?: string; yield?: Record<string, number>; replace?: boolean; each?: Record<string, number>; living?: number; defence?: number; spring?: boolean; ford?: boolean }[]>,
+  variantOdds: [0.7, 0.1, 0.1, 0.1],
+  variantCap: 10,
+  /** Map loot (Nate, Nov 18): caches and relics lie on unclaimed ground, seen once the fog lifts, taken when the tile is ours.
+   *  Caches are one-off stores (x 1 + distance/10). Relics last until the next flight; each colony scatters new ones far out. */
+  loot: { every: 30, minDist: 4, caches: { food: 150, twig: 25, resin: 6, chitin: 10 } as Record<string, number>, relics: 3, relicDist: 8 },
+  relics: {
+    shell: { name: 'Beetle shell', desc: 'Soldiers hit 10% harder.', mods: { soldierPower: 0.1 } },
+    sunstone: { name: 'Sun stone', desc: 'Expeditions 10% faster.', mods: { expSpeed: -0.1 } },
+    husk: { name: 'Seed husk satchel', desc: 'Expeditions bring back 10% more.', mods: { expLoot: 0.1 } },
+    trailstone: { name: 'Trail stone', desc: 'Claims cost 10% less.', mods: { claimCost: -0.1 } },
+    mortar: { name: 'Termite mortar', desc: 'Outposts cost 10% less.', mods: { outpostCost: -0.1 } },
+    pebbles: { name: 'Pebble ring', desc: '+10 nest defence.', mods: { defence: 10 } },
+    antenna: { name: 'Long antenna', desc: '+1 claim reach.', mods: { reach: 1 } },
+    dust: { name: 'Bitter dust', desc: 'Raids 10% smaller.', mods: { raidSize: -0.1 } },
+    eye: { name: 'Dragonfly eye', desc: 'Lookouts see 1 tile further.', mods: { lookoutSight: 1 } },
+  } as Record<string, { name: string; desc: string; mods: Record<string, number> }>,
 };
 
 export const WAR = {
