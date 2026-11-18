@@ -103,7 +103,8 @@ export const GUIDE: GuidePage[] = [
         'Each tile you hold gives resources. Build outposts on tiles for more. Scouts out claiming clear the fog along their way.',
         'Some tiles are a special kind (clay bed, overhang, reed bed, clover...) with a small extra effect. Select a tile to see it.',
         'Caches and relics lie out in the fog. Claim their tile to take them. Relics last until the next flight, and each colony scatters new ones far from the nest.',
-        'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|.',
+        'Claim toward what you are short on: woods for |twig| and |resin|, grass for |food|, stones for |pebble|.',
+        'Claims cost |fibre| (grass fibre, from grass tiles and expeditions). Outposts cost |pebble| (from stone tiles, expeditions and diggers once the Map is open).',
         'Hold enough of one kind of ground and its research appears, each upgrading a chamber you already have: grass [Meadow granaries], soil [Soil masons], stone [Stone posts], streams [Dew wells], paved slabs [Warm slabs].',
       ], tip: 'More research appears as your land grows. After your first nuptial flight, [Frontier sense] appears at 6 tiles: it turns on "Expand on its own".' },
       { head: 'Go to war', do: [

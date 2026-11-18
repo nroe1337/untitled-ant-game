@@ -321,6 +321,7 @@ export const jobs: GameSystem = {
         const make = Math.max(0, Math.min(want, ctx.res.amt('soil') / B.soilPer, ctx.res.cap('brick') - ctx.res.amt('brick')));
         if (make > 0) { ctx.res.add('soil', -make * B.soilPer); ctx.res.add('brick', make); }
       }
+      if (j.id === 'digger' && ctx.flags.has('tech:cartography')) ctx.res.add('pebble', JOBS.diggerPebble * n * mult * jobMult(ctx, j.id) * dt);
       if (j.id === 'digger' && ctx.flags.has('tech:deepdig')) ctx.res.add('clay', JOBS.diggerClay * n * mult * jobMult(ctx, j.id) * dt);
       if (j.id === 'digger' && ctx.flags.has('tech:buriedfinds')) buriedFind(ctx, n * mult * dt);
     }
