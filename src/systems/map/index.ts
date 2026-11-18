@@ -961,13 +961,13 @@ function drawMarch(c: CanvasRenderingContext2D, p: number, kindId = 'plain') {
 interface PartyOnMap { tile: [number, number]; q: number; ants: number; out: boolean; name: string; left: number }
 /** Our parties out on the trails, from the expedition state: out to the place in the first half of the trip, home in the second. */
 const partiesOf = (ctx: Context): PartyOnMap[] => {
-  const ps = (ctx.state.expeditions as { parties?: { dest: string; ants: number; elapsed: number; duration: number }[] } | undefined)?.parties ?? [];
+  const ps = (ctx.state.expeditions as { parties?: { at?: [number, number]; dest: string; ants: number; elapsed: number; duration: number }[] } | undefined)?.parties ?? [];
   const all: { id: string; name: string; tile: readonly number[] }[] = [...EXPEDITIONS.destinations, ...EXPEDITIONS.rumours.places];
   return ps.flatMap((p) => {
     const d = all.find((x) => x.id === p.dest);
     if (!d) return [];
     const f = Math.min(1, p.elapsed / (p.duration || 1)), out = f < 0.5;
-    return [{ tile: [d.tile[0], d.tile[1]] as [number, number], q: out ? f * 2 : 2 - f * 2, ants: p.ants, out, name: d.name, left: (p.duration - p.elapsed) / ctx.speed }];
+    return [{ tile: p.at ?? [d.tile[0], d.tile[1]] as [number, number], q: out ? f * 2 : 2 - f * 2, ants: p.ants, out, name: d.name, left: (p.duration - p.elapsed) / ctx.speed }];
   });
 };
 const partyAt = (e: PartyOnMap, q: number): [number, number] => [MAP.nest[0] + e.tile[0] * q + 0.5, MAP.nest[1] + e.tile[1] * q + 0.5];

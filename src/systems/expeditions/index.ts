@@ -5,11 +5,11 @@ import { actionButton, el, hoverTip, progressBar, type ActionButton } from '../.
 import { fmt } from '../../core/resources';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { PAL, blob, rect, setup } from '../../core/pixel';
-import { EXPEDITIONS as X, NEST } from '../../data/balance';
+import { EXPEDITIONS as X, NEST, MAP } from '../../data/balance';
 
 /** What happens to a party on the trail, rolled when it leaves and played out partway (at = share of the trip). */
 interface Fate { at: number; lost: number; wipe: boolean; done?: boolean }
-interface Party { dest: string; mules?: number; ants: number; elapsed: number; duration: number; told: number; event?: string; sent?: number; fate?: Fate }
+interface Party { /** Where on the Map this trip went, as an offset from the nest (a fresh spot each trip). */ at?: [number, number]; dest: string; mules?: number; ants: number; elapsed: number; duration: number; told: number; event?: string; sent?: number; fate?: Fate }
 interface ExpState {
   runs: number;
   /** Trail marks ever earned this colony. Unlocks new places and trail upgrades. */
@@ -101,6 +101,25 @@ const freeMajors = (ctx: Context) => Math.max(0, (ctx.state.jobs?.assigned?.majo
 const mulesOut = (ctx: Context) => S(ctx).parties.reduce((a, p) => a + (p.mules ?? 0), 0);
 
 const onTrail = (ctx: Context) => S(ctx).parties.reduce((a, p) => a + p.ants, 0);
+/** A fresh spot for an ordinary place: as far from the nest as the place's own tile, in whichever direction has the most
+ *  unexplored ground, so trips to the same kind of place push the fog back in new directions (Nate, Nov 18). */
+function spotFor(ctx: Context, d: Dest): [number, number] {
+  const tiles = (ctx.state.map as { tiles?: { seen: boolean }[] } | undefined)?.tiles;
+  if (isRumour(d.id) || !tiles?.length) return [d.tile[0], d.tile[1]];
+  const [nx, ny] = MAP.nest, rad = Math.hypot(d.tile[0], d.tile[1]), C = MAP.cols, R = MAP.rows;
+  const spots: { at: [number, number]; fog: number }[] = [];
+  for (let k = 0; k < 32; k++) {
+    const a = (k / 32) * Math.PI * 2, x = Math.round(nx + Math.cos(a) * rad), y = Math.round(ny + Math.sin(a) * rad);
+    if (x < 0 || y < 0 || x >= C || y >= R) continue;
+    let fog = 0;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const X2 = x + dx, Y2 = y + dy; if (X2 >= 0 && Y2 >= 0 && X2 < C && Y2 < R && !tiles[Y2 * C + X2]?.seen) fog++; }
+    spots.push({ at: [x - nx, y - ny], fog });
+  }
+  if (!spots.length) return [d.tile[0], d.tile[1]];
+  spots.sort((p, q) => q.fog - p.fog);
+  const top = spots.filter((p) => p.fog >= spots[0].fog - 2).slice(0, 5);
+  return top[Math.floor(Math.random() * top.length)].at;
+}
 /** Workers away on trails plus any kept in reserve between trips. */
 const away = (ctx: Context) => onTrail(ctx) + (S(ctx).reserve ? S(ctx).reserved ?? 0 : 0);
 const ready = (ctx: Context) => idle(ctx) + (S(ctx).reserve ? S(ctx).reserved ?? 0 : 0);
@@ -175,7 +194,7 @@ function send(ctx: Context) {
   const wipe = !ctx.mods.get('noWipe') && Math.random() < wipeOf(ctx, d) * guard; // a manned wasp nest: wasps fly escort
   const lost = !wipe && Math.random() < lossOf(ctx, d) * guard ? Math.min(st.party, 1 + Math.floor(Math.random() * maxLost(st.party))) : 0;
   const fate: Fate = { at: 0.25 + Math.random() * 0.5, lost, wipe };
-  st.parties.push({ dest: d.id, mules, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked, mules), told: 0, fate });
+  st.parties.push({ at: spotFor(ctx, d), dest: d.id, mules, ants: st.party, sent: st.party, elapsed: 0, duration: durationOf(ctx, d.time, marked, mules), told: 0, fate });
   ctx.busy['job:major'] = mulesOut(ctx);
   ctx.bus.emit('expedition:send', { dest: d.id, marked, ants: st.party });
   if (marked) { if (!st.autoMark) ctx.log('Fresh pheromone marks the way. The party moves quickly.', 'info'); st.marked = false; }
@@ -241,7 +260,7 @@ function finish(ctx: Context, p: Party) {
   if (isRumour(d.id) && !openRumours(ctx).some((r) => r.id === d.id) && !s.parties.some((q) => q.dest === d.id)) ctx.log(`${d.name} is picked clean.`, 'info');
   if (!isRumour(d.id)) hearRumour(ctx);
   const sent = p.sent ?? p.ants;
-  ctx.bus.emit('expedition:return', { dest: d.id, tile: d.tile, ants: sent, lost: sent - p.ants });
+  ctx.bus.emit('expedition:return', { dest: d.id, tile: p.at ?? d.tile, ants: sent, lost: sent - p.ants });
   const next = X.destinations.find((x) => x.unlockMarks > before && x.unlockMarks <= s.earned!);
   if (next) ctx.log(`Scouts mention a new place: ${next.name.toLowerCase()}.`, 'info');
   if (s.runs >= X.rivalAfterRuns && !ctx.flags.has('rival')) {
