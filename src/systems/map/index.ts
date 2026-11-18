@@ -639,7 +639,7 @@ abandonWrap = el('div.row', {}, abandon);
           c2.fillStyle = PAL.bone; c2.fillRect(fx * 8 + 2, fy * 8 + 1, 1, 6);
           c2.fillStyle = Math.floor(performance.now() / 600) % 2 ? '#f2c14e' : '#e0a83a'; c2.fillRect(fx * 8 + 3, fy * 8 + 1, 3, 2); c2.fillRect(fx * 8 + 3, fy * 8 + 3, 2, 1);
         }
-        pointTip(cam.root, hoverI != null && hoverI === s.flag ? s.flagWhy ?? null : null, pointer.x, pointer.y);
+        pointTip(cam.root, columnTip(ctx, hoverI) ?? (hoverI != null && hoverI === s.flag ? s.flagWhy ?? null : null), pointer.x, pointer.y);
         survey.root.hidden = !ctx.flags.has('tech:cartography');
         survey.update(ctx);
         surveyLine.hidden = !s.survey;
@@ -910,46 +910,66 @@ const marchAt = (p: number): [number, number] => {
 /** The rival's raiding column: a file of ants walking from their mound to our nest. Drawn over the fog, so it is always seen. */
 function drawMarch(c: CanvasRenderingContext2D, p: number, kindId = 'plain') {
   const kind = WAR.raidKinds[kindId] ?? WAR.raidKinds.plain, big = kindId === 'brutes' || kindId === 'warband', col = kindId === 'night' ? '#3a335e' : PAL.rival;
-  const T = 8, len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]), t = performance.now() / 250;
-  const ux = (MAP.nest[0] - marchFrom[0]) / (len || 1), uy = (MAP.nest[1] - marchFrom[1]) / (len || 1);
+  const T = 8, len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]);
   for (let k = 0; k < kind.column; k++) {
     const q = p - (k * 0.45) / len;
     if (q < 0) break;
-    // a march, not a wriggle: every ant keeps its place in the file and steps forward in time, a pixel at a stride
-    const [x, y] = marchAt(q), step = (Math.floor(t) + k) % 2;
-    const X = Math.round(x * T + ux * step) - 1, Y = Math.round(y * T + uy * step) - 1;
+    // every ant keeps its place in the file and glides forward with the march
+    const [x, y] = marchAt(q);
+    const X = Math.round(x * T) - 1, Y = Math.round(y * T) - 1;
     const sz = big && k % 2 === 0 ? 3 : 2;
     rect(c, X - 1, Y - 1, sz + 2, sz + 2, '#1a1410');
     rect(c, X, Y, sz, sz, col);
   }
 }
 /** An expedition party on the map: where it is going, how far along the trail it is (0 home, 1 there), and its size. */
-interface PartyOnMap { tile: [number, number]; q: number; ants: number; out: boolean }
+interface PartyOnMap { tile: [number, number]; q: number; ants: number; out: boolean; name: string; left: number }
 /** Our parties out on the trails, from the expedition state: out to the place in the first half of the trip, home in the second. */
 const partiesOf = (ctx: Context): PartyOnMap[] => {
   const ps = (ctx.state.expeditions as { parties?: { dest: string; ants: number; elapsed: number; duration: number }[] } | undefined)?.parties ?? [];
-  const all: { id: string; tile: readonly number[] }[] = [...EXPEDITIONS.destinations, ...EXPEDITIONS.rumours.places];
+  const all: { id: string; name: string; tile: readonly number[] }[] = [...EXPEDITIONS.destinations, ...EXPEDITIONS.rumours.places];
   return ps.flatMap((p) => {
     const d = all.find((x) => x.id === p.dest);
     if (!d) return [];
     const f = Math.min(1, p.elapsed / (p.duration || 1)), out = f < 0.5;
-    return [{ tile: [d.tile[0], d.tile[1]] as [number, number], q: out ? f * 2 : 2 - f * 2, ants: p.ants, out }];
+    return [{ tile: [d.tile[0], d.tile[1]] as [number, number], q: out ? f * 2 : 2 - f * 2, ants: p.ants, out, name: d.name, left: (p.duration - p.elapsed) / ctx.speed }];
   });
 };
 const partyAt = (e: PartyOnMap, q: number): [number, number] => [MAP.nest[0] + e.tile[0] * q + 0.5, MAP.nest[1] + e.tile[1] * q + 0.5];
 /** One of our expedition parties: a short file of our ants on the trail between the nest and its place. */
 function drawParty(c: CanvasRenderingContext2D, e: PartyOnMap) {
-  const T = 8, len = Math.hypot(e.tile[0], e.tile[1]) || 1, t = performance.now() / 250, dir = e.out ? 1 : -1;
-  const ux = (e.tile[0] / len) * dir, uy = (e.tile[1] / len) * dir;
+  const T = 8, len = Math.hypot(e.tile[0], e.tile[1]) || 1, dir = e.out ? 1 : -1;
   for (let k = 0; k < Math.min(e.ants, 6); k++) {
     const q = e.q - (dir * k * 0.45) / len;
     if (q < 0 || q > 1) break;
-    const [x, y] = partyAt(e, q), step = (Math.floor(t) + k) % 2;
-    const X = Math.round(x * T + ux * step) - 1, Y = Math.round(y * T + uy * step) - 1;
+    const [x, y] = partyAt(e, q);
+    const X = Math.round(x * T) - 1, Y = Math.round(y * T) - 1;
     rect(c, X - 1, Y - 1, 4, 4, '#1a1410');
     rect(c, X, Y, 2, 2, PAL.you);
   }
 }
+const fmtTime = (sec: number) => { sec = Math.max(0, Math.ceil(sec)); const m = Math.floor(sec / 60), r = sec % 60; return m ? (r ? `${m}m ${r}s` : `${m}m`) : `${r}s`; };
+/** True when one of a column's ants stands on tile i. */
+const onColumn = (i: number, at: (q: number) => [number, number], q0: number, n: number, dq: number) => {
+  for (let k = 0; k < n; k++) { const q = q0 - k * dq; if (q < 0 || q > 1) break; const [x, y] = at(q); if (idx(Math.floor(x), Math.floor(y)) === i) return true; }
+  return false;
+};
+/** What a column on the hovered tile is doing, for its tooltip: a raid on its way, or one of our parties. */
+const columnTip = (ctx: Context, i: number | null): string | null => {
+  if (i == null) return null;
+  const m = marchOf(ctx);
+  if (m != null) {
+    const w = ctx.state.war as { attackIn: number; next?: { kind: string } }, kind = WAR.raidKinds[w.next?.kind ?? 'plain'] ?? WAR.raidKinds.plain;
+    const len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]) || 1;
+    if (onColumn(i, marchAt, m, kind.column, 0.45 / len)) return `${kind.name}, marching on the nest. At the entrance in ${fmtTime(w.attackIn / ctx.speed)}.`;
+  }
+  for (const e of partiesOf(ctx)) {
+    const len = Math.hypot(e.tile[0], e.tile[1]) || 1;
+    if (onColumn(i, (q) => partyAt(e, q), e.q, Math.min(e.ants, 6), ((e.out ? 1 : -1) * 0.45) / len))
+      return `${e.ants} workers ${e.out ? 'heading to' : 'coming home from'} ${e.name.toLowerCase()}. Home in ${fmtTime(e.left)}.`;
+  }
+  return null;
+};
 /** The march's progress from the war state, or null when no raid is on its way. */
 const marchOf = (ctx: Context): number | null => {
   const w = ctx.state.war as { attackIn?: number; battle?: unknown; rivalDefeated?: boolean } | undefined;
