@@ -179,6 +179,8 @@ export function tileButton(opts: {
   /** A quieter line under the effect, e.g. the current level. */
   note?: () => string;
   costs: () => Costs; count?: () => number | string;
+  /** Extra rows in the cost box for things that are needed but not spent, e.g. chambers dug. */
+  reqs?: () => { name: string; n: number; have: number }[];
   enabled?: (ctx: Context) => boolean; onBuy: (ctx: Context) => void;
   /** Building queue: return true if the click queued it. Called on shift-click, or any click while unaffordable. */
   onQueue?: (ctx: Context) => boolean;
@@ -197,7 +199,8 @@ export function tileButton(opts: {
     }, { capture: true });
   }
   const fill = (ctx: Context) => {
-    const lines = costLines(ctx, opts.costs());
+    const lines = [...costLines(ctx, opts.costs()), ...(opts.reqs?.() ?? []).map(({ name, n, have }) =>
+      el(`div.${have < n ? 'short' : 'ok'}`, {}, `${name}: ${fmt(n, true)}${have < n ? ` (you have ${fmt(have, true)})` : ''}`))];
     tip().replaceChildren(
       ...(opts.desc ? [el('div.tdesc', {}, opts.desc)] : []),
       ...(lines.length ? [el('div.tcost', {}, ...lines)] : []),

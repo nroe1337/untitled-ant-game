@@ -70,9 +70,9 @@ function checkMilestones(ctx: Context) {
 /** Big research needs a colony that has reached a size: a share of COLONY.targetColony, by peak workers this colony. */
 const popNeed = (id: string) => Math.round((TECHS[id].pop ?? 0) * COLONY.targetColony);
 const peak = (ctx: Context) => Math.max((ctx.state.stats as { colonyPeak?: number } | undefined)?.colonyPeak ?? 0, Math.floor(ctx.res.amt('ant')));
-const rooms = (ctx: Context) => counter(ctx, 'rooms');
+const roomsDug = (ctx: Context) => counter(ctx, 'rooms');
 /** Some research also needs the nest dug to a size first (Upward tunnels: 25 chambers). */
-const bigEnough = (ctx: Context, id: string) => peak(ctx) >= popNeed(id) && rooms(ctx) >= (TECHS[id].rooms ?? 0);
+const bigEnough = (ctx: Context, id: string) => peak(ctx) >= popNeed(id) && roomsDug(ctx) >= (TECHS[id].rooms ?? 0);
 
 /** Research queue: 2 slots from Study plans, more from the Master plans lineage perk. */
 export const researchSlots = (ctx: Context) => (ctx.flags.has('tech:studyplans') ? 2 + ctx.mods.get('queueSlots') : 0);
@@ -220,7 +220,8 @@ export const research: GameSystem = {
           const btn = tileButton({
             ctx, label: t.name,
             effect: () => t.desc + ((t.cost.knowledge ?? 0) > ctx.res.cap('knowledge') ? ' Needs more knowledge storage: build Halls of elders.' : ''),
-            warn: () => (peak(ctx) < popNeed(id) ? `Needs a colony of ${popNeed(id)} workers. Largest so far: ${peak(ctx)}.` : rooms(ctx) < (t.rooms ?? 0) ? `Needs ${t.rooms} chambers. Dug so far: ${rooms(ctx)}.` : ''),
+            warn: () => (peak(ctx) < popNeed(id) ? `Needs a colony of ${popNeed(id)} workers. Largest so far: ${peak(ctx)}.` : ''),
+            reqs: () => (t.rooms && !ctx.flags.has('tech:' + id) ? [{ name: 'Chambers', n: t.rooms, have: roomsDug(ctx) }] : []),
             costs: () => t.cost,
             count: () => (RQ(ctx).includes(id) ? 'queued' : ''),
             enabled: (c) => available(c, id) && bigEnough(c, id),
