@@ -448,7 +448,7 @@ export const map: GameSystem = {
       mount(root: HTMLElement, ctx: Context) {
         cam = makeCamera({ cols: MAP.cols, rows: MAP.rows, zooms: MAP.zooms, zoom: MAP.zoom, T: 8, label: 'Map of the garden', onPick: (i) => { S(ctx).selected = i; } });
         cam.centre(...MAP.nest);
-        cam.paintMini = (c) => { paintMini(c, S(ctx)); const m = marchOf(ctx); if (m != null) { const [x, y] = marchAt(m); c.fillStyle = PAL.rival; c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } c.fillStyle = PAL.you; for (const e of partiesOf(ctx)) { const [x, y] = partyAt(e, e.q); c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } };
+        cam.paintMini = (c) => { paintMini(c, S(ctx)); const m = marchOf(ctx); if (m != null) { const [x, y] = marchAt(m); c.fillStyle = PAL.rival; c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } c.fillStyle = PAL.you; for (const e of partiesOf(ctx)) { const [x, y] = partyAt(e, e.q); c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } c.fillStyle = SCOUT; for (const sc of scoutsOf(ctx)) { const [x, y] = sc.pts[0] ?? MAP.nest; c.fillRect(Math.floor(x), Math.floor(y), 2, 2); } };
         const homeBtn = el('button.ghost', { type: 'button' }, 'Focus on nest');
         homeBtn.addEventListener('click', () => cam.centre(...MAP.nest));
         hover = el('p.muted.mono');
@@ -619,7 +619,7 @@ abandonWrap = el('div.row', {}, abandon);
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         hoverI = cam.hover;
-        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx), march: marchOf(ctx), marchKind: (ctx.state.war as { next?: { kind: string } } | undefined)?.next?.kind, parties: partiesOf(ctx) });
+        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx), march: marchOf(ctx), marchKind: (ctx.state.war as { next?: { kind: string } } | undefined)?.next?.kind, parties: partiesOf(ctx), scouts: scoutsOf(ctx) });
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
@@ -838,11 +838,35 @@ const SH_ART: Record<Stronghold, { rows: string[]; pal: Record<string, string> }
     'sSSSssss',
     'ssssssss'] },
 };
+/** Our own tiles' art, 8x8 like the strongholds: the home mound with its entrance, and an outpost's small mound under our pennant. */
+const HOME_ART: Record<'nest' | 'outpost', { rows: string[]; pal: Record<string, string> }> = {
+  nest: { pal: { o: '#1c1612', b: '#a8733f', c: '#d9a86a', k: '#0d0a08', r: PAL.you }, rows: [
+    '...oor..',
+    '..obco..',
+    '.obccbo.',
+    '.obkkbor',
+    'obkkkkbo',
+    'obbbbcbo',
+    'rbcbbbbo',
+    'oooooooo'] },
+  outpost: { pal: { o: '#1c1612', b: '#a8733f', c: '#d9a86a', k: '#0d0a08', r: PAL.you, t: PAL.bone }, rows: [
+    '....rrt.',
+    '.....rt.',
+    '......t.',
+    '..ooo.t.',
+    '.obcbot.',
+    'obkkcbo.',
+    'obbbbbbo',
+    'oooooooo'] },
+};
+function drawArt(c: CanvasRenderingContext2D, a: { rows: string[]; pal: Record<string, string> }, X: number, Y: number) {
+  a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
+}
 function drawStronghold(c: CanvasRenderingContext2D, kind: Stronghold, X: number, Y: number) {
   const a = SH_ART[kind];
   a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
 }
-function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null; march?: number | null; marchKind?: string; parties?: PartyOnMap[] } = { bridges: [], nests: [], forts: [] }) {
+function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null; march?: number | null; marchKind?: string; parties?: PartyOnMap[]; scouts?: ScoutsOnMap[] } = { bridges: [], nests: [], forts: [] }) {
   const c = setup(cv);
   const T = 8;
   const near = s.tiles.map((t, i) => t.seen && reach(i));
@@ -868,7 +892,9 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
       if (n(0, 1) !== tile.o) rect(c, X, Y + T - 1, T, 1, col);
       if (n(-1, 0) !== tile.o) rect(c, X, Y, 1, T, col);
       if (n(1, 0) !== tile.o) rect(c, X + T - 1, Y, 1, T, col);
-      if (tile.core) rect(c, X + 2, Y + 2, 4, 4, col);
+      if (tile.o === 'you' && tile.core) drawArt(c, HOME_ART.nest, X, Y);
+      else if (tile.o === 'you' && tile.outpost) drawArt(c, HOME_ART.outpost, X, Y);
+      else if (tile.core) rect(c, X + 2, Y + 2, 4, 4, col);
       else if (tile.outpost) rect(c, X + 3, Y + 3, 2, 2, col);
       if (tile.o === 'you' && tile.outpost) {
         const [fire, watch] = stones;
@@ -898,6 +924,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
   if (s.claiming && s.claiming.cell == null && Math.floor(performance.now() / 400) % 2) mark(s.claiming.i, PAL.you);
   mark(s.selected, PAL.bone);
   for (const e of posts.parties ?? []) drawParty(c, e);
+  for (const sc of posts.scouts ?? []) drawScouts(c, sc);
   if (posts.march != null) drawMarch(c, posts.march, posts.marchKind ?? 'plain');
 }
 
@@ -949,6 +976,28 @@ function drawParty(c: CanvasRenderingContext2D, e: PartyOnMap) {
   }
 }
 const fmtTime = (sec: number) => { sec = Math.max(0, Math.ceil(sec)); const m = Math.floor(sec / 60), r = sec % 60; return m ? (r ? `${m}m ${r}s` : `${m}m`) : `${r}s`; };
+/** Scouts out of the nest: a claiming party walking to its tile, or a survey fanning out around the nest. Pale and spread out, unlike a laden column. */
+interface ScoutsOnMap { pts: [number, number][]; tip: string }
+const SCOUT = '#f2c48a';
+const scoutsOf = (ctx: Context): ScoutsOnMap[] => {
+  const s = S(ctx), out: ScoutsOnMap[] = [], [nx, ny] = MAP.nest;
+  const c = s.claiming;
+  if (c && c.cell == null) {
+    const [tx, ty] = xy(c.i), f = Math.min(1, c.elapsed / (c.duration || 1)), len = Math.hypot(tx - nx, ty - ny) || 1, pts: [number, number][] = [];
+    for (let k = 0; k < Math.min(c.ants, 4); k++) { const q = f - (k * 0.8) / len; if (q < 0) break; pts.push([nx + (tx - nx) * q + 0.5, ny + (ty - ny) * q + 0.5]); }
+    out.push({ pts, tip: `${c.ants} scouts on their way to claim this ground. Ours in ${fmtTime((c.duration - c.elapsed) / ctx.speed)}.` });
+  }
+  const v = s.survey;
+  if (v) {
+    const f = Math.min(1, v.elapsed / (v.duration || 1)), n = Math.max(1, Math.min(v.ants, 4)), rad = 1 + 6 * Math.sin(Math.PI * f), pts: [number, number][] = [];
+    for (let k = 0; k < n; k++) { const a = (2 * Math.PI * k) / n + f * Math.PI; pts.push([nx + 0.5 + Math.cos(a) * rad, ny + 0.5 + Math.sin(a) * rad]); }
+    out.push({ pts: pts.filter(([x, y]) => inside(Math.floor(x), Math.floor(y))), tip: `${v.ants} scouts looking for an outpost spot. Back in ${fmtTime((v.duration - v.elapsed) / ctx.speed)}.` });
+  }
+  return out;
+};
+function drawScouts(c: CanvasRenderingContext2D, sc: ScoutsOnMap) {
+  for (const [x, y] of sc.pts) { const X = Math.round(x * 8) - 1, Y = Math.round(y * 8) - 1; rect(c, X - 1, Y - 1, 4, 4, '#1a1410'); rect(c, X, Y, 2, 2, SCOUT); }
+}
 /** True when one of a column's ants stands on tile i. */
 const onColumn = (i: number, at: (q: number) => [number, number], q0: number, n: number, dq: number) => {
   for (let k = 0; k < n; k++) { const q = q0 - k * dq; if (q < 0 || q > 1) break; const [x, y] = at(q); if (idx(Math.floor(x), Math.floor(y)) === i) return true; }
@@ -963,6 +1012,7 @@ const columnTip = (ctx: Context, i: number | null): string | null => {
     const len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]) || 1;
     if (onColumn(i, marchAt, m, kind.column, 0.45 / len)) return `${kind.name}, marching on the nest. At the entrance in ${fmtTime(w.attackIn / ctx.speed)}.`;
   }
+  for (const sc of scoutsOf(ctx)) if (sc.pts.some(([x, y]) => idx(Math.floor(x), Math.floor(y)) === i)) return sc.tip;
   for (const e of partiesOf(ctx)) {
     const len = Math.hypot(e.tile[0], e.tile[1]) || 1;
     if (onColumn(i, (q) => partyAt(e, q), e.q, Math.min(e.ants, 6), ((e.out ? 1 : -1) * 0.45) / len))
