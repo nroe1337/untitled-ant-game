@@ -325,7 +325,7 @@ export const expeditions: GameSystem = {
       mount(root, ctx) {
         const s = S(ctx);
         partyEl = el('span.count', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 3ch; text-align: center' });
-        capEl = el('span.muted', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 6ch', title: "The soft cap: past it, each worker carries only a third as much. Forager's rests and Chart rooms raise it." });
+        capEl = el('span.muted', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 6ch', title: "The most workers a party can take. Forager\'s rests and Chart rooms raise it." });
         destSel = el('select', { id: 'exp-dest' }) as HTMLSelectElement;
         destSel.addEventListener('change', () => { s.dest = destSel.value; if (!isRumour(s.dest)) s.homeDest = s.dest; });
         rumourList = el('div.rumours');
@@ -336,7 +336,7 @@ export const expeditions: GameSystem = {
           el('span', {}, 'Pack mules (majors)'), mule(-1), mulesEl, mule(1));
         const party = (d: number) => el('button.small', { type: 'button', onclick: (e: MouseEvent) => {
           const step = e.shiftKey ? d * 5 : d;
-          s.party = Math.max(X.minParty, Math.min(s.party + step, Math.max(X.minParty, ready(ctx))));
+          s.party = Math.max(X.minParty, Math.min(s.party + step, partyCap(ctx), Math.max(X.minParty, ready(ctx))));
         }, title: 'Shift-click moves 5.' }, d > 0 ? '+' : '−');
         sendBtn = actionButton({
           ctx, label: 'Send expedition',
@@ -434,10 +434,9 @@ export const expeditions: GameSystem = {
             nextBar.set((earned(ctx) - (prev?.unlockMarks ?? 0)) / (n.unlockMarks - (prev?.unlockMarks ?? 0)));
           }
         }
-        partyHint.textContent = (s.party > partyCap(ctx)
-            ? `Past ${partyCap(ctx)} workers each one carries only a third as much: dig more Forager's rests to raise the cap.`
-            : s.party < partyCap(ctx) && 'twig' in dest.loot
-              ? `Short on twigs? Bigger parties bring home far more. Each Forager's rest raises the cap, a little less each time.`
+        if (s.party > partyCap(ctx)) s.party = Math.max(X.minParty, partyCap(ctx)); // the cap is hard (Nate, Nov 18)
+        partyHint.textContent = (s.party < partyCap(ctx) && 'twig' in dest.loot
+              ? `Short on twigs? Bigger parties bring home far more. Forager's rests and Chart rooms raise the cap.`
               : '');
         sendBtn.update(ctx); markBtn.update(ctx);
         autoWrap.hidden = !lvl(ctx, 'memory');

@@ -239,7 +239,7 @@ export const EXPEDITIONS = {
     { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9], chitin: [2, 4] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
-  /** Soft cap on party size: workers past it still go, but each adds only pastCap of the usual loot bonus.
+  /** Party size cap (hard since Nov 18: + stops at it; pastCap only matters for old saves over it).
    *  The cap is base plus perRest x the square root of Forager's rests (5, 10, 12, 14, 15... 24 at 15 rests): each rest adds less. */
   partyCap: { base: 5, perRest: 5, perChart: 2, pastCap: 1 / 3 },
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
