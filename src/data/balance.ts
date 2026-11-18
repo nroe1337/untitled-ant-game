@@ -212,7 +212,7 @@ export const NEST = {
     resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, needs: 'tech:resin' },
     memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+60 knowledge storage, elders +5% speed', knowCap: 60, mods: { 'job:elder': 0.05 }, later: { at: 10, cost: { clay: 5 } }, needs: 'tech:songs' },
     nursery:   { name: 'Royal nursery',    base: { soil: 60, food: 40 }, growth: 1.32,          desc: '+6 brood space, +10 royal jelly storage', broodCap: 6, jellyCap: 10, later: { at: 6, cost: { jelly: 3 } }, needs: 'tech:royal' },
-    chartroom: { name: 'Chart room',       base: { soil: 60, pheromone: 15 }, growth: 1.32,     desc: 'Expeditions +3% loot', mods: { expLoot: 0.03 }, max: 15, later: { at: 7, cost: { knowledge: 40 } }, needs: 'tech:cartography' },
+    chartroom: { name: 'Chart room',       base: { soil: 60, pheromone: 15 }, growth: 1.32,     desc: 'Expeditions +3% loot, party cap +2', mods: { expLoot: 0.03 }, max: 15, later: { at: 7, cost: { knowledge: 40 } }, needs: 'tech:cartography' },
     training:  { name: 'Training ground',  base: { soil: 80, chitin: 4 }, growth: 1.32,         desc: 'Soldiers +3% strength', mods: { soldierPower: 0.03 }, max: 20, later: { at: 8, cost: { chitin: 5 } }, needs: 'tech:martial' },
     armory:    { name: 'Chitin armory',    base: { soil: 70, chitin: 8, twig: 15 }, growth: 1.32, desc: '+1 nest defence, soldiers +2% strength', defence: 1, mods: { soldierPower: 0.02 }, needs: 'tech:fortify' },
     sporecellar:{ name: 'Spore cellar',    base: { soil: 50, fungus: 15 }, growth: 1.3,         desc: '+30 fungus storage, brood grows 2% faster', fungusCap: 30, mods: { brood: 0.02 }, needs: 'tech:fungus' },
@@ -241,7 +241,7 @@ export const EXPEDITIONS = {
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** Soft cap on party size: workers past it still go, but each adds only pastCap of the usual loot bonus.
    *  The cap is base plus perRest x the square root of Forager's rests (5, 10, 12, 14, 15... 24 at 15 rests): each rest adds less. */
-  partyCap: { base: 5, perRest: 5, pastCap: 1 / 3 },
+  partyCap: { base: 5, perRest: 5, perChart: 2, pastCap: 1 / 3 },
   /** One trail mark per this many seconds of a place's base trip time, so long trips pay as well as short ones. */
   secondsPerMark: 90,
   rareChance: 0.05,         // chance of a rare find (amber)

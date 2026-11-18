@@ -19,7 +19,7 @@ new standing rule in a thread, add it here in the same pull request.
 - Prefer additive progress over forced choices (e.g. on the Map the player should be able to capture everything).
 - Don't let research automate away a major milestone that is itself an automation reward (e.g. Trail memory).
 - Expedition party size has a soft cap tied to a building: 5 plus 5 x the square root of Forager's rests,
-  so each rest adds less (Nate, Nov 17: put it on a curve). Past the cap workers still
+  so each rest adds less (Nate, Nov 17: put it on a curve). Each Chart room adds a flat 2 more (Nate, Nov 18). Past the cap workers still
   go but add only a third of the usual loot. Prefer tying size or count limits to buildings like this over hard caps.
 - Pacing (Nate, Nov 17): things should take longer but stay achievable. There is a lot of content, so prefer
   spreading it out (and locking some of it behind nuptial flights) over letting it all open in the first colony.

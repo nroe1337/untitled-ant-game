@@ -55,7 +55,7 @@ const marksFor = (time: number) => Math.max(1, Math.round(time / X.secondsPerMar
 const UPGRADES = fromBalance(U, (ctx, needs) =>
   !needs || (needs.startsWith('marks:') ? earned(ctx) >= Number(needs.slice(6)) : ctx.flags.has(needs)));
 /** Soft cap on party size: a base plus some for each Forager's rest dug. */
-const partyCap = (ctx: Context) => X.partyCap.base + Math.round(X.partyCap.perRest * Math.sqrt(ctx.state.nest?.built?.rest ?? 0));
+const partyCap = (ctx: Context) => X.partyCap.base + Math.round(X.partyCap.perRest * Math.sqrt(ctx.state.nest?.built?.rest ?? 0)) + X.partyCap.perChart * (ctx.state.nest?.built?.chartroom ?? 0);
 /** Loot multiplier from party size: each worker past the minimum adds lootPerAnt, and past the cap only a share of that. */
 const partyMult = (ctx: Context, n: number) => {
   const cap = partyCap(ctx);
@@ -325,7 +325,7 @@ export const expeditions: GameSystem = {
       mount(root, ctx) {
         const s = S(ctx);
         partyEl = el('span.count', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 3ch; text-align: center' });
-        capEl = el('span.muted', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 6ch', title: "The soft cap: past it, each worker carries only a third as much. Each Forager's rest raises it." });
+        capEl = el('span.muted', { style: 'display: inline-block; font-variant-numeric: tabular-nums; min-width: 6ch', title: "The soft cap: past it, each worker carries only a third as much. Forager's rests and Chart rooms raise it." });
         destSel = el('select', { id: 'exp-dest' }) as HTMLSelectElement;
         destSel.addEventListener('change', () => { s.dest = destSel.value; if (!isRumour(s.dest)) s.homeDest = s.dest; });
         rumourList = el('div.rumours');
