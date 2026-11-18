@@ -910,14 +910,13 @@ const marchAt = (p: number): [number, number] => {
 /** The rival's raiding column: a file of ants walking from their mound to our nest. Drawn over the fog, so it is always seen. */
 function drawMarch(c: CanvasRenderingContext2D, p: number, kindId = 'plain') {
   const kind = WAR.raidKinds[kindId] ?? WAR.raidKinds.plain, big = kindId === 'brutes' || kindId === 'warband', col = kindId === 'night' ? '#3a335e' : PAL.rival;
-  const T = 8, len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]), t = performance.now() / 250;
-  const ux = (MAP.nest[0] - marchFrom[0]) / (len || 1), uy = (MAP.nest[1] - marchFrom[1]) / (len || 1);
+  const T = 8, len = Math.hypot(MAP.nest[0] - marchFrom[0], MAP.nest[1] - marchFrom[1]);
   for (let k = 0; k < kind.column; k++) {
     const q = p - (k * 0.45) / len;
     if (q < 0) break;
-    // a march, not a wriggle: every ant keeps its place in the file and steps forward in time, a pixel at a stride
-    const [x, y] = marchAt(q), step = (Math.floor(t) + k) % 2;
-    const X = Math.round(x * T + ux * step) - 1, Y = Math.round(y * T + uy * step) - 1;
+    // every ant keeps its place in the file and glides forward with the march
+    const [x, y] = marchAt(q);
+    const X = Math.round(x * T) - 1, Y = Math.round(y * T) - 1;
     const sz = big && k % 2 === 0 ? 3 : 2;
     rect(c, X - 1, Y - 1, sz + 2, sz + 2, '#1a1410');
     rect(c, X, Y, sz, sz, col);
@@ -939,13 +938,12 @@ const partiesOf = (ctx: Context): PartyOnMap[] => {
 const partyAt = (e: PartyOnMap, q: number): [number, number] => [MAP.nest[0] + e.tile[0] * q + 0.5, MAP.nest[1] + e.tile[1] * q + 0.5];
 /** One of our expedition parties: a short file of our ants on the trail between the nest and its place. */
 function drawParty(c: CanvasRenderingContext2D, e: PartyOnMap) {
-  const T = 8, len = Math.hypot(e.tile[0], e.tile[1]) || 1, t = performance.now() / 250, dir = e.out ? 1 : -1;
-  const ux = (e.tile[0] / len) * dir, uy = (e.tile[1] / len) * dir;
+  const T = 8, len = Math.hypot(e.tile[0], e.tile[1]) || 1, dir = e.out ? 1 : -1;
   for (let k = 0; k < Math.min(e.ants, 6); k++) {
     const q = e.q - (dir * k * 0.45) / len;
     if (q < 0 || q > 1) break;
-    const [x, y] = partyAt(e, q), step = (Math.floor(t) + k) % 2;
-    const X = Math.round(x * T + ux * step) - 1, Y = Math.round(y * T + uy * step) - 1;
+    const [x, y] = partyAt(e, q);
+    const X = Math.round(x * T) - 1, Y = Math.round(y * T) - 1;
     rect(c, X - 1, Y - 1, 4, 4, '#1a1410');
     rect(c, X, Y, 2, 2, PAL.you);
   }
