@@ -93,6 +93,8 @@ interface WarState {
   next?: { kind: string; luck: number };
   /** Seconds since the War tab opened this colony: threat creeps up with it. */
   warTime?: number;
+  /** Raids lost in a row: they ease threat until one is repelled. */
+  lossStreak?: number;
   /** How hard Provoke baits the rival: light, normal or heavy. */
   bait?: string;
   /** Husk barricade health left (it regrows between raids). */
@@ -202,12 +204,13 @@ export function threat(ctx: Context) {
   // the rival sizes you up over its first raids: colony size only counts in full after `ramp` raids (Nate, Nov 17: the first raid was too hard)
   const ramp = Math.min(1, (s.raids ?? 0) / T.ramp);
   const size = Math.max(0, ctx.res.amt('ant') / T.perWorkers + builtChambers(ctx) / T.perChambers - T.offset) * ramp;
-  return (1 + size + ((s.warTime ?? 0) / 3600) * T.perHour) * (s.rivalDefeated ? T.wanderers : 1);
+  const ease = 1 - T.lossEase * Math.min(T.lossMax, s.lossStreak ?? 0);
+  return (1 + size + ((s.warTime ?? 0) / 3600) * T.perHour) * (s.rivalDefeated ? T.wanderers : 1) * ease;
 }
 const threatWord = (t: number) => T.words.reduce((w, [at, name]) => (t >= at ? name : w), T.words[0][1]);
 function rollKind(ctx: Context) {
   if ((S(ctx).raids ?? 0) < T.scoutRaids) return 'scouts'; // the rival tests you with scouts first
-  const t = threat(ctx), ks = Object.entries(WAR.raidKinds).filter(([, k]) => t >= k.from);
+  const t = threat(ctx), ks = Object.entries(WAR.raidKinds).filter(([id, k]) => t >= k.from && !(id === 'warband' && (S(ctx).lossStreak ?? 0) > 0));
   let r = Math.random() * ks.reduce((a, [, k]) => a + k.weight, 0);
   for (const [id, k] of ks) { r -= k.weight; if (r <= 0) return id; }
   return 'plain';
@@ -476,6 +479,7 @@ function endBattle(ctx: Context) {
   const chest = clean && sp >= 1 ? chestOf(w) : null; // light bait brings no chest
   if (chest) { giveChest(ctx, chest); parts.push(`A ${WAR.chests.kinds[chest].name.toLowerCase()} is carried in`); }
   // s.wave now counts raids repelled (plus one): milestones and research read it
+  s.lossStreak = clean ? 0 : (s.lossStreak ?? 0) + 1;
   if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: w, kind: b.kind }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Raid repelled (${s.wave - 1} so far)`); }
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];
@@ -780,7 +784,7 @@ export const war: GameSystem = {
     ctx.mods.set('noWipe', 'wasps', manned(ctx, 'wasp') ? 1 : 0);
     s.sap = manned(ctx, 'antlion') ? Math.min(SK.antlion.sapMax, (s.sap ?? 0) + (SK.antlion.sapMax / SK.antlion.sapTime) * dt) : 0;
     if (!s.rivalDefeated) s.rivalArmy = Math.min(rivalTiles(ctx) * WAR.rivalArmyPerTile, s.rivalArmy + WAR.rivalGrowthPerSecond * dt);
-    if (ctx.flags.has('tech:martial')) s.warTime = (s.warTime ?? 0) + dt;
+    if (ctx.flags.has('tech:martial') && !s.lossStreak) s.warTime = (s.warTime ?? 0) + dt; // the creep waits while you're losing
     {
       if (!s.battle) {
         s.nextRaid = Math.max(0, s.nextRaid - dt); // now: cooldown before you can provoke again
@@ -913,7 +917,7 @@ export const war: GameSystem = {
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
           (s.lastReport ? 'Last raid: ' + s.lastReport : '');
         const hold = soldiers(ctx) * B.soldier.atk * power(ctx) + defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
-        const raidNow = `A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '') + '.';
+        const raidNow = `A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '') + '.' + ((S(ctx).lossStreak ?? 0) > 0 ? ` After ${Math.min(T.lossMax, S(ctx).lossStreak!)} lost raid${S(ctx).lossStreak! > 1 ? 's' : ''}, they come ${Math.round(T.lossEase * Math.min(T.lossMax, S(ctx).lossStreak!) * 100)}% weaker and no great warband comes, until you repel one.` : '');
         const wall = wallMax(ctx) ? `, barricade ${Math.floor(s.battle && !s.battle.boss ? (s.battle.us.find((x) => x.kind === 'wall')?.n ? s.battle.us.find((x) => x.kind === 'wall')!.hp : 0) : wallHp(ctx))}/${wallMax(ctx)}` : '';
         ledger.replaceChildren(...([
           ['Rival army', `about ${Math.round(s.rivalArmy)}`, ''],

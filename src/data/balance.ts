@@ -402,6 +402,9 @@ export const WAR = {
    *  raids have been fought, so raids work up from scouts to small bands to full columns.
    *  After the rival queen falls, wandering colonies keep raiding at `wanderers` of it. */
   threat: { perWorkers: 30, perChambers: 30, offset: 2, perHour: 0.5, luck: 0.25, wanderers: 0.8, ramp: 8, scoutRaids: 3,
+    /** After a lost raid (Nate, Nov 18: losing shouldn't make it worse): each loss in a row eases threat by lossEase (up to
+     *  lossMax losses), the time creep stops, and no great warband comes until a raid is repelled. */
+    lossEase: 0.15, lossMax: 3,
     words: [[0, 'Low'], [4, 'Rising'], [8, 'High'], [14, 'Grave'], [22, 'Dire']] as [number, string][] },
   /** Kinds of raid, rolled by weight once threat reaches `from`. raiders/brutes scale the count, tough the health and bite,
    *  spoils the chitin and honours. cap: most raiders. noCry: the war cry can't be sounded. hint: what the column looks like. */
