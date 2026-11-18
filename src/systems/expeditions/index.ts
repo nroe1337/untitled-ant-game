@@ -274,6 +274,8 @@ export const expeditions: GameSystem = {
 
   init(ctx) {
     ctx.res.define({ id: 'twig', name: 'Twigs', cap: NEST.baseMaterialCap.twig, order: 20, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'fibre', name: 'Grass fibre', cap: NEST.baseMaterialCap.fibre, order: 20.5, integer: true, group: 'Surface' });
+    ctx.res.define({ id: 'pebble', name: 'Pebbles', cap: NEST.baseMaterialCap.pebble, order: 20.6, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'seed', name: 'Seeds', cap: NEST.baseMaterialCap.seed, order: 21, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'resin', name: 'Resin', cap: NEST.baseMaterialCap.resin, order: 22, integer: true, group: 'Surface' });
     ctx.res.define({ id: 'amber', name: 'Amber', order: 24, integer: true, stepped: true, group: 'Surface' });

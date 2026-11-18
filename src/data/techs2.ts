@@ -64,7 +64,7 @@ const AGE_ROWS: Record<string, Row[]> = {
     ['waystations', 'Waystations', ['terrainworks'], { knowledge: 480, soil: 300 }, {}, {}, { lead: 'Outposts become waystations: an outpost\'s own tile yields three times as much again.' }],
     ['linkedtrails', 'Linked trails', ['waystations'], { knowledge: 560, pheromone: 80 }, {}, {}, { lead: 'Outposts linked to the nest by a chain of outposts, each within reach of the last, share their trails: every linked outpost yields 10% more for each one in the chain.' }],
     ['alarmscent', 'Alarm scent', ['rivalscent'], { knowledge: 380, pheromone: 30 }, { soldierPower: 0.05 }],
-    ['outpostwalls', 'Outpost walls', ['fortify', 'lookouts'], { knowledge: 480, twig: 35 }, { claimCost: -0.1 }],
+    ['outpostwalls', 'Outpost walls', ['fortify', 'lookouts'], { knowledge: 480, pebble: 35 }, { claimCost: -0.1 }],
     ['columnbreak', 'Column breaking', ['alarmscent', 'husks'], { knowledge: 520, chitin: 25 }, { soldierPower: 0.08 }],
     ['counterraid', 'Counter-raid', ['columnbreak'], { knowledge: 620, chitin: 30 }, { hunting: 0.25 }],
     ['quartermasters', 'Quartermasters', ['resin'], { knowledge: 320, food: 220 }, { expLoot: 0.1 }],

@@ -180,7 +180,7 @@ function placeLoot(s: MapState) {
   s.tiles.forEach((t, i) => { if (lootSpot(t) && nestDist(i) >= MAP.loot.minDist && R() < 1 / MAP.loot.every) t.l = 'cache:' + kinds[Math.floor(R() * kinds.length)]; });
   scatterRelics(s); s.lootV = 1;
 }
-const lootName = (l: string) => l.startsWith('relic:') ? `${MAP.relics[l.slice(6)]?.name ?? 'A relic'} (relic)` : `A cache of ${l.slice(6) === 'twig' ? 'twigs' : l.slice(6)}`;
+const lootName = (l: string) => l.startsWith('relic:') ? `${MAP.relics[l.slice(6)]?.name ?? 'A relic'} (relic)` : `A cache of ${({ twig: 'twigs', fibre: 'grass fibre', pebble: 'pebbles' } as Record<string, string>)[l.slice(6)] ?? l.slice(6)}`;
 /** Land just taken: pick up what lies on it. */
 function collect(ctx: Context, i: number) {
   const s = S(ctx), t = s.tiles[i], l = t.l!;

@@ -101,6 +101,8 @@ export const JOBS = {
   digger: { soil: 0.06 },
   /** With Deep diggers, each digger also brings up this much clay a second. */
   diggerClay: 0.012,
+  /** Pebbles each digger turns up a second, once the Map is open (Nate, Nov 18: spread the load off twigs). */
+  diggerPebble: 0.002,
   /** Buried finds research: each digger strikes something about once per this many seconds (Deep finds: 3x as often). */
   findEvery: 5000, deepFindMult: 3,
   finds: [
@@ -183,7 +185,7 @@ export const NEST = {
   baseSoilCap: 50,
   soilPerChamber: 4,        // every chamber stores a little soil; Soil pits hold far more
   /** Surface materials have small stores until you dig Twig lofts, Seed vaults and Resin vats. */
-  baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20, brick: 40 } as Record<string, number>,
+  baseMaterialCap: { twig: 40, seed: 25, resin: 40, silk: 20, brick: 40, fibre: 60, pebble: 80 } as Record<string, number>,
   /** Most chambers of one type the colony may dig, by age (index into RESEARCH.ages). Generous, so it only stops
    *  endless stacking (Nate, Nov 18). A chamber's own `max` still applies when lower. */
   ageCap: [8, 15, 20, 24, 28, 32, 36, 40],
@@ -196,7 +198,7 @@ export const NEST = {
     tunnel:   { name: 'Resting chamber', base: { soil: 10 }, growth: 1.25,                     desc: '+3 living space',                         antCap: 3, later: { at: 13, cost: { knowledge: 15 } } },
     brood:    { name: "Nurses' den",     base: { soil: 30, food: 15 }, growth: 1.32,           desc: '+1 living space. Each nurse looks after 1 more egg or larva. The first unlocks nurses', antCap: 1, mods: { nurseTends: 1 }, max: 16, later: { at: 5, cost: { amber: 1 } }, needs: 'tech:brood' },
     store:    { name: 'Food store',      base: { soil: 20 }, growth: 1.3,                     desc: '+30 food storage',                        foodCap: 30, max: 10, needs: 'tech:storage' },
-    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, matCap: { brick: 5 }, max: 10, needs: 'tech:storage' },
+    storeroom:{ name: 'Soil pit',        base: { soil: 25, food: 10 }, growth: 1.3,           desc: '+40 soil storage', soilCap: 40, matCap: { brick: 5, pebble: 10 }, max: 10, needs: 'tech:storage' },
     silkroom: { name: 'Silk loft',       base: { soil: 45, leaf: 10 }, growth: 1.3,           desc: '+30 silk storage',                        matCap: { silk: 30 }, max: 10, needs: 'caste:weaver' },
     granary:  { name: 'Seed granary',    base: { soil: 40, seed: 6 }, growth: 1.3,            desc: '+0.05 food/s',       foodRate: 0.05, later: { at: 8, cost: { resin: 4 } }, needs: 'tech:seeds' },
     gallery:  { name: 'Resin gallery',   base: { soil: 60, resin: 4, twig: 8 }, growth: 1.3,  desc: '+8 living space, +60 food storage',       antCap: 8, foodCap: 60, later: { at: 8, cost: { pheromone: 20 } }, needs: 'tech:resin' },
@@ -205,7 +207,7 @@ export const NEST = {
     husks:    { name: 'Hall of husks',   base: { soil: 50, chitin: 6 }, growth: 1.3,          desc: '+6 living space, +2 nest defence', antCap: 6, defence: 2, later: { at: 8, cost: { clay: 6 } }, needs: 'tech:husks' },
     library:  { name: 'Hall of elders',  base: { soil: 30, food: 20 }, growth: 1.32,           desc: '+40 knowledge storage', knowCap: 40, max: 25, needs: 'tech:elders' },
     fungus:   { name: 'Fungus garden',   base: { soil: 40, leaf: 20 }, growth: 1.3,           desc: '+1 fungus bed, +20 fungus storage',      fungusCap: 20, needs: 'tech:fungus' },
-    harbour:  { name: 'Harbour',         base: { soil: 80, twig: 20, resin: 6 }, growth: 1.6,  desc: '+1 boat at a time (max 3)', boats: 1, max: 3, needs: 'tech:rafts' },
+    harbour:  { name: 'Harbour',         base: { soil: 80, fibre: 20, resin: 6 }, growth: 1.6,  desc: '+1 boat at a time (max 3)', boats: 1, max: 3, needs: 'tech:rafts' },
     waxworks: { name: 'Wax store',       base: { soil: 40, wax: 5 }, growth: 1.3,             desc: '+80 wax storage',                         waxCap: 80, max: 10, needs: 'tech:husbandry' },
     hall:     { name: 'Worker hall',     base: { soil: 120, twig: 30 }, brick: 12, growth: 1.3,           desc: '+12 living space',  antCap: 12, later: { at: 8, cost: { pheromone: 25 } }, needs: 'tech:halls' },
     midden:   { name: 'Midden',          base: { soil: 50, food: 30 }, growth: 1.3,           desc: '-2% food upkeep (max 15)',    upkeep: 0.02, max: 15, later: { at: 7, cost: { chitin: 3 } }, needs: 'tech:sanitation' },
@@ -216,7 +218,7 @@ export const NEST = {
     vent:      { name: 'Deep vent',        base: { soil: 400, clay: 6 }, growth: 1.18,          desc: 'Purifies 4 mould/s (40 chambers worth)', mods: { mouldClean: 4 }, max: 20, needs: 'tech:deepvents' },
     warmth:    { name: 'Warming chamber',  base: { soil: 15, food: 10 }, growth: 1.28,          desc: '+4 brood space, brood grows 1% faster', broodCap: 4, mods: { brood: 0.01 }, later: { at: 16, cost: { jelly: 2 } }, needs: 'tech:brood' },
     cistern:   { name: 'Dew cistern',      base: { soil: 50, twig: 6 }, growth: 1.3,            desc: '+0.02 food/s', foodRate: 0.02, needs: 'surface' },
-    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20 }, max: 10, needs: 'surface' },
+    twigloft:  { name: 'Twig loft',        base: { soil: 50, twig: 5 }, growth: 1.3,            desc: '+20 twig storage', matCap: { twig: 20, fibre: 10 }, max: 10, needs: 'surface' },
     seedvault: { name: 'Seed vault',       base: { soil: 45, seed: 5 }, growth: 1.3,            desc: '+15 seed storage', matCap: { seed: 15 }, max: 10, needs: 'tech:seeds' },
     resinvat:  { name: 'Resin vat',        base: { soil: 55, resin: 4 }, growth: 1.3,           desc: '+10 resin storage', matCap: { resin: 10 }, max: 10, needs: 'tech:resin' },
     memory:    { name: 'Memory vault',     base: { soil: 80, food: 40, resin: 4 }, growth: 1.32, desc: '+60 knowledge storage, elders +5% speed', knowCap: 60, mods: { 'job:elder': 0.05 }, later: { at: 10, cost: { clay: 5 } }, needs: 'tech:songs' },
@@ -240,12 +242,12 @@ export const EXPEDITIONS = {
   /** tile: where on the map this place is, as an offset from the nest.
    *  loss: chance a trip loses workers, 1 up to lossShare of the party (2.5x wipe near home, flattening to 80% at the hedge); wipe: chance it loses the whole party (before Homing instinct and Scouts ahead). */
   destinations: [
-    { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.25, wipe: 0.1, loot: { food: [4, 8], twig: [1.3, 2.6] } },
-    { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 5,   tile: [3, 3],  loss: 0.375, wipe: 0.15, loot: { food: [6, 12], twig: [1.3, 2.6], seed: [1, 3], resin: [0, 1] } },
-    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 18,  tile: [6, -3], loss: 0.52, wipe: 0.22, loot: { twig: [3.9, 7.8], resin: [1, 2], seed: [1, 2] } },
-    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 50, tile: [10, 1], loss: 0.64, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], twig: [3, 6], pheromone: [2, 4], chitin: [0.3, 0.8] } },
-    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 110, tile: [12, -2], loss: 0.73, wipe: 0.38, loot: { food: [20, 35], twig: [4, 8], resin: [2, 4] } },
-    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9], chitin: [2, 4] } },
+    { id: 'grass',  name: 'The near grass',         time: 90,   unlockMarks: 0,   tile: [2, -1], loss: 0.25, wipe: 0.1, loot: { food: [4, 8], twig: [1.3, 2.6], fibre: [1.5, 3] } },
+    { id: 'leaf',   name: 'Under the old leaf',     time: 180,  unlockMarks: 5,   tile: [3, 3],  loss: 0.375, wipe: 0.15, loot: { food: [6, 12], twig: [1.3, 2.6], seed: [1, 3], resin: [0, 1], fibre: [1, 2] } },
+    { id: 'stump',  name: 'The rotten stump',       time: 360,  unlockMarks: 18,  tile: [6, -3], loss: 0.52, wipe: 0.22, loot: { twig: [3.9, 7.8], resin: [1, 2], seed: [1, 2], pebble: [1, 3] } },
+    { id: 'stream', name: 'The stream bank',        time: 600,  unlockMarks: 50, tile: [10, 1], loss: 0.64, wipe: 0.3, loot: { seed: [2, 5], food: [10, 18], twig: [3, 6], pheromone: [2, 4], chitin: [0.3, 0.8], fibre: [2, 4], pebble: [1, 3] } },
+    { id: 'patio',  name: 'The edge of the stones', time: 900,  unlockMarks: 110, tile: [12, -2], loss: 0.73, wipe: 0.38, loot: { food: [20, 35], twig: [4, 8], resin: [2, 4], pebble: [3, 6] } },
+    { id: 'hedge',  name: 'Under the far hedge',    time: 1500, unlockMarks: 200, tile: [20, -6], loss: 0.8, wipe: 0.48, loot: { twig: [10.4, 18.2], seed: [5, 9], chitin: [2, 4], fibre: [3, 6] } },
   ],
   lootPerAnt: 0.15,         // loot multiplier per ant beyond the minimum party
   /** Party size cap (hard since Nov 18: + stops at it; pastCap only matters for old saves over it).
@@ -308,7 +310,7 @@ export const MAP = {
   startReveal: 2,
   /** Land can only be claimed within this many tiles (diagonals count as one) of the nest or an outpost. */
   reach: 8,
-  claimCost: { food: 40, twig: 4 },
+  claimCost: { food: 40, fibre: 4 },  // land is marked with grass fibre (Nate, Nov 18: spread the load off twigs)
   claimStep: 0.035,         // each tile held past the start makes the next claim 3.5% of the base dearer (linear, so the whole map stays in reach)
   startTiles: 1,            // the colony starts holding only the nest tile
   claimParty: 2,            // scouts who go out to claim a tile next to the nest or an outpost; they come home when it's done
@@ -316,7 +318,7 @@ export const MAP = {
   claimTime: 20,            // seconds for a claiming trip, plus claimTimePerTile per tile of distance from the nearest nest or outpost
   claimTimePerTile: 4,
   /** Outposts: built on a tile you hold, with resources only. Each one adds step x the base cost to the next. */
-  outpost: { cost: { soil: 400, twig: 60, food: 500 }, step: 0.15, living: 6, defence: 2, yieldBoost: 2 },
+  outpost: { cost: { soil: 400, pebble: 60, food: 500 }, step: 0.15, living: 6, defence: 2, yieldBoost: 2 },
   /** Scouting for an outpost: a small party picks one of the best few tiles for an outpost and plants a flag there. */
   survey: { cost: { food: 30, pheromone: 10 }, scouts: 2, time: 20, picks: 3 },
   /** Outpost research (Nov 14). */
@@ -333,9 +335,9 @@ export const MAP = {
   },
   /** Per-second output of each owned tile by terrain. */
   yield: {
-    grass: { food: 0.03, twig: 0.0015 },   // fallen grass stems: a slow, steady trickle of twigs
+    grass: { food: 0.03, twig: 0.0015, fibre: 0.002 },   // fallen grass stems: a slow trickle of twigs and fibre
     soil: { soil: 0.02, seed: 0.0008 },     // seeds blow in and lodge in bare ground
-    stone: { resin: 0.001 },              // sap from the roots that run under the stones
+    stone: { resin: 0.001, pebble: 0.003 },              // sap from the roots that run under the stones
     water: { pheromone: 0.008 },
     paved: { food: 0.08 },
   } as Record<string, Record<string, number>>,
@@ -372,7 +374,7 @@ export const MAP = {
   variantCap: 10,
   /** Map loot (Nate, Nov 18): caches and relics lie on unclaimed ground, seen once the fog lifts, taken when the tile is ours.
    *  Caches are one-off stores (x 1 + distance/10). Relics last until the next flight; each colony scatters new ones far out. */
-  loot: { every: 30, minDist: 4, caches: { food: 150, twig: 25, resin: 6, chitin: 10 } as Record<string, number>, relics: 3, relicDist: 8 },
+  loot: { every: 30, minDist: 4, caches: { food: 150, twig: 25, resin: 6, chitin: 10, fibre: 20, pebble: 30 } as Record<string, number>, relics: 3, relicDist: 8 },
   relics: {
     shell: { name: 'Beetle shell', desc: 'Soldiers hit 10% harder.', mods: { soldierPower: 0.1 } },
     sunstone: { name: 'Sun stone', desc: 'Expeditions 10% faster.', mods: { expSpeed: -0.1 } },
@@ -455,7 +457,7 @@ export const WAR = {
     maxSoldierLoss: 0.25,            // never lose more than this share of soldiers per raid
   },
   fortifications: {
-    thorns:  { name: 'Thorn barricade', desc: 'Raiders bite {p} less each level, snagged on thorns.', per: 0.03, base: { twig: 10 },             growth: 1.2,  max: 15 },
+    thorns:  { name: 'Thorn barricade', desc: 'Raiders bite {p} less each level, snagged on thorns.', per: 0.03, base: { pebble: 10 },             growth: 1.2,  max: 15 },
     spitters:{ name: 'Acid spitters',   desc: 'Guard posts deal {p} more damage each level.', per: 0.05, base: { chitin: 3, resin: 1 },  growth: 1.2,  max: 30 },
     carapace:{ name: 'Hardened carapace', desc: 'Soldiers have {p} more health each level.',  per: 0.04, base: { chitin: 4 },            growth: 1.2,  max: 30 },
     plug:    { name: 'Entrance plug',   desc: 'Raiders that get in steal {p} less food each level.', per: -0.04, base: { soil: 40, resin: 2 }, growth: 1.25, max: 15 },
@@ -603,7 +605,7 @@ export const RESEARCH = {
     sanitation: { name: 'Sanitation',        age: 'forage', cost: { knowledge: 200, soil: 160 },          needs: ['seeds', 'shelving'],   desc: 'Unlocks the Midden.' },
     cartography:{ name: 'Mapping',           age: 'forage', cost: { knowledge: 260, pheromone: 125 },   pop: 0.15, needs: ['ventilation', 'plans', 'sanitation'],            desc: 'Opens the Map. Send workers to claim land, and build outposts on it.' },
     martial:    { name: 'Mandible drill',    age: 'conquest', cost: { knowledge: 300, food: 220 },         pop: 0.13, needs: ['resin', 'bricks'], flag: 'rival', desc: 'Unlocks Soldiers, the Guard post and the War tab.' },
-    fortify:    { name: 'Fortification',     age: 'conquest', cost: { knowledge: 450, twig: 90 },         needs: ['martial'],             desc: 'Unlocks Fortifications.' },
+    fortify:    { name: 'Fortification',     age: 'conquest', cost: { knowledge: 450, pebble: 90 },       needs: ['martial'],             desc: 'Unlocks Fortifications.' },
     husks:      { name: 'Husk masonry',      age: 'conquest', cost: { knowledge: 480, chitin: 20 },        needs: ['fortify'],             desc: 'Unlocks the Hall of husks.' },
     fungus:     { name: 'Leaf culture',      age: 'forage', cost: { knowledge: 380, seed: 20 },           needs: ['seeds', 'sanitation'], flag: 'legacy:flown', desc: 'Unlocks Leafcutters, Fungus gardens and the Garden tab. Only a line that has flown knows how.' },
     sky:        { name: 'Sky scouts',        age: 'wings', cost: { knowledge: 380, pheromone: 150 },   pop: 0.3, needs: ['royal'],     desc: 'Winged scouts rise above the garden and see how far the world goes. Opens the World view of the Map.' },
@@ -788,7 +790,7 @@ export const LINEAGE = {
       { id: 'galleries',  name: 'Galleries',         cost: { soil: 800, twig: 100, resin: 24 },   time: 0,    needs: 'resinvault',    desc: 'Twig-ribbed galleries, sealed with resin, where the winged ones will wait.' },
       { id: 'nursery',    name: 'Royal nursery',     cost: { food: 2000, seed: 120, jelly: 60 },    time: 0,    needs: 'royal',    desc: 'Warm cells for the larvae chosen to be queens.' },
       { id: 'princesses', name: 'Winged princesses', cost: { jelly: 100, food: 1200 },              time: 4800, needs: 'winglore', desc: 'Royal jelly, and then time. The princesses grow and their wings harden.' },
-      { id: 'spire',      name: 'Launch crown',      cost: { twig: 140, resin: 24, seed: 60 },    time: 0,    needs: 'eveningwinds',    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
+      { id: 'spire',      name: 'Launch crown',      cost: { fibre: 140, resin: 24, seed: 60 },    time: 0,    needs: 'eveningwinds',    desc: 'A high crown at the top, where the winged ones climb out on the evening of the flight.' },
     ] as { id: string; name: string; cost: Record<string, number>; time: number; needs: string; desc: string }[],
     /** Pulley lines: hauling by hand carries this many times as much. */
     pulley: 3,
@@ -914,9 +916,9 @@ export const WATERS = {
     slipway:   { name: 'Second slipway', desc: 'Each level lets {p} more boat sail at once.',          per: 1,     base: { navmark: 40 }, growth: 2.5,  max: 2, unit: 'flat' as const },
   },
   boats: {
-    raft:   { name: 'Leaf raft',  cost: { leaf: 20, twig: 6 },              crew: 3, hull: 3, speed: 1 },
+    raft:   { name: 'Leaf raft',  cost: { leaf: 20, fibre: 6 },              crew: 3, hull: 3, speed: 1 },
     barque: { name: 'Bark boat',  cost: { twig: 25, resin: 8, silk: 10 },   crew: 5, hull: 6, speed: 1.5, needs: 'caste:weaver' },
-    galleon:{ name: 'Wax galleon', cost: { twig: 50, resin: 15, silk: 25, wax: 30 }, crew: 8, hull: 10, speed: 2, needs: 'tech:galleons' },
+    galleon:{ name: 'Wax galleon', cost: { fibre: 50, resin: 15, silk: 25, wax: 30 }, crew: 8, hull: 10, speed: 2, needs: 'tech:galleons' },
   } as Record<string, { name: string; cost: Record<string, number>; crew: number; hull: number; speed: number; needs?: string }>,
   /** tile: where the voyage reveals the map, as an offset from the nest. */
   voyages: [
