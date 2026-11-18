@@ -18,7 +18,8 @@ export interface Context {
    */
   alert(id: string, msg: string | null): void;
   /** Write a line to the story log. */
-  log(msg: string, kind?: 'story' | 'info' | 'warn'): void;
+  /** go: a tab id; the entry gets a button that opens that tab. */
+  log(msg: string, kind?: 'story' | 'info' | 'warn', go?: { tab: string; label: string }): void;
   /** Per-system saved state. Each system owns state[its id]. */
   state: Record<string, any>;
   /** Shared bonuses by name (see mods.ts). Not saved: systems re-publish them every tick. */

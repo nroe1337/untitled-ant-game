@@ -203,7 +203,9 @@ function tileMult(ctx: Context, i: number, linked: Set<number> | null) {
 }
 /** Lookouts: every few seconds each outpost clears the nearest fog around it, paid for in the chosen resource. */
 function lookouts(ctx: Context, dt: number) {
-  const s = S(ctx), r = s.lookout;
+  const s = S(ctx);
+  if (s.lookout && !MAP.lookout.costs[s.lookout]) s.lookout = 'pheromone'; // saves from when food and seed could pay too
+  const r = s.lookout;
   if (!ctx.flags.has('tech:lookouts') || !r || !MAP.lookout.costs[r]) return;
   s.lookCd = (s.lookCd ?? MAP.lookout.every) - dt;
   if (s.lookCd > 0) return;

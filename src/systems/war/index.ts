@@ -297,7 +297,8 @@ function startBattle(ctx: Context, how: { kind: string; luck: number; bait?: str
   const them: Stack[] = [stack('raider', comp.raiders, B.raider.hp * tough, B.raider.atk * tough)];
   if (comp.brutes) them.push(stack('brute', comp.brutes, B.brute.hp * tough, B.brute.atk * tough));
   s.battle = { us, them, kills: 0, breaches: 0, soldiersLost: 0, majorsLost: 0, workersLost: 0, rallied: 0, soldiersAtStart: plain + majors(ctx), t: 0, spoil, barricade0, lvl, kind: how.kind, spoils: bait.spoils * K.spoils };
-  ctx.log(`${K.name}${how.bait && how.bait !== 'normal' ? ` (${bait.name.toLowerCase()})` : ''}: ${comp.raiders + comp.brutes} of them pour toward the entrance. ${K.desc}`, 'warn');
+  ctx.log(`${K.name}${how.bait && how.bait !== 'normal' ? ` (${bait.name.toLowerCase()})` : ''}: ${comp.raiders + comp.brutes} of them pour toward the entrance. ${K.desc}`, 'warn', { tab: 'war', label: 'Go to the War tab' });
+  ctx.ping('war');
   if (autoCry(ctx) || ctx.mods.get('fierceGuards') > 0) warCry(ctx);
 }
 
