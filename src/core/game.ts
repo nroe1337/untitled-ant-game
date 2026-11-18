@@ -102,7 +102,7 @@ export class Game {
       speed: 1,
       paused: false,
       announce: (title, text, opts) => this.announce(title, text, opts),
-      log: (m, k) => this.log(m, k),
+      log: (m, k, go) => this.log(m, k, go),
       alert: (id, m) => { if (m) this.alerts.set(id, m); else this.alerts.delete(id); },
       rebirth: () => this.rebirth(),
       ping: (id) => { const t = this.tabs.get(id); if (t && this.active !== id) t.btn.classList.add('new'); },
@@ -274,9 +274,10 @@ export class Game {
   }
 
   // ---------- log ----------
-  log(msg: string, kind: 'story' | 'info' | 'warn' = 'story') {
+  log(msg: string, kind: 'story' | 'info' | 'warn' = 'story', go?: { tab: string; label: string }) {
     if (!this.logEl) return;
     const line = el(`p.${kind}` as 'p', {}, msg);
+    if (go && this.tabs.has(go.tab)) line.append(' ', el('button.ghost.logjump', { type: 'button', onclick: () => this.show(go.tab) }, go.label));
     this.logEl.prepend(line);
     while (this.logEl.childElementCount > 60) this.logEl.lastElementChild!.remove();
   }
