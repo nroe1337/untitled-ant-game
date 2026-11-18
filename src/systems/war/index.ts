@@ -480,6 +480,7 @@ function endBattle(ctx: Context) {
   if (chest) { giveChest(ctx, chest); parts.push(`A ${WAR.chests.kinds[chest].name.toLowerCase()} is carried in`); }
   // s.wave now counts raids repelled (plus one): milestones and research read it
   s.lossStreak = clean ? 0 : (s.lossStreak ?? 0) + 1;
+  if (!clean && s.attackIn != null) s.attackIn *= 1 + T.lossRest * Math.min(T.lossMax, s.lossStreak); // a breather to rebuild
   if (clean) { s.won++; s.wave = waveOf(ctx) + 1; ctx.bus.emit('war:won', { wave: w, kind: b.kind }); giveHonours(ctx, honours); parts.push(`+${honours} honour${honours > 1 ? 's' : ''}`); parts.push(`Raid repelled (${s.wave - 1} so far)`); }
   s.lastReport = parts.join('. ') + '.';
   const lines = [`${b.kills} raiders killed`, `+${chitin} chitin`];
@@ -917,7 +918,7 @@ export const war: GameSystem = {
           (s.nextRaid > 0 ? `They will take the bait again in ${Math.ceil(s.nextRaid / ctx.speed)}s. ` : 'They are ready to take the bait. ') +
           (s.lastReport ? 'Last raid: ' + s.lastReport : '');
         const hold = soldiers(ctx) * B.soldier.atk * power(ctx) + defence(ctx) * B.defenceDps * (1 + F.spitters.per * fl(ctx, 'spitters'));
-        const raidNow = `A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '') + '.' + ((S(ctx).lossStreak ?? 0) > 0 ? ` After ${Math.min(T.lossMax, S(ctx).lossStreak!)} lost raid${S(ctx).lossStreak! > 1 ? 's' : ''}, they come ${Math.round(T.lossEase * Math.min(T.lossMax, S(ctx).lossStreak!) * 100)}% weaker and no great warband comes, until you repel one.` : '');
+        const raidNow = `A raid now: ${describeRaid(ctx, threat(ctx))}, give or take ${Math.round(T.luck * 100)}%` + (ctx.mods.get('raidSize') < 0 ? `. Minims in their walls thin it by ${Math.round(-ctx.mods.get('raidSize') * 100)}%` : '') + '.' + ((S(ctx).lossStreak ?? 0) > 0 ? ` After ${Math.min(T.lossMax, S(ctx).lossStreak!)} lost raid${S(ctx).lossStreak! > 1 ? 's' : ''}, they come later and ${Math.round(T.lossEase * Math.min(T.lossMax, S(ctx).lossStreak!) * 100)}% weaker and no great warband comes, until you repel one.` : '');
         const wall = wallMax(ctx) ? `, barricade ${Math.floor(s.battle && !s.battle.boss ? (s.battle.us.find((x) => x.kind === 'wall')?.n ? s.battle.us.find((x) => x.kind === 'wall')!.hp : 0) : wallHp(ctx))}/${wallMax(ctx)}` : '';
         ledger.replaceChildren(...([
           ['Rival army', `about ${Math.round(s.rivalArmy)}`, ''],
