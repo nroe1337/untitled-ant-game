@@ -508,7 +508,7 @@ export const RESEARCH = {
   appearAtWorkers: 3,       // the Research tab opens once you have this many workers
   /**
    * The tech tree. Each tech sets the flag "tech:<id>" when researched.
-   * needs: other tech ids (all required). flag: an extra game flag required (e.g. "rival").
+   * needs: other tech ids (all required). flag: an extra game flag required (e.g. "rival"). rooms: chambers dug first.
    * Other systems gate their jobs, chambers, upgrades and tabs on these flags.
    */
   techs: {
@@ -517,7 +517,7 @@ export const RESEARCH = {
     brood:      { name: 'Brood care',        age: 'dirt', cost: { knowledge: 15, food: 25 },          needs: ['digging'],             desc: 'Unlocks the Warming chamber, the Nurses\' den and Nurses. From now on every chamber gathers mould, and nurses scrub it away.' },
     royal:      { name: 'Royal court',       age: 'conquest', cost: { knowledge: 700, food: 600 },       pop: 0.25, needs: ['vaults', 'campaigns'],      desc: 'The queen takes her crowns. Opens the Crowns tab: she wears one of eight, each shaping the colony a different way.' },
     elders:     { name: 'Elder memory',      age: 'dirt', cost: { knowledge: 25, soil: 35 },          needs: ['brood'],               desc: 'Unlocks the Hall of elders, which stores knowledge and houses more elders.' },
-    surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          needs: ['storage', 'elders'],    desc: 'Diggers may break through to the surface once the nest has 25 chambers.' },
+    surface:    { name: 'Upward tunnels',    age: 'dirt', cost: { knowledge: 70, soil: 90 },          rooms: 25, needs: ['storage', 'elders'],    desc: 'Diggers break through to the surface.' },
     routine:    { name: 'Daily routine',     age: 'forage', cost: { knowledge: 80, food: 100 },          needs: ['surface'],             desc: 'Pick a default job on the Jobs tab: newly hatched workers go straight to it.' },
     widetunnels: { name: 'Wider tunnels',  age: 'forage', cost: { knowledge: 90, soil: 120 },         needs: ['surface'],             desc: 'Each Resting chamber gives +1 more living space.' },
     ventilation: { name: 'Ventilation',     age: 'forage', cost: { knowledge: 170, soil: 200 },        needs: ['routine', 'shelving'], desc: 'Unlocks the Purification chamber, which scrubs a slow trickle of mould.' },
