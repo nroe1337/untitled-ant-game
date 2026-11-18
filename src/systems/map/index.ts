@@ -397,13 +397,17 @@ export const map: GameSystem = {
       s.tiles.forEach((t, i) => {
         if (t.o !== 'you' || t.w) return; // a wonder's tile gives no yield while it stands
         const m = yieldMult(ctx) * tileMult(ctx, i, linked);
+        ctx.res.source = 'Claimed land';
         for (const [rid, per] of Object.entries(MAP.yield[t.t] ?? {})) ctx.res.add(rid, per * m * dt);
+        ctx.res.source = 'Outposts';
         if (works && t.outpost) for (const [rid, per] of Object.entries(MAP.works[t.t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * m * dt);
       });
+      ctx.res.source = 'Map';
       lookouts(ctx, dt);
     }
     // land beyond the garden yields by terrain too
     const far = heldTerrain(ctx);
+    ctx.res.source = 'Claimed land';
     for (const t of far) for (const [rid, per] of Object.entries(MAP.yield[t] ?? {})) if (ctx.res.has(rid)) ctx.res.add(rid, per * yieldMult(ctx) * dt);
     ctx.mods.set('defence', 'map', mine.filter((t) => t.t === 'stone').length * MAP.stoneDefence + n * O.defence);
     ctx.res.setCapBonus('ant', 'outposts', n * O.living);
@@ -537,9 +541,9 @@ abandonWrap = el('div.row', {}, abandon);
           el('p.flavor', {}, 'The garden, as far as your scouts have seen.'),
           cam.root,
           el('div.mapkeysrow', {}, el('p.controls.mapkeys', {}, 'Drag or use the arrow keys to look around. Click a tile to inspect it, or the small map to jump.'), homeBtn),
-          el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), survey.root),
+          el('div.row.mapact', {}, claimWrap, hover, el('span.grow'), survey.root, buildWrap),
           summary, claimLine, surveyLine, el('div.row', {}, autoWrap), lookBox,
-          el('h3', {}, 'Selected tile'), shArt, info, buildWrap, plantWrap, abandonWrap, postWrap, campWrap,
+          el('h3', {}, 'Selected tile'), shArt, info, plantWrap, abandonWrap, postWrap, campWrap,
           upsHead, ups.root,
         );
         // ---- the world ----
@@ -687,6 +691,7 @@ if (tilePost(ctx, 'bridge', i) === 'there') rows.push(['Living bridge', `Held by
         claimWrap.hidden = !(t.seen && (t.o === null || t.o === 'humans') && openGround(ctx, t));
         // outposts go only where the scouts have planted their flag
         buildWrap.hidden = !(i === s.flag && t.o === 'you' && !t.core && !t.outpost && !t.w && !t.sh && ctx.flags.has('tech:cartography'));
+        if (!buildWrap.hidden) survey.root.hidden = true; // Build outpost takes the Scout button's place on the flag
         campWrap.hidden = !(t.o === 'you' && campReach(ctx) > 0 && (canPitch(ctx, i) || campWait(ctx) > 0) && campAt(ctx) !== i);
         if (!campWrap.hidden) campBtn.update(ctx);
         abandonWrap.hidden = !(t.o === 'you' && t.outpost);
