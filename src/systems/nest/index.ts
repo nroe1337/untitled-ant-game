@@ -6,7 +6,7 @@ import { queueOrder } from '../../core/options';
 import { dockQueue } from '../../core/queue';
 import type { Costs } from '../../core/resources';
 import { BROOD, COLONY, MAP, NEST, RESEARCH } from '../../data/balance';
-import { PAL, blob, rect, setup } from '../../core/pixel';
+import { PAL, blob, maskInto, rect, setup } from '../../core/pixel';
 import { drawQueen, queenSize, type QueenLook } from '../../core/queen';
 
 type ChamberId = keyof typeof NEST.chambers;
@@ -723,6 +723,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   animLast = now0;
   const t = animT;
   const surface = ctx.flags.has('surface');
+  const mask = mouldMask(W, H);
   const top = surface ? 14 : 0;
 
   rect(c, 0, 0, W, H, PAL.soil);
@@ -735,7 +736,9 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
   const bottom = 30 + rows * ROW_H + 8;
   rect(c, shaftX - 3, surface ? 0 : 16, 6, bottom - (surface ? 0 : 16), PAL.hole);
   const qy = bottom + 2 + Math.ceil(qs.h / 2);
+  maskInto(mask, PAL.hole);
   blob(c, shaftX, qy, Math.max(18, Math.ceil(qs.w / 2) + 4), Math.max(6, Math.ceil(qs.h / 2) + 2), PAL.hole); // the queen's cell
+  maskInto(null);
   // the Undercroft: the deep reserve under the nest fills and drains; a daughter queen keeps her own cell
   const deepT = ctx.mods.get('storesTier');
   if (deepT) {
@@ -774,6 +777,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       if (propT > 2) rect(c, x + 1, top - 2, 1, 1, '#8a6a3e');
     }
   });
+  maskInto(mask, PAL.hole); // each chamber's hollow, as drawn this frame, is where mould can sit
   placed.forEach((id, i) => {
     const k = (counts[id] = (counts[id] ?? 0) + 1) - 1;
     const lane = LANES[i % LANES.length];
@@ -1094,6 +1098,7 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
       }
     }
   });
+  maskInto(null);
   seenOnce = true;
   hitSpots = spots;
   if (picked !== null && spots[picked]) { // a blinking frame round the chamber picked to swap
@@ -1137,24 +1142,45 @@ function drawNest(cv: HTMLCanvasElement, ctx: Context) {
 }
 
 const SPORES = ['#f08cc0', '#7cb4f0', '#8ee07a'];
-/** Mould as a see-through film over every room, with pink, blue and green spores that thicken as it grows. */
+/** The chambers' hollows (stamped while they are drawn) and a scratch layer the mould is painted on, then cut to them. */
+let maskCv: HTMLCanvasElement | null = null, layerCv: HTMLCanvasElement | null = null;
+function mouldMask(W: number, H: number) {
+  for (const cv of [maskCv ??= document.createElement('canvas'), layerCv ??= document.createElement('canvas')]) {
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  }
+  const m = maskCv.getContext('2d')!;
+  m.clearRect(0, 0, W, H);
+  return m;
+}
+/** Mould as a see-through film over every room, with pink, blue and green spores that thicken as it grows.
+ *  It is cut to each chamber's hollow, so it matches the room's shape and size exactly. */
 function drawMould(c: CanvasRenderingContext2D, ctx: Context, rooms: { x: number; y: number; w: number }[], t: number) {
-  if (!ctx.res.has('mould')) return;
+  if (!ctx.res.has('mould') || !maskCv || !layerCv) return;
   const f = Math.min(1, ctx.res.amt('mould') / BROOD.mould.weak);
   if (f < 0.02) return;
-  c.save();
+  const l = layerCv.getContext('2d')!;
+  l.globalCompositeOperation = 'source-over';
+  l.globalAlpha = 1;
+  l.clearRect(0, 0, layerCv.width, layerCv.height);
+  l.globalAlpha = 0.12 + 0.2 * f;
+  rect(l, 0, 0, layerCv.width, layerCv.height, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3)));
   rooms.forEach((r, i) => {
-    c.globalAlpha = 0.12 + 0.2 * f;
-    blob(c, r.x, r.y + 1, r.w + 3, 5, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3 + i)));
+    l.globalAlpha = 1;
+    l.clearRect(r.x - 25, r.y - 9, 50, 19);
+    l.globalAlpha = 0.12 + 0.2 * f;
+    rect(l, r.x - 25, r.y - 9, 50, 19, mix('#5e8a5a', '#9a5e88', 0.5 + 0.5 * Math.sin(t * 0.3 + i)));
     const n = Math.ceil(f * 14);
     for (let e = 0; e < n; e++) {
       const h = Math.imul(i * 97 + e * 131 + 7, 2654435761) >>> 0;
       const dx = (h % (2 * r.w + 4)) - r.w - 2, dy = ((h >>> 8) % 9) - 4;
       const drift = Math.sin(t * 0.5 + e * 1.7 + i) * 1.5;
-      c.globalAlpha = (0.35 + 0.45 * f) * (0.5 + 0.5 * wave(t, 3 + (e % 4), e * 0.9 + i));
+      l.globalAlpha = (0.35 + 0.45 * f) * (0.5 + 0.5 * wave(t, 3 + (e % 4), e * 0.9 + i));
       const sz = (h >>> 16) % 5 === 0 ? 2 : 1;
-      rect(c, Math.round(r.x + dx + drift), Math.round(r.y + dy - (t * 0.6 + e) % 3), sz, sz, SPORES[(h >>> 4) % 3]);
+      rect(l, Math.round(r.x + dx + drift), Math.round(r.y + dy - (t * 0.6 + e) % 3), sz, sz, SPORES[(h >>> 4) % 3]);
     }
   });
-  c.restore();
+  l.globalAlpha = 1;
+  l.globalCompositeOperation = 'destination-in';
+  l.drawImage(maskCv, 0, 0);
+  c.drawImage(layerCv, 0, 0);
 }
