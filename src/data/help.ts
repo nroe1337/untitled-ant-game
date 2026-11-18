@@ -9,7 +9,7 @@ export const HELP: Record<string, string[]> = {
   garden: ['Fungus beds turn leaves into fungus. Mould spreads through untended beds.'],
   research: ['Spend knowledge to learn research. Each age ends in one research that opens the next age.', 'A ? is an idea the colony hasn\'t had yet: hover it for a hint.'],
   nest: ['Dig chambers for living space, storage and work. Each one costs more than the last.', 'Every chamber gathers a little mould. Click chambers in the picture to see them, or two in turn to swap them.'],
-  expeditions: ['Send parties to bring home food, twigs, seeds and resin. They are away from their jobs until they return.', 'Every trip earns trail marks. Marks open new, richer places and buy trail upgrades.'],
+  expeditions: ['Send parties to bring home food, twigs, seeds and resin.', 'Every trip earns trail marks. Marks open new, richer places and buy trail upgrades.', 'Hover a destination to see what a trip brings home. Bigger parties bring more. Forager\'s rests raise the party cap; workers past it add only a third.'],
   map: ['The garden around the nest. Select a tile next to your land and send scouts to claim it.', 'Held tiles give resources. Outposts push your reach further out.'],
   war: ['The rival raids the nest every so often. Soldiers, majors and fortifications hold the entrance.', 'Repelled raids pay chitin, war honours and chests. Campaigns take enemy tiles on the Map.'],
   waters: ['Build boats and send them on voyages for loot. Some islands can be settled for steady income.'],
