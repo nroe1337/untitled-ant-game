@@ -7,7 +7,7 @@ import type { GameSystem, Context } from '../../core/types';
 import { actionButton, el, pointTip, progressBar, type ActionButton } from '../../core/ui';
 import { fmt, type Costs } from '../../core/resources';
 import { PAL, rect, setup } from '../../core/pixel';
-import { MAP, NEST, WAR } from '../../data/balance';
+import { MAP, NEST, WAR, EXPEDITIONS } from '../../data/balance';
 import { reworkLevel, openNeighbour } from '../nest';
 import { fromBalance, upgradeList } from '../../core/upgrades';
 import { terrainAt, gridCell, isTown, townSite, shoreSeen, townHome, siteStatus, WIDTH, ownerAt, isFoeCore, foeOf, canClaimAt, canAssault, foeStrength, takeTile, heldTerrain, assaultArmy, sendAssault, reachable, held, W, HOME, layout, ring, cxy, isSeen, frontier, sortieCost, sortieAnts, sortieTime, sortieRisk, sendSortie, tickWorld, drawWorld, drawCell, windName, windFor, biomeName, lmName, kinOf, skyOpen, type WorldState } from './world';
@@ -448,7 +448,7 @@ export const map: GameSystem = {
       mount(root: HTMLElement, ctx: Context) {
         cam = makeCamera({ cols: MAP.cols, rows: MAP.rows, zooms: MAP.zooms, zoom: MAP.zoom, T: 8, label: 'Map of the garden', onPick: (i) => { S(ctx).selected = i; } });
         cam.centre(...MAP.nest);
-        cam.paintMini = (c) => { paintMini(c, S(ctx)); const m = marchOf(ctx); if (m != null) { const [x, y] = marchAt(m); c.fillStyle = PAL.rival; c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } };
+        cam.paintMini = (c) => { paintMini(c, S(ctx)); const m = marchOf(ctx); if (m != null) { const [x, y] = marchAt(m); c.fillStyle = PAL.rival; c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } c.fillStyle = PAL.you; for (const e of partiesOf(ctx)) { const [x, y] = partyAt(e, e.q); c.fillRect(Math.floor(x) - 1, Math.floor(y) - 1, 3, 3); } };
         const homeBtn = el('button.ghost', { type: 'button' }, 'Focus on nest');
         homeBtn.addEventListener('click', () => cam.centre(...MAP.nest));
         hover = el('p.muted.mono');
@@ -619,7 +619,7 @@ abandonWrap = el('div.row', {}, abandon);
         if (view === 'cell') P.cell(ctx);
         if (view !== 'garden') return;
         hoverI = cam.hover;
-        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx), march: marchOf(ctx), marchKind: (ctx.state.war as { next?: { kind: string } } | undefined)?.next?.kind });
+        drawMap(cam.source, s, (i) => inReach(ctx, i), [ctx.mods.get('firesTier'), ctx.mods.get('watchTier'), ctx.mods.get('roadsTier')], { bridges: ctx.state.castes?.bridges ?? [], nests: ctx.state.castes?.nests ?? [], forts: ctx.state.castes?.forts ?? [], camp: campAt(ctx), march: marchOf(ctx), marchKind: (ctx.state.war as { next?: { kind: string } } | undefined)?.next?.kind, parties: partiesOf(ctx) });
         autoWrap.hidden = !ctx.flags.has('tech:frontier');
         lookBox.hidden = !ctx.flags.has('tech:lookouts');
         if (!lookBox.hidden) {
@@ -842,7 +842,7 @@ function drawStronghold(c: CanvasRenderingContext2D, kind: Stronghold, X: number
   const a = SH_ART[kind];
   a.rows.forEach((r, y) => { for (let x = 0; x < 8; x++) if (r[x] !== '.') rect(c, X + x, Y + y, 1, 1, a.pal[r[x]]); });
 }
-function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null; march?: number | null; marchKind?: string } = { bridges: [], nests: [], forts: [] }) {
+function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boolean, stones: [number, number, number] = [0, 0, 0], posts: { bridges: number[]; nests: number[]; forts: number[]; camp?: number | null; march?: number | null; marchKind?: string; parties?: PartyOnMap[] } = { bridges: [], nests: [], forts: [] }) {
   const c = setup(cv);
   const T = 8;
   const near = s.tiles.map((t, i) => t.seen && reach(i));
@@ -897,6 +897,7 @@ function drawMap(cv: HTMLCanvasElement, s: MapState, reach: (i: number) => boole
   };
   if (s.claiming && s.claiming.cell == null && Math.floor(performance.now() / 400) % 2) mark(s.claiming.i, PAL.you);
   mark(s.selected, PAL.bone);
+  for (const e of posts.parties ?? []) drawParty(c, e);
   if (posts.march != null) drawMarch(c, posts.march, posts.marchKind ?? 'plain');
 }
 
@@ -920,6 +921,33 @@ function drawMarch(c: CanvasRenderingContext2D, p: number, kindId = 'plain') {
     const sz = big && k % 2 === 0 ? 3 : 2;
     rect(c, X - 1, Y - 1, sz + 2, sz + 2, '#1a1410');
     rect(c, X, Y, sz, sz, col);
+  }
+}
+/** An expedition party on the map: where it is going, how far along the trail it is (0 home, 1 there), and its size. */
+interface PartyOnMap { tile: [number, number]; q: number; ants: number; out: boolean }
+/** Our parties out on the trails, from the expedition state: out to the place in the first half of the trip, home in the second. */
+const partiesOf = (ctx: Context): PartyOnMap[] => {
+  const ps = (ctx.state.expeditions as { parties?: { dest: string; ants: number; elapsed: number; duration: number }[] } | undefined)?.parties ?? [];
+  const all: { id: string; tile: readonly number[] }[] = [...EXPEDITIONS.destinations, ...EXPEDITIONS.rumours.places];
+  return ps.flatMap((p) => {
+    const d = all.find((x) => x.id === p.dest);
+    if (!d) return [];
+    const f = Math.min(1, p.elapsed / (p.duration || 1)), out = f < 0.5;
+    return [{ tile: [d.tile[0], d.tile[1]] as [number, number], q: out ? f * 2 : 2 - f * 2, ants: p.ants, out }];
+  });
+};
+const partyAt = (e: PartyOnMap, q: number): [number, number] => [MAP.nest[0] + e.tile[0] * q + 0.5, MAP.nest[1] + e.tile[1] * q + 0.5];
+/** One of our expedition parties: a short file of our ants on the trail between the nest and its place. */
+function drawParty(c: CanvasRenderingContext2D, e: PartyOnMap) {
+  const T = 8, len = Math.hypot(e.tile[0], e.tile[1]) || 1, t = performance.now() / 250, dir = e.out ? 1 : -1;
+  const ux = (e.tile[0] / len) * dir, uy = (e.tile[1] / len) * dir;
+  for (let k = 0; k < Math.min(e.ants, 6); k++) {
+    const q = e.q - (dir * k * 0.45) / len;
+    if (q < 0 || q > 1) break;
+    const [x, y] = partyAt(e, q), step = (Math.floor(t) + k) % 2;
+    const X = Math.round(x * T + ux * step) - 1, Y = Math.round(y * T + uy * step) - 1;
+    rect(c, X - 1, Y - 1, 4, 4, '#1a1410');
+    rect(c, X, Y, 2, 2, PAL.you);
   }
 }
 /** The march's progress from the war state, or null when no raid is on its way. */
