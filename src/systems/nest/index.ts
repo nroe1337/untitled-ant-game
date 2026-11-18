@@ -72,7 +72,7 @@ function visible(ctx: Context, id: ChamberId) {
 }
 
 /** Building queue slots: 2 from Digging plans, more from the Master plans lineage perk. */
-export const queueSlots = (ctx: Context) => (ctx.flags.has('tech:plans') ? 2 + ctx.mods.get('queueSlots') : 0);
+export const queueSlots = (ctx: Context) => (ctx.flags.has('tech:plans') ? 3 + ctx.mods.get('queueSlots') : 0);
 dockQueue('Building queue', 0, (strip, ctx) => strip.update(queueSlots(ctx), (S(ctx).queue ??= []), (id) => DEFS[id as ChamberId].name, undefined, ctx, (id) => costOf(ctx, id as ChamberId)));
 const totalCost = (c: Costs) => Object.values(c).reduce((a, b) => a + b, 0);
 const fits = (ctx: Context, c: Costs) => Object.entries(c).every(([r, n]) => ctx.res.has(r) && ctx.res.cap(r) >= n);

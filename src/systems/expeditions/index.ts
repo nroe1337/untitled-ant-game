@@ -430,7 +430,7 @@ export const expeditions: GameSystem = {
           const n = X.destinations.find((d) => d.unlockMarks > earned(ctx)), prev = [...X.destinations].reverse().find((d) => d.unlockMarks <= earned(ctx));
           nextBox.hidden = !n;
           if (n) {
-            nextTxt.replaceChildren('Next place: ', el('strong', {}, n.name), `, at ${n.unlockMarks} trail marks (${earned(ctx)} now).`);
+            nextTxt.replaceChildren('Next place: ', el('strong', {}, n.name), `, at ${n.unlockMarks} total trail marks (${earned(ctx)}).`);
             nextBar.set((earned(ctx) - (prev?.unlockMarks ?? 0)) / (n.unlockMarks - (prev?.unlockMarks ?? 0)));
           }
         }
