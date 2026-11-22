@@ -89,6 +89,9 @@ new standing rule in a thread, add it here in the same pull request.
 - `src/data/techs2.ts`: the wider tech tree, one row list per age.
 - `src/systems/crowns`: the queen's eight crowns (Royal court). Crown data is `CROWNS` in balance.ts. They replaced the Royal care list.
 - `src/systems/<name>/index.ts`: one system per tab or mechanic. `npm run build` type-checks and builds.
+- Achievement icons (Nov 22): one 16x16 PNG per achievement in `src/assets/achievements/<id>.png`, drawn as text grids by
+  `tools/achievement-icons` (run `python3 export.py` there). A new achievement needs an icon, approved by Nate. Style: flat colour,
+  no outlines or shading, 2 to 4 colours from the game palette, separate shapes never touching, no white parts on the red ant.
 
 ## Where things stand (Nov 14)
 - Done and merged: research per age with hidden milestones, 64x64 map with outposts, the war batch and the rival
