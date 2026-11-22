@@ -1,0 +1,308 @@
+import icons, batch2, batch3, batch4, redo, batch5, batch6, batch7, batch8, batch9, batch10, ants
+from batch2 import blank, stamp, out
+from icons import P
+P.update({'Q':'#3a6f8f','x':'#b7d3e3'})
+L={}
+L['blueprint']="""
+................
+................
+..QQQQQQQQQQQQ..
+..QBBBBBBBBBBQ..
+..QBxxxxBBBBBQ..
+..QBxBBxBxxxBQ..
+..QBxBBxBxBxBQ..
+..QBxxxxBxxxBQ..
+..QBBBBBBBBBBQ..
+..QBxxxxxxxxBQ..
+..QBBBBBBBBBBQ..
+.mmQQQQQQQQQQmm.
+mmMmmmmmmMmmmmMm
+mmmmmMmmmmmmmmmm
+dddddddddddddddd
+dddddddddddddddd"""
+SHEET="""QQQQQQ
+QBxxBQ
+QBxBBQ
+QBBxBQ
+QBBBBQ
+QQQQQQ"""
+g=blank()
+for (x,y) in [(1,1),(9,1),(1,9),(9,9)]: stamp(g,SHEET,x,y)
+L['blueprints']=out(g)
+L['wonder1']="""
+.......uu.......
+......uuuu......
+.......uu.......
+.......gg.......
+......cCCc......
+......cCCc......
+.....cCcCCc.....
+.....cCCCCc.....
+....cCCcCCCc....
+....cCCCkCCc....
+...cCCCCkkCCc...
+...cCcCCkkCCc...
+..cCCCCCkkCCCc..
+..cCCCCCkkCcCc..
+dddddddddddddddd
+ddmdddddmdddddmd"""
+L['wonder5']="""
+.......uu.......
+......uuuu......
+.......uu.......
+.......gg.......
+......gggg......
+......cCCc......
+.....ggggggg....
+.....cCCCCc.....
+....ggggggggg...
+....cCCCkCCc....
+...ggggggggggg..
+...cCCCCkkCCc...
+..ggggggggggggg.
+..cCCCCCkkCCCc..
+dddddddddddddddd
+ddmdddddmdddddmd"""
+L['wonder5']="\n".join(r for r in L['wonder5'].strip('\n').split('\n'))
+L['wonder5']=L['wonder5'].replace(".....ggggggg....","....gggggggg....").replace("....ggggggggg...","...gggggggggg...").replace("...ggggggggggg..","..gggggggggggg..").replace("..ggggggggggggg.",".gggggggggggggg.").replace("......gggg......","......gggg......")
+L['fine']="""
+hhhhhhhhhhhhhhhh
+hhhhhhhhhhhhhhhh
+hhhhhhhhkhkhhhhh
+sssssssskksssss
+ssssssssskssssss
+ssssssssssssssss
+cccccsssssssccccc
+ccccccggggcccccc
+cccccggggggccccc
+ccccgguuuuggcccc
+cccgguuuuuuggccc
+FFFFFFFFFFFFFFFF
+FfFFFFFfFFFFFfFF
+FFFFFFFFFFFFFFFF
+dddddddddddddddd
+dddddddddddddddd"""
+L['fine']="\n".join(r[:16].ljust(16,r[0]) for r in L['fine'].strip('\n').split('\n'))
+TIARA="""y.y.y
+g.g.g
+ggggg
+GGGGG"""
+g=blank()
+for (x,y) in [(1,2),(10,2),(5.5,9)]: stamp(g,TIARA,int(x),y)
+L['traits3']=out(g)
+L['gene']="""
+....f......h....
+.....f....h.....
+......f..h......
+.......fh.......
+......h..f......
+.....h....f.....
+....hbbbbbbf....
+....h......f....
+.....h....f.....
+......h..f......
+.......hf.......
+......f..h......
+.....f....h.....
+....fbbbbbbh....
+....f......h....
+.....f....h....."""
+L['sky10']="""
+................
+.kkkk.ffff.kkkk.
+.kkkk.ffff.kkkk.
+.kkkk.ffff.kkkk.
+.kkkk.fFff.kkkk.
+................
+.ffff.BBBB.SSSS.
+.ffFf.BBBB.SSSS.
+.ffff.BiBB.SYSS.
+.ffff.BBBB.SSSS.
+................
+.oooo.ffff.kkkk.
+.oOoo.ffff.kkkk.
+.oooo.fffF.kkkk.
+.oooo.ffff.kkkk.
+................"""
+L['sky10']=L['sky10'].replace('k','a')
+g=blank()
+stamp(g,batch3.ANT7,0,8); stamp(g,batch3.ANT7,11,8,{'r':'B'})
+stamp(g,"""..ff..
+.ffff.
+ffFfff
+.ffff.
+..ff..""",5,2)
+L['kinquest']=out(g)
+L['sworn']="""
+................
+................
+...sss....sss...
+..sssss..sssss..
+.sssuusssssssss.
+.ssuussssssssss.
+.sssssssssssssss
+.ssssssssssssss.
+..ssssssssssss..
+...ssssssssss...
+....ssssssss....
+.....ssssss.....
+......ssss......
+.......ss.......
+................
+................"""
+L['sworn']="\n".join(r[:16] for r in L['sworn'].strip('\n').split('\n'))
+L['settle3']="""
+................
+................
+..rr...rr....rr.
+..c....c.....c..
+.mmm..mmm...mmm.
+mmMmmmmMmm.mmMmm
+ffffffffffffffff
+FfffFfffffFffffF
+BBBBBBBBBBBBBBBB
+BiBBBBBBiBBBBBBB
+LLLLLLLLLLLLLLLL
+LLLLiLLLLLLLiLLL
+BBBBBBBBBBBBBBBB
+BBBiBBBBBBBiBBBB
+mmmmmmmmmmmmmmmm
+dddddddddddddddd"""
+L['shoo']="""
+................
+................
+.........kk.....
+........kkkk....
+.......rrkkrr...
+......rrrkkrrr..
+.oo...rkrkkrkr..
+......rrrkkrrr..
+.ooo..rrkkkkrr..
+......rrrkkrrr..
+.oo....rrkkrr...
+........rrrr....
+................
+................
+................
+................"""
+L['perks10']="""
+................
+..g.....g....g..
+..g.....g....g..
+..GG...GG...GG..
+...G...G....G...
+...GGGGG....G...
+.......G....G...
+.......GGGGGG...
+..........G.....
+..........G.....
+...g......G.....
+...GGGGGGGG.....
+..........G.....
+..........G.....
+.........ggg....
+................"""
+icons.ICONS.update({k:v.strip('\n') for k,v in L.items()})
+half=["..SS....",
+      ".S..S...",
+      "S....S..",
+      "......YY",
+      ".SSSSYYY",
+      "S....YYY",
+      "..SSS.YY",
+      ".S..SSSS",
+      "S..SSSSS",
+      "..SSSkSS",
+      ".S.SSSkk",
+      "S..SSSSS",
+      "...SSkSS",
+      "....SSSS",
+      ".....SSS",
+      "........"]
+L['spider']="\n".join(h+h[::-1] for h in half)
+SHEET="""QQQQQQ
+QBxBxQ
+QxxxxQ
+QBxBxQ
+QxxxxQ
+QQQQQQ"""
+g=blank()
+for (x,y) in [(1,1),(9,1),(1,9),(9,9)]: stamp(g,SHEET,x,y)
+L['blueprints']=out(g)
+L['blueprint']="""
+................
+................
+..QQQQQQQQQQQQ..
+..QBBxBBxBBxBQ..
+..QxxxxxxxxxxQ..
+..QBBxBBxBBxBQ..
+..QBBxBBxBBxBQ..
+..QxxxxxxxxxxQ..
+..QBBxBBxBBxBQ..
+..QBBxBBxBBxBQ..
+..QxxxxxxxxxxQ..
+.mmQQQQQQQQQQmm.
+mmMmmmmmmMmmmmMm
+mmmmmMmmmmmmmmmm
+dddddddddddddddd
+dddddddddddddddd"""
+L['blueprint']="""
+................
+................
+..QQQQQQQQQQQQ..
+..QBBBBBBBBBBQ..
+..QBxxxxxxxBBQ..
+..QBxBBBBBxBBQ..
+..QBxBBBBBxxxQ..
+..QBxBBBBBBBxQ..
+..QBxxxxxxxxxQ..
+..QBBBBBBBBBBQ..
+mmmmmmmmmmmmmmmm
+mmMmmmmmmMmmmmMm
+mmmmmMmmmmmmmmmm
+mmmmmmmmmmmmmmmm
+dddddddddddddddd
+dddddddddddddddd"""
+L['fine']="""
+hhhhhhhhhhhhhhhh
+hhhhhhhhhhhhhhhh
+hhhhhhkhhhkhhhhh
+sssssssskkssssss
+sssssssskkssssss
+ssssssssssssssss
+cccccccccccccccc
+ccccccggggcccccc
+cccccggggggccccc
+ccccgguuuuggcccc
+cccgguuuuuuggccc
+FFFFFFFFFFFFFFFF
+FfFFFFFfFFFFFfFF
+FFFFFFFFFFFFFFFF
+dddddddddddddddd
+dddddddddddddddd"""
+L['fine']="""
+hhhhhhhhhhhhhhhh
+hhhhhhhhhhhhhhhh
+hhhhhkkhhkkhhhhh
+sssssskkkksssss
+sssssssskkssssss
+ssssssssssssssss
+cccccccccccccccc
+ccccccggggcccccc
+cccccggggggccccc
+ccccgguuuuggcccc
+cccgguuuuuuggccc
+FFFFFFFFFFFFFFFF
+FfFFFFFfFFFFFfFF
+FFFFFFFFFFFFFFFF
+dddddddddddddddd
+dddddddddddddddd"""
+L['fine']="\n".join(r.ljust(16,'s') for r in L['fine'].strip('\n').split('\n'))
+icons.ICONS.update({k:v.strip('\n') for k,v in L.items()})
+half[9]="..SSSSSY"; half[10]=".S.SSSYS"; half[11]="S..SSYSS"; half[12]="...SSSSS"
+L['spider']="\n".join(h+h[::-1] for h in half)
+L['fine']="\n".join(r.replace('k','h') if i<3 else r.replace('k','s') for i,r in enumerate(L['fine'].split('\n')))
+icons.ICONS.update({k:v.strip('\n') for k,v in L.items()})
+half[8]="S..SSSSY"; half[9]="..SSSSSY"; half[10]=".S.SSSSY"; half[11]="S..SSSSY"; half[12]="...SSSSY"
+L['spider']="\n".join(h+h[::-1] for h in half)
+icons.ICONS.update({k:v.strip('\n') for k,v in L.items()})

@@ -1,0 +1,10 @@
+ANT=""".r...r.
+..r.r..
+..rrr..
+..rrr..
+r..r..r
+.rrrrr.
+r..r..r
+..rrr..
+.rrrrr.
+..rrr.."""

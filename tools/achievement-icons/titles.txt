@@ -1,0 +1,131 @@
+first|A hole in the ground
+twenty|A proper colony
+hundred|Teeming
+full|Not an inch to spare
+sky|Daylight
+rival|Neighbours
+deep|Deep digging
+wave25|Holding the line
+flight1|The wedding flight
+flight5|An old line
+flight10|A dynasty
+swift|Swift wings
+fed|Nobody goes hungry
+garden|Green fingers
+champ|Something that bites back
+trophy1|First trophy
+trophy5|A full wall
+lvl50|Veteran
+accord3|Old habits
+decree|By royal decree
+sail|Afloat
+shore|The far shore
+migrate|Into the town
+lean|The lean season
+oneeach|One of each
+allhands|All hands
+council|Elders' council
+nursery|Nursery colony
+proud|Hungry but proud
+queuefull|Builder's queue
+longhall|The long hall
+packed|Packed tight
+luckyfew|Lucky few
+safe10|Not one lost
+wipe1|Gone without a trace
+wipe3|Bad luck comes in threes
+oldhands|Old hands
+marks50|Well-worn path
+everywhere|Every corner of the garden
+amber10|Bug in amber
+scenic|The scenic route
+marks90|Ninety marks
+goliath|David and Goliath
+feet|Back on its feet
+patched|Patched up
+nottoday|Not today
+flawless|Flawless
+husks|Shell collector
+nowalls|No walls needed
+peace|Peace in our time
+streak10|Ten in a row
+bigenough|Big enough
+waiting|Waiting on the colony
+newtricks|Same queen, new tricks
+shortreign|Short reign
+longreign|Long reign
+settled|Every age
+shepherds|Shepherds
+seaworthy|Seaworthy
+crumbs|Crumbs from the table
+sweet|Sweet tooth
+nation|A nation of ants
+antfarm|Ant farm
+patient|The patient queen
+fiddly|Overthinking it
+pantry|A full pantry
+dirtpile|Mountain of dirt
+wellread|Well read
+sticks|Bundle of sticks
+city|A city underground
+warren|A warren
+studious|Studious
+scholars|A colony of scholars
+jelly10|Royal treatment
+spun|Spinners
+eyes|Eyes everywhere
+army|A standing army
+bigheads|Big heads
+larder|Living larder
+claim5|Staking a claim
+claim25|Landholders
+outpost|The frontier
+trips25|Seasoned trail
+toll|The trail takes its toll
+lvl100|Living legend
+nice|Nice
+blaze|Blaze it
+jackpot|Jackpot
+leet|Leet
+answer|The answer
+moods|Every kind of child
+spotless|Spotless
+overgrown|Something growing in here
+winter|Through the frost
+winter5|Hard winters
+rework|Chamber craft
+rework3|Master builder
+rework5|Five trades
+crown|Crowned
+crown10|Heavy is the head
+posts|Every ant in its place
+bridge|Living bridge
+rumour|Just a rumour
+rumour10|Tall tales
+ivory|Beetle ivory
+grounds|Lay of the land
+campaign|Marching orders
+spider|Eight legs fewer
+warband|They shall not pass
+night|Night watch
+skulls|Skulls on the wall
+hold1|A foothold
+hold3|Three fortresses
+garrison|Manning the walls
+blueprint|Plans in the dust
+blueprints|Every plan
+wonder1|A wonder of the garden
+wonder5|A way of life
+fine|A fine evening
+traits3|Her mother's daughters
+gene|Bred true
+sky10|Above the garden
+kinquest|A favour done
+sworn|Sworn kin
+settle3|Across the water
+shoo|Shoo
+perks10|Old blood
+tended|Every egg accounted for
+tendedA|Option A
+tendedB|Option B
+tendedC|Option C

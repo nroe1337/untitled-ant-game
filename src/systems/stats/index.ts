@@ -6,6 +6,11 @@ import type { GameSystem, Context } from '../../core/types';
 import { el, hoverTip } from '../../core/ui';
 import { BROOD, COLONY, EXPEDITIONS, RESEARCH } from '../../data/balance';
 
+/** One 16x16 pixel icon per achievement, named by its id (src/assets/achievements, drawn by tools/achievement-icons). */
+const ICON_FILES = import.meta.glob('../../assets/achievements/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const ICONS: Record<string, string> = {};
+for (const [path, url] of Object.entries(ICON_FILES)) ICONS[path.split('/').pop()!.replace('.png', '')] = url;
+
 interface Run { kind: 'flight' | 'migration'; time: number; peak: number; techs?: string[]; temper?: string }
 interface StatsState {
   /** Game seconds, all colonies, and this colony. */
@@ -445,7 +450,10 @@ export const achievements: GameSystem = {
           featList.replaceChildren(...FEATS.map((f) => {
             const when = s.feats[f.id];
             const secret = f.hidden && when === undefined;
+            // hidden ones show an empty frame until earned, so the icon gives nothing away
+            const icon = !secret && ICONS[f.id] ? el('img.feat-icon', { src: ICONS[f.id], alt: '' }) : el('span.feat-icon');
             const card = el(when !== undefined ? 'div.feat.got' : 'div.feat', { tabindex: 0 },
+              icon,
               el('strong', {}, when !== undefined ? f.name : '???'),
               el('span.muted', {}, secret ? 'A hidden achievement.' : f.desc));
             hoverTip(card, () => when !== undefined
